@@ -67,20 +67,40 @@ function initMap(lat, lng) {
 function renderMarkers() {
   if (!kakaoMap) return
   const clusters = getClusters()
+  if (clusters.length === 0) return
 
-  clusters.forEach(cluster => {
-    const color = DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium
-    const pos   = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
-
+  const markers = clusters.map(cluster => {
+    const color  = DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium
+    const pos    = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
     const marker = new kakao.maps.Marker({
       position: pos,
       image: makeMarkerImage(color),
-      map: kakaoMap,
     })
-
     kakao.maps.event.addListener(marker, 'click', () => {
       location.href = `/detail.html?id=${cluster.id}`
     })
+    return marker
+  })
+
+  // MarkerClusterer — 마커 겹침 자동 처리
+  new kakao.maps.MarkerClusterer({
+    map: kakaoMap,
+    markers,
+    gridSize: 60,
+    minLevel: 4,         // 레벨 4 이상부터 클러스터링
+    minClusterSize: 2,
+    styles: [{
+      width: '36px', height: '36px',
+      borderRadius: '50%',
+      background: 'rgba(227,38,54,0.85)',
+      border: '2px solid white',
+      color: 'white',
+      textAlign: 'center',
+      lineHeight: '32px',
+      fontSize: '13px',
+      fontWeight: '700',
+      boxShadow: '0 2px 6px rgba(227,38,54,0.4)',
+    }],
   })
 }
 

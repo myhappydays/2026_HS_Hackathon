@@ -58,6 +58,9 @@
   --color-crimson-gray-950: oklch(14.1% 0.002 30);
 
 
+  /* Typography */
+  --font-sans: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
   /* ============================================ */
   /* GLOBAL SURFACES + TEXT                       */
   /* ============================================ */
