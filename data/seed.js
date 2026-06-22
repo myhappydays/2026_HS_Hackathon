@@ -1,5 +1,5 @@
 /**
- * seed.js — 위험지도 목업 데이터 시드 스크립트
+ * seed.js — Fermata 목업 데이터 시드 스크립트
  *
  * 사용법: 앱이 열린 브라우저 탭의 DevTools 콘솔에 이 파일 전체를 붙여넣고 실행
  * 또는: 아무 탭에서나 실행 후 앱 탭으로 이동해 새로고침 (같은 origin이면 공유됨)
@@ -398,7 +398,7 @@
     ) * 2
     const kb = (bytes / 1024).toFixed(1)
 
-    console.log('%c✅ 위험지도 시드 데이터 주입 완료', 'color:#22c55e;font-weight:bold;font-size:14px')
+    console.log('%c✅ Fermata 시드 데이터 주입 완료', 'color:#22c55e;font-weight:bold;font-size:14px')
     console.log(`   제보 ${reports.length}건 / 클러스터 ${clusters.length}건 / 용량 ${kb} KB`)
     console.log('')
     console.log('%c클러스터 분포:', 'font-weight:bold')

@@ -3,11 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>위험지도 - 내 주변 위험 제보</title>
+  <title>Fermata - 내 주변 위험 제보</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- OG 태그 -->
+  <meta property="og:title" content="Fermata">
+  <meta property="og:description" content="지역 안전 나눔 커뮤니티, Fermata — 우리 동네 위험을 함께 발견하고 지킵니다.">
+  <meta property="og:image" content="/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Fermata">
+  <meta name="twitter:description" content="지역 안전 나눔 커뮤니티, Fermata — 우리 동네 위험을 함께 발견하고 지킵니다.">
 
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+
+  <!-- Playfair Display (로고용) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -77,6 +94,14 @@
 
   <!-- 모바일 앱 래퍼 -->
   <div class="relative w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+
+    <!-- 헤더 -->
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center justify-center">
+      <div class="flex items-center gap-2">
+        <img src="/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
+        <span class="text-2xl font-semibold text-foreground" style="font-family: 'Playfair Display', serif;">Fermata</span>
+      </div>
+    </header>
 
     <!-- 지도 뷰 -->
     <div class="relative">

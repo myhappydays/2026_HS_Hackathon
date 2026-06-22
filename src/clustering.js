@@ -5,7 +5,7 @@
  * 1. Haversine 거리 계산 → 200m 이내 후보 필터
  * 2. 임베딩 코사인 유사도 계산 → 임계값(0.4) 이상 후보 중 최고값 선택
  *    - 모델: Xenova/paraphrase-multilingual-MiniLM-L12-v2
- *    - 임계값 0.4: 130개 테스트케이스 기반 최적값 (정확도 72.3%)
+ *    - 임계값 0.45: 130개 테스트케이스 기반 최적값 조정 (오탐 감소)
  * 3. 없으면 신규 군집 생성
  */
 
@@ -15,7 +15,7 @@ import { embed, isEmbedderReady } from './embedder.js'
 
 // ── 파라미터 ────────────────────────────────────────────
 const DISTANCE_THRESHOLD_M  = 200  // 거리 임계값 (미터)
-const SIMILARITY_THRESHOLD  = 0.4  // 임베딩 코사인 유사도 임계값
+const SIMILARITY_THRESHOLD  = 0.45 // 임베딩 코사인 유사도 임계값
 
 // ── Haversine ───────────────────────────────────────────
 
@@ -92,6 +92,7 @@ export async function assignCluster(report) {
   //    embeddingVector가 null인 군집(모델 미로드 시 생성)은 즉석 embed로 보완
   let best      = null
   let bestScore = -1
+  let bestVec   = null
 
   for (const c of nearby) {
     let cVec
@@ -109,6 +110,7 @@ export async function assignCluster(report) {
     if (score > bestScore) {
       bestScore = score
       best      = c
+      bestVec   = cVec
     }
   }
 
@@ -118,10 +120,9 @@ export async function assignCluster(report) {
   }
 
   // 7. 기존 군집에 배정 — 대표 벡터를 기존·신규의 평균으로 갱신
-  const prevVec   = new Float32Array(best.embeddingVector)
-  const mergedVec = new Float32Array(prevVec.length)
-  for (let i = 0; i < prevVec.length; i++) {
-    mergedVec[i] = (prevVec[i] + newVec[i]) / 2
+  const mergedVec = new Float32Array(bestVec.length)
+  for (let i = 0; i < bestVec.length; i++) {
+    mergedVec[i] = (bestVec[i] + newVec[i]) / 2
   }
 
   const dangerPriority = { high: 3, medium: 2, low: 1 }

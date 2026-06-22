@@ -57,23 +57,76 @@ function renderDetail(cluster, repReport) {
   document.getElementById('cluster-time').textContent        = `${relativeTime(cluster.createdAt)} 최초 등록 · ${relativeTime(cluster.updatedAt)} 업데이트`
   document.getElementById('related-count').textContent       = `${cluster.reportIds.length}건`
 
-  // 관련 제보 리스트
+  // 관련 제보 리스트 (Preline Accordion)
   const relatedList = document.getElementById('related-list')
-  relatedList.innerHTML = allReports.map((r, i) => `
-    <div class="flex gap-3 p-3 rounded-xl bg-card border border-border">
-      <div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
-        <img src="${r.imageBase64}" class="w-full h-full object-cover" alt="제보 사진">
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-1 mb-0.5">
-          ${i === 0 ? '<span class="text-[10px] text-primary font-semibold">대표 제보</span>' : ''}
-          <span class="text-[10px] text-muted-foreground ml-auto">${relativeTime(r.createdAt)}</span>
+  relatedList.innerHTML = `
+    <div class="hs-accordion-group space-y-3">
+      ${allReports.map((r, i) => {
+        const rds = dangerStyle(r.danger)
+        const rcat = categoryLabel(r.category)
+        return `
+        <div class="hs-accordion bg-card border border-border rounded-xl overflow-hidden" id="acc-${r.id}">
+          <button type="button"
+            class="hs-accordion-toggle w-full flex gap-3 p-3 text-left hover:bg-surface/50 transition"
+            aria-expanded="false" aria-controls="acc-body-${r.id}">
+            <div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
+              ${r.imageBase64
+                ? `<img src="${r.imageBase64}" class="w-full h-full object-cover" alt="제보 사진">`
+                : `<div class="w-full h-full flex items-center justify-center">
+                     <svg class="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909"/>
+                     </svg>
+                   </div>`
+              }
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 mb-0.5">
+                ${i === 0 ? '<span class="text-[10px] text-primary font-semibold">대표 제보</span>' : ''}
+                <span class="text-[10px] text-muted-foreground ml-auto">${relativeTime(r.createdAt)}</span>
+              </div>
+              <p class="text-sm font-medium text-foreground truncate">${r.title}</p>
+              <p class="text-xs text-muted-foreground truncate mt-0.5">${r.description || ''}</p>
+            </div>
+            <svg class="hs-accordion-active:rotate-180 w-4 h-4 flex-shrink-0 self-center text-muted-foreground transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </button>
+
+          <div id="acc-body-${r.id}" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="region" aria-labelledby="acc-${r.id}">
+            <div class="border-t border-border px-4 py-3 space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${rds.bg} ${rds.text}">${rds.label}</span>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${rcat}</span>
+              </div>
+              ${r.imageBase64 ? `<img src="${r.imageBase64}" alt="제보 사진" class="w-full rounded-lg object-cover" style="max-height:220px;">` : ''}
+              <div>
+                <p class="text-sm font-semibold text-foreground">${r.title}</p>
+                ${r.description ? `<p class="text-xs text-muted-foreground mt-1 leading-relaxed">${r.description}</p>` : ''}
+              </div>
+              <div class="flex flex-col gap-1 text-xs text-muted-foreground">
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                  </svg>
+                  <span>${r.location?.address || '위치 정보 없음'}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>${relativeTime(r.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <p class="text-sm font-medium text-foreground truncate">${r.title}</p>
-        <p class="text-xs text-muted-foreground truncate mt-0.5">${r.description || ''}</p>
-      </div>
+        `}).join('')}
     </div>
-  `).join('')
+  `
+
+  // Preline Accordion 재초기화 (동적 DOM 주입 후)
+  if (window.HSAccordion) window.HSAccordion.autoInit()
 
   // 표시
   loadingState.classList.add('hidden')
@@ -99,7 +152,7 @@ function renderCarousel(reports) {
     </div>
   `).join('')
 
-  // pagination dots 주입 (Preline은 hs-carousel-pagination-item span을 직접 넣어야 함)
+  // pagination dots 주입
   const pagination = wrap.querySelector('.hs-carousel-pagination')
   if (pagination) {
     pagination.innerHTML = reports.map((_, i) => `
@@ -116,7 +169,7 @@ function renderCarousel(reports) {
     if (pagination) pagination.classList.add('hidden')
   }
 
-  // Preline 캐러셀 초기화 (DOM 주입 후 수동 init)
+  // Preline 캐러셀 초기화
   if (window.HSCarousel) {
     window.HSCarousel.autoInit()
   }
