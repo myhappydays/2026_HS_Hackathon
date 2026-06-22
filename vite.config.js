@@ -2,6 +2,9 @@ import { resolve } from 'path'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  server: {
+    allowedHosts: ['fedora-1.tailda0655.ts.net']
+  },
   build: {
     rollupOptions: {
       input: {

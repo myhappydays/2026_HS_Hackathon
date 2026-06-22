@@ -106,52 +106,42 @@ function setLocation(lat, lng) {
 }
 
 function reverseGeocode(lat, lng) {
-  if (typeof naver === 'undefined') {
+  if (typeof kakao === 'undefined') {
     addressText.textContent = `위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)}`
     return
   }
-  naver.maps.Service.reverseGeocode(
-    { coords: new naver.maps.LatLng(lat, lng), orders: [naver.maps.Service.OrderType.ADDR] },
-    (status, response) => {
-      if (status !== naver.maps.Service.Status.OK) {
-        addressText.textContent = `위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)}`
-        return
-      }
-      const items = response.v2?.results
-      if (items?.length > 0) {
-        const r = items[0]
-        const region = r.region
-        const addr = [
-          region?.area1?.name,
-          region?.area2?.name,
-          region?.area3?.name,
-          r.land?.name,
-          r.land?.number1,
-        ].filter(Boolean).join(' ')
-        addressText.textContent = addr || `위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)}`
-      }
+  const geocoder = new kakao.maps.services.Geocoder()
+  geocoder.coord2Address(lng, lat, (result, status) => {
+    if (status !== kakao.maps.services.Status.OK) {
+      addressText.textContent = `위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)}`
+      return
     }
-  )
+    const addr = result[0]
+    const text = addr.road_address
+      ? addr.road_address.address_name
+      : addr.address.address_name
+    addressText.textContent = text || `위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)}`
+  })
 }
 
 function initMap(lat, lng) {
   const mapEl = document.getElementById('location-map')
-  if (typeof naver === 'undefined' || !mapEl) return
+  if (typeof kakao === 'undefined' || !mapEl) return
 
-  locationMap = new naver.maps.Map(mapEl, {
-    center: new naver.maps.LatLng(lat, lng),
-    zoom: 16,
+  locationMap = new kakao.maps.Map(mapEl, {
+    center: new kakao.maps.LatLng(lat, lng),
+    level: 3,
   })
 
-  locationMarker = new naver.maps.Marker({
-    position: new naver.maps.LatLng(lat, lng),
+  locationMarker = new kakao.maps.Marker({
+    position: new kakao.maps.LatLng(lat, lng),
     map: locationMap,
     draggable: true,
   })
 
-  naver.maps.Event.addListener(locationMarker, 'dragend', e => {
-    const pos = e.coord
-    setLocation(pos.lat(), pos.lng())
+  kakao.maps.event.addListener(locationMarker, 'dragend', () => {
+    const pos = locationMarker.getPosition()
+    setLocation(pos.getLat(), pos.getLng())
   })
 }
 
