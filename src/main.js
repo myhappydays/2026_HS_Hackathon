@@ -343,12 +343,14 @@ async function runAISummary({ force = false } = {}) {
   const payload = filtered.map(c => {
     const rep = getReportById(c.representId)
     return {
-      title:    rep?.title || '제목 없음',
-      danger:   c.danger,
-      category: c.category,
-      distM:    c.distM,
-      count:    c.reportIds.length,
-      address:  rep?.location?.address || '',
+      title:       rep?.title || '제목 없음',
+      description: rep?.description || '',
+      danger:      c.danger,
+      category:    c.category,
+      distM:       c.distM,
+      count:       c.reportIds.length,
+      address:     rep?.location?.address || '',
+      updatedAt:   c.updatedAt,
     }
   })
 

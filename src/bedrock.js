@@ -7,6 +7,8 @@
  * - 내 주변 군집 목록 → 자연어 위험 요약 생성
  */
 
+import { relativeTime } from './utils.js'
+
 const STORAGE_KEY_TOKEN      = 'bedrock_token'
 const STORAGE_KEY_MODEL      = 'bedrock_model'
 const STORAGE_KEY_SORT       = 'bedrock_sort'
@@ -86,28 +88,48 @@ export async function callClaude(systemPrompt, userPrompt) {
 
 // ── 지역 위험 요약 ────────────────────────────────────────
 
-const SYSTEM_PROMPT = `당신은 도시 안전 정보를 시민에게 전달하는 안내 시스템입니다.
-주어진 위험 제보 목록을 바탕으로 지금 이 지역에서 주의해야 할 위험을 2~3문장으로 간결하게 요약하세요.
-- "지금 이 지역에서" 로 시작하세요.
-- 가장 위험도가 높은 항목을 먼저 언급하세요.
-- 구체적인 장소나 상황을 포함하세요.
-- 마크다운, 목록, 이모지 없이 자연스러운 문장으로만 작성하세요.`
+const SYSTEM_PROMPT = `You are a Korean neighborhood safety alert service.
+
+<task>
+Write a short Korean safety notification based on the hazard reports.
+</task>
+
+<format>
+- Line 1: a warm greeting-style header with a relevant emoji — reads like "안녕하세요! 오늘 ~하니 조심하세요" or similar, ≤20 chars, no period
+- Lines 2–4: 2–3 sentences of Korean prose, each sentence on its own line
+- NO blank lines anywhere in the output — every line follows immediately after the previous
+- Use 1–2 emojis naturally in the prose lines, not in the header
+- Vary Korean sentence endings — never use the same ending on consecutive lines
+- Include specific location names
+</format>
+
+<examples>
+<example>
+<input>sinkhole + flood + rockfall near university campus</input>
+<output>🙋 오늘 협성대 주변, 꼭 확인하세요
+협성대 진입로가 침수되어 차량과 도보 모두 통행이 막혀 있으니 우회로를 이용해 주세요.
+정문 앞 보도엔 싱크홀까지 생겨서 등하교 학생들은 그쪽 방향을 잠깐 피해 주시면 좋겠어요. 🚨
+북측 언덕로에도 대형 낙석이 굴러와 있으니 오늘만큼은 그 길은 피하고 안전한 경로로 이동하세요!</output>
+</example>
+</examples>`
 
 export async function summarizeArea(clusters, { force = false } = {}) {
   if (clusters.length === 0) return ''
 
-  const dangerLabel = { high: '높음', medium: '보통', low: '낮음' }
-  const catLabel    = {
-    road: '도로/교통', facility: '시설/건물',
-    weather: '기상/환경', safety: '치안/안전', etc: '생활/기타',
+  const dangerKey = { high: 'high', medium: 'medium', low: 'low' }
+  const catKey    = {
+    road: 'road', facility: 'facility',
+    weather: 'weather', safety: 'safety', etc: 'etc',
   }
 
   const lines = clusters.map((c, i) => {
-    const dist = c.distM < 1000 ? `${Math.round(c.distM)}m` : `${(c.distM/1000).toFixed(1)}km`
-    return `${i+1}. [위험도:${dangerLabel[c.danger]||c.danger}] [분야:${catLabel[c.category]||c.category}] "${c.title}" — ${dist} 거리, 제보 ${c.count}건${c.address ? ` (${c.address})` : ''}`
+    const dist    = c.distM < 1000 ? `${Math.round(c.distM)}m` : `${(c.distM/1000).toFixed(1)}km`
+    const updated = relativeTime(c.updatedAt)
+    const desc    = c.description ? `\n   ${c.description}` : ''
+    return `${i+1}. [${dangerKey[c.danger]||c.danger}/${catKey[c.category]||c.category}] "${c.title}" — ${dist}, ${c.count} reports, updated ${updated}${desc}${c.address ? ` (${c.address})` : ''}`
   }).join('\n')
 
-  const prompt = `다음은 내 주변 ${clusters.length}건의 위험 제보 목록입니다:\n\n${lines}\n\n위 내용을 바탕으로 지역 안전 요약을 작성해주세요.`
+  const prompt = `<hazard_reports count="${clusters.length}">\n${lines}\n</hazard_reports>\n\nWrite the safety alert now.`
 
   // ── 캐시 확인 ──────────────────────────────────────────
   if (!force) {
