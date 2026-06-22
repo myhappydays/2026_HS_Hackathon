@@ -133,15 +133,24 @@ function initMap(lat, lng) {
     level: 3,
   })
 
-  locationMarker = new kakao.maps.Marker({
+  // 현재 위치 표시 — 파란 점 (드래그 불가, 기준점)
+  const myDot = document.createElement('div')
+  myDot.style.cssText = `
+    width:12px; height:12px; border-radius:50%;
+    background:#3b82f6; border:2px solid white;
+    box-shadow:0 0 0 4px rgba(59,130,246,0.25);
+  `
+  new kakao.maps.CustomOverlay({
     position: new kakao.maps.LatLng(lat, lng),
-    map: locationMap,
-    draggable: true,
-  })
+    content: myDot,
+    yAnchor: 0.5,
+    zIndex: 1,
+  }).setMap(locationMap)
 
-  kakao.maps.event.addListener(locationMarker, 'dragend', () => {
-    const pos = locationMarker.getPosition()
-    setLocation(pos.getLat(), pos.getLng())
+  // 지도 이동이 완전히 멈췄을 때만 1회 호출 (idle = 카카오 권장)
+  kakao.maps.event.addListener(locationMap, 'idle', () => {
+    const center = locationMap.getCenter()
+    setLocation(center.getLat(), center.getLng())
   })
 }
 

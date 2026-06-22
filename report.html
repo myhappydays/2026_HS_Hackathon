@@ -57,7 +57,7 @@
 
   <style>
     body { font-family: var(--font-sans); }
-    #location-map { width: 100%; height: 200px; }
+    #location-map { width: 100%; height: 100%; }
     /* 이미지 프리뷰 */
     #image-preview { object-fit: cover; }
   </style>
@@ -135,8 +135,18 @@
           <label class="block text-sm font-semibold text-foreground mb-2">
             위치 <span class="text-primary">*</span>
           </label>
-          <div class="rounded-xl overflow-hidden border border-border mb-2 bg-surface">
-            <div id="location-map"></div>
+          <!-- 지도 + 중앙 고정 핀 래퍼 -->
+          <div class="relative rounded-xl border border-border mb-2 bg-surface overflow-hidden" style="height:200px">
+            <div id="location-map" style="width:100%;height:100%"></div>
+            <!-- 핀은 지도 위에 absolute로 올림 — z-index 높게 -->
+            <div class="pointer-events-none absolute inset-0 flex items-end justify-center"
+              style="padding-bottom:100px; z-index:100">
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg"
+                style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">
+                <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="#E32636"/>
+                <circle cx="14" cy="14" r="5.5" fill="white"/>
+              </svg>
+            </div>
           </div>
           <div id="location-address"
             class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface border border-border text-sm text-muted-foreground">

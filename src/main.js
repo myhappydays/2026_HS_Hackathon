@@ -12,8 +12,21 @@ const emptyState  = document.getElementById('empty-state')
 const reportCount = document.getElementById('report-count')
 const mapPlaceholder = document.getElementById('map-placeholder')
 
-// 위험도 → 카카오 지도 마커 색상 (커스텀 오버레이용)
+// 위험도별 마커 이미지 (카카오 기본 핀에 색상 오버레이)
 const DANGER_COLOR = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' }
+
+function makeMarkerImage(color) {
+  // SVG 핀을 data URI로 — 카카오 MarkerImage에 사용
+  const svg = `
+    <svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="${color}"/>
+      <circle cx="14" cy="14" r="5.5" fill="white"/>
+    </svg>`
+  const uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+  return new kakao.maps.MarkerImage(uri, new kakao.maps.Size(28, 36), {
+    offset: new kakao.maps.Point(14, 36),
+  })
+}
 
 // ── 지도 초기화 ──────────────────────────────────────────
 
@@ -33,6 +46,20 @@ function initMap(lat, lng) {
     level: 5,
   })
 
+  // 현재 위치 파란 점
+  const myDot = document.createElement('div')
+  myDot.style.cssText = `
+    width:14px; height:14px; border-radius:50%;
+    background:#3b82f6; border:2px solid white;
+    box-shadow:0 0 0 4px rgba(59,130,246,0.25);
+  `
+  new kakao.maps.CustomOverlay({
+    position: new kakao.maps.LatLng(lat, lng),
+    content: myDot,
+    yAnchor: 0.5,
+    zIndex: 1,
+  }).setMap(kakaoMap)
+
   mapPlaceholder.classList.add('hidden')
   renderMarkers()
 }
@@ -45,20 +72,13 @@ function renderMarkers() {
     const color = DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium
     const pos   = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
 
-    // 커스텀 오버레이로 색상 있는 원형 마커
-    const content = `
-      <div style="
-        width:14px; height:14px; border-radius:50%;
-        background:${color}; border:2px solid white;
-        box-shadow:0 0 0 2px ${color}44;
-        cursor:pointer;
-      "></div>`
+    const marker = new kakao.maps.Marker({
+      position: pos,
+      image: makeMarkerImage(color),
+      map: kakaoMap,
+    })
 
-    const overlay = new kakao.maps.CustomOverlay({ position: pos, content, yAnchor: 0.5 })
-    overlay.setMap(kakaoMap)
-
-    // 마커 클릭 → 상세 페이지
-    overlay.getContent().addEventListener?.('click', () => {
+    kakao.maps.event.addListener(marker, 'click', () => {
       location.href = `/detail.html?id=${cluster.id}`
     })
   })
