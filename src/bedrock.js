@@ -106,9 +106,9 @@ Write a short Korean safety notification based on the hazard reports.
 <examples>
 <example>
 <input>sinkhole + flood + rockfall near university campus</input>
-<output>🙋 오늘 협성대 주변, 꼭 확인하세요
+<output>🎼 오늘 협성대 주변, 꼭 확인하세요
 협성대 진입로가 침수되어 차량과 도보 모두 통행이 막혀 있으니 우회로를 이용해 주세요.
-정문 앞 보도엔 싱크홀까지 생겨서 등하교 학생들은 그쪽 방향을 잠깐 피해 주시면 좋겠어요. 🚨
+정문 앞 보도엔 싱크홀까지 생겨서 등하교 학생들은 그쪽 방향을 잠깐 피해 주시면 좋겠어요. 🪗
 북측 언덕로에도 대형 낙석이 굴러와 있으니 오늘만큼은 그 길은 피하고 안전한 경로로 이동하세요!</output>
 </example>
 </examples>`
