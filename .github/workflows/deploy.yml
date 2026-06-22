@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+
+      # 릴리즈에 빌드 산출물 zip으로 첨부
+      - name: Get version from package.json
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Zip dist
+        run: zip -r fermata-dist.zip dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.version }}-${{ github.run_number }}
+          name: "Fermata v${{ steps.pkg.version }} (build ${{ github.run_number }})"
+          body: |
+            자동 빌드 릴리즈입니다.
+
+            **배포 URL**: https://myhappydays.github.io/2026_HS_Hackathon/
+
+            ### 변경사항
+            ${{ github.event.head_commit.message }}
+          files: fermata-dist.zip
+          make_latest: true
