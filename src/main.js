@@ -86,7 +86,7 @@ function renderMarkers() {
     })
     marker._clusterId = cluster.id
     kakao.maps.event.addListener(marker, 'click', () => {
-      location.href = `/detail.html?id=${cluster.id}`
+      location.href = `/2026_HS_Hackathon/detail.html?id=${cluster.id}`
     })
     return marker
   })
