@@ -168,7 +168,7 @@ function renderList(userLat, userLng) {
     const distTxt = distM < 1000 ? `${Math.round(distM)}m` : `${(distM/1000).toFixed(1)}km`
 
     return `
-      <a href="/detail.html?id=${cluster.id}"
+      <a href="/2026_HS_Hackathon/detail.html?id=${cluster.id}"
         class="flex gap-3 p-3 rounded-xl bg-card border border-border active:bg-surface transition">
         <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
           ${rep.imageBase64
