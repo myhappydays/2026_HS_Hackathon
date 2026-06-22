@@ -13,7 +13,7 @@ import { generateId, compressImage, relativeTime } from './utils.js'
 import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
 import { addReport, isStorageFull, getReports, saveReports } from './storage.js'
-import { initEmbedder } from './embedder.js'
+import { initEmbedder, isEmbedderReady } from './embedder.js'
 
 // ── DOM 참조 ─────────────────────────────────────────────
 const imageInput       = document.getElementById('image-input')
@@ -242,7 +242,23 @@ function showToast(type, msg) {
 initLocation()
 
 // 임베딩 모델 백그라운드 로드 (페이지 진입 시 즉시 시작, 제보 등록 전 준비 완료 목표)
-initEmbedder().catch(() => {
-  // 로드 실패 시 graceful degradation — clustering.js에서 신규 군집으로 처리
+const embedderBanner = document.getElementById('embedder-banner')
+const embedderBar    = document.getElementById('embedder-bar')
+const embedderPct    = document.getElementById('embedder-pct')
+
+if (!isEmbedderReady()) {
+  embedderBanner.classList.remove('hidden')
+}
+
+initEmbedder(p => {
+  if (typeof p.progress !== 'number') return
+  const pct = Math.round(p.progress)
+  embedderBar.style.width = `${pct}%`
+  embedderPct.textContent = `${pct}%`
+  if (pct >= 100) embedderBanner.classList.add('hidden')
+}).then(() => {
+  embedderBanner.classList.add('hidden')
+}).catch(() => {
+  embedderBanner.classList.add('hidden')
   console.warn('[report] embedder load failed, clustering will fallback')
 })

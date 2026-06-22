@@ -17,23 +17,29 @@ const MODEL_ID = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2'
 
 let _embedder = null
 let _loading  = null
+let _progressCallbacks = []
 
 /**
  * 임베딩 모델 초기화 (최초 1회만 다운로드, 이후 캐시 사용)
+ * 이미 로드 중이면 콜백만 추가로 등록한다.
  * @param {function} [onProgress] - 다운로드 진행 콜백 ({ progress, file, loaded, total })
  * @returns {Promise<void>}
  */
 export async function initEmbedder(onProgress) {
+  if (onProgress) _progressCallbacks.push(onProgress)
   if (_embedder) return
   if (_loading)  return _loading
 
   _loading = pipeline('feature-extraction', MODEL_ID, {
     device: 'wasm',
     dtype: 'q8',
-    progress_callback: onProgress ?? undefined,
+    progress_callback: p => {
+      _progressCallbacks.forEach(cb => { try { cb(p) } catch {} })
+    },
   }).then(p => {
     _embedder = p
     _loading  = null
+    _progressCallbacks = []
   })
 
   return _loading
