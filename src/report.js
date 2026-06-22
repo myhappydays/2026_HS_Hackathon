@@ -13,6 +13,7 @@ import { generateId, compressImage, relativeTime } from './utils.js'
 import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
 import { addReport, isStorageFull, getReports, saveReports } from './storage.js'
+import { initEmbedder } from './embedder.js'
 
 // ── DOM 참조 ─────────────────────────────────────────────
 const imageInput       = document.getElementById('image-input')
@@ -207,8 +208,8 @@ form.addEventListener('submit', async e => {
   // localStorage 저장
   addReport(report)
 
-  // 군집 배정 (report 저장 후)
-  const clusterId = assignCluster(report)
+  // 군집 배정 (report 저장 후, async)
+  const clusterId = await assignCluster(report)
 
   // report의 clusterId 업데이트
   const reports = getReports().map(r => r.id === report.id ? { ...r, clusterId } : r)
@@ -239,3 +240,9 @@ function showToast(type, msg) {
 
 // ── 초기화 ───────────────────────────────────────────────
 initLocation()
+
+// 임베딩 모델 백그라운드 로드 (페이지 진입 시 즉시 시작, 제보 등록 전 준비 완료 목표)
+initEmbedder().catch(() => {
+  // 로드 실패 시 graceful degradation — clustering.js에서 신규 군집으로 처리
+  console.warn('[report] embedder load failed, clustering will fallback')
+})

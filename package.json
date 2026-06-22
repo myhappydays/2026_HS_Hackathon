@@ -24,5 +24,8 @@
   "homepage": "https://github.com/myhappydays/2026_HS_Hackathon#readme",
   "devDependencies": {
     "vite": "^8.0.16"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0"
   }
 }
