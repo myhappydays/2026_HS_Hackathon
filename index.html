@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="theme-crimson" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fermata - 내 주변 위험 제보</title>
+  <link rel="icon" href="/2026_HS_Hackathon/favicon.ico" sizes="any">
+  <link rel="icon" href="/2026_HS_Hackathon/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/2026_HS_Hackathon/apple-touch-icon.png">
+
+  <!-- OG 태그 -->
+  <meta property="og:title" content="Fermata">
+  <meta property="og:description" content="지역 안전 나눔 커뮤니티, Fermata — 우리 동네 위험을 함께 발견하고 지킵니다.">
+  <meta property="og:image" content="/2026_HS_Hackathon/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Fermata">
+  <meta name="twitter:description" content="지역 안전 나눔 커뮤니티, Fermata — 우리 동네 위험을 함께 발견하고 지킵니다.">
+
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+
+  <!-- Playfair Display (로고용) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
+          colors: {
+            background:   'var(--background)',
+            'background-1': 'var(--background-1)',
+            'background-2': 'var(--background-2)',
+            foreground:   'var(--foreground)',
+            primary: {
+              DEFAULT: 'var(--primary)',
+              50:  'var(--primary-50)',  100: 'var(--primary-100)',
+              200: 'var(--primary-200)', 300: 'var(--primary-300)',
+              400: 'var(--primary-400)', 500: 'var(--primary-500)',
+              600: 'var(--primary-600)', 700: 'var(--primary-700)',
+              800: 'var(--primary-800)', 900: 'var(--primary-900)',
+              950: 'var(--primary-950)',
+            },
+            muted: {
+              DEFAULT: 'var(--muted)',
+              foreground:   'var(--muted-foreground)',
+              'foreground-1': 'var(--muted-foreground-1)',
+              'foreground-2': 'var(--muted-foreground-2)',
+            },
+            border:  'var(--border)',
+            card:    { DEFAULT: 'var(--card)', header: 'var(--card-header)', footer: 'var(--card-footer)' },
+            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
+          }
+        }
+      },
+      plugins: [
+        function({ addVariant }) {
+          addVariant('hs-dropdown-open', '.hs-dropdown.open &');
+          addVariant('hs-accordion-active', '.hs-accordion.active &');
+        }
+      ]
+    }
+  </script>
+
+  <!-- Rose Theme CSS -->
+
+  <style>
+    body { font-family: var(--font-sans); }
+    #map { width: 100%; height: 240px; }
+
+    @keyframes ai-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+    .ai-dot { animation: ai-pulse 1.4s ease-in-out infinite; }
+    .ai-dot:nth-child(2) { animation-delay: 0.2s; }
+    .ai-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    /* number input 스피너 제거 */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-DINWJYAq.js"></script>
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-Y9Y7vo0D.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-_dmIh-7l.js">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/utils-BhWJbhSi.css">
+</head>
+<body class="bg-background text-foreground min-h-screen">
+
+  <!-- 모바일 앱 래퍼 -->
+  <div class="relative w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+
+    <!-- 헤더 -->
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center justify-center">
+      <div class="flex items-center gap-2">
+        <img src="/2026_HS_Hackathon/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
+        <span class="text-2xl font-semibold text-foreground" style="font-family: 'Playfair Display', serif;">Fermata</span>
+      </div>
+    </header>
+
+    <!-- 지도 뷰 -->
+    <div class="relative">
+      <div id="map" class="w-full bg-surface"></div>
+      <!-- 지도 로딩 전 플레이스홀더 -->
+      <div id="map-placeholder" class="absolute inset-0 flex items-center justify-center bg-surface">
+        <span class="text-muted-foreground text-sm">지도 불러오는 중...</span>
+      </div>
+    </div>
+
+    <!-- 모델 다운로드 진행 배너 -->
+    <div id="embedder-banner" class="hidden px-4 pt-3 pb-1">
+      <div class="bg-surface border border-border rounded-lg px-4 py-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <svg class="size-3.5 text-muted-foreground shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3"/>
+            </svg>
+            <span class="text-xs font-medium text-foreground">AI 군집 모델 다운로드 중</span>
+          </div>
+          <span id="embedder-pct" class="text-xs text-muted-foreground tabular-nums">0%</span>
+        </div>
+        <div class="w-full h-1 bg-border rounded-full overflow-hidden">
+          <div id="embedder-bar" class="h-full bg-primary rounded-full transition-[width] duration-200" style="width:0%"></div>
+        </div>
+        <p class="mt-1.5 text-[11px] text-muted-foreground">첫 실행 시 1회만 다운로드됩니다 (~117MB)</p>
+      </div>
+    </div>
+
+    <!-- 리스트 헤더 -->
+    <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+      <h2 class="font-semibold text-sm text-foreground">내 주변 위험 제보</h2>
+      <div class="flex items-center gap-2">
+        <span id="report-count" class="text-xs text-muted-foreground">총 0건</span>
+        <!-- 목업 데이터 주입 버튼 -->
+        <button type="button"
+          id="seed-btn"
+          class="relative inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          title="테스트 데이터 주입">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+          </svg>
+        </button>
+        <!-- AI 설정 버튼 (Preline Modal trigger) -->
+        <button type="button"
+          id="ai-settings-btn"
+          data-hs-overlay="#ai-modal"
+          class="relative inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          title="AI 요약 설정">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+          </svg>
+          <span id="ai-active-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary border-2 border-background"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- AI 위험 요약 Alert -->
+    <div id="ai-alert-wrap" class="hidden px-4 pb-3">
+      <!-- 로딩 -->
+      <div id="ai-alert-loading" class="hidden bg-[oklch(93%_0.04_30)] border border-[oklch(79%_0.12_30)] dark:bg-[#e8263a]/10 dark:border-[#e8263a]/25 rounded-lg px-5 py-4" role="alert">
+        <div class="flex items-center gap-3">
+          <div class="flex gap-1 shrink-0">
+            <span class="ai-dot size-1.5 rounded-full bg-primary"></span>
+            <span class="ai-dot size-1.5 rounded-full bg-primary"></span>
+            <span class="ai-dot size-1.5 rounded-full bg-primary"></span>
+          </div>
+          <p class="text-sm text-[oklch(38%_0.22_30)] dark:text-primary">주변 위험 분석 중...</p>
+        </div>
+      </div>
+      <!-- 결과 -->
+      <div id="ai-alert-result" class="hidden bg-[oklch(93%_0.04_30)] border border-[oklch(79%_0.12_30)] dark:bg-[#e8263a]/10 dark:border-[#e8263a]/25 rounded-lg px-5 py-4" role="alert" tabindex="-1">
+        <div class="flex">
+          <div class="shrink-0">
+            <svg class="shrink-0 size-4 text-[oklch(38%_0.22_30)] dark:text-primary mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/>
+            </svg>
+          </div>
+          <div class="ms-3 flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-[oklch(38%_0.22_30)] dark:text-primary">AI 지역 안전 요약</h3>
+              <button id="ai-refresh-btn" type="button"
+                class="shrink-0 text-[oklch(46%_0.26_30)] dark:text-primary/60 hover:text-primary transition-colors"
+                title="다시 요약">
+                <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                </svg>
+              </button>
+            </div>
+            <p id="ai-summary-text" class="mt-2 text-sm text-[oklch(38%_0.22_30)] dark:text-foreground leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+      <!-- 오류 -->
+      <div id="ai-alert-error" class="hidden bg-red-50 border border-red-200 dark:bg-red-500/20 dark:border-red-900 rounded-lg px-5 py-4" role="alert">
+        <div class="flex">
+          <div class="shrink-0">
+            <svg class="shrink-0 size-4 text-red-600 dark:text-red-400 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+            </svg>
+          </div>
+          <div class="ms-3">
+            <p id="ai-error-text" class="text-sm font-semibold text-red-800 dark:text-red-400">요약을 불러오지 못했습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 위험 제보 리스트 -->
+    <main class="flex-1 overflow-y-auto px-4 pb-24 space-y-3" id="report-list">
+      <!-- JS로 동적 렌더링 -->
+
+      <!-- 빈 상태 UI (데이터 없을 때) -->
+      <div id="empty-state" class="flex flex-col items-center justify-center py-16 gap-3">
+        <div class="w-14 h-14 rounded-full bg-surface flex items-center justify-center">
+          <svg class="w-7 h-7 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+          </svg>
+        </div>
+        <p class="text-sm text-muted-foreground text-center">
+          아직 등록된 위험 제보가 없어요.<br>
+          <span class="text-primary font-medium">첫 번째로 제보</span>해 보세요!
+        </p>
+      </div>
+    </main>
+
+    <!-- 하단 알약 FAB — 제보하기 버튼 -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+      <a href="/report.html"
+        class="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-primary text-white font-semibold text-sm shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        위험 제보하기
+      </a>
+    </div>
+
+  </div><!-- /모바일 앱 래퍼 -->
+
+  <!-- AI 설정 Modal (Preline) -->
+  <div id="ai-modal"
+    class="hs-overlay hidden size-full fixed top-0 start-0 overflow-x-hidden overflow-y-auto"
+    style="z-index: 9999;"
+    role="dialog" tabindex="-1" aria-labelledby="ai-modal-label">
+    <div class="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 mt-0 opacity-0 ease-out transition-all w-full max-w-sm mx-auto px-3 min-h-[calc(100%-3.5rem)] flex items-end sm:items-center"
+      style="transition: opacity 0.3s ease, margin-top 0.3s ease;"
+      id="ai-modal-inner">
+      <div class="w-full flex flex-col bg-background border border-border shadow-xl rounded-2xl overflow-hidden">
+
+        <!-- 헤더 -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+            </svg>
+            <h3 id="ai-modal-label" class="text-sm font-semibold text-foreground">AI 요약 설정</h3>
+          </div>
+          <button type="button"
+            class="w-7 h-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
+            data-hs-overlay="#ai-modal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 본문 -->
+        <div class="flex flex-col gap-5 px-5 py-5 overflow-y-auto max-h-[70vh]">
+
+          <!-- AWS Bedrock Bearer 토큰 -->
+          <div class="flex flex-col gap-1.5">
+            <label for="ai-token-input" class="text-xs font-semibold text-foreground">AWS Bedrock Bearer 토큰</label>
+            <input id="ai-token-input" type="password"
+              placeholder="ABSKQmVkcm9ja..."
+              class="py-2.5 px-3.5 block w-full bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground font-mono outline-none focus:border-primary transition-colors"/>
+            <p class="text-[11px] text-muted-foreground">이 기기 localStorage에만 저장되며 외부로 전송되지 않습니다.</p>
+          </div>
+
+          <!-- 모델 선택 (Advanced Select + 검색) -->
+          <div class="flex flex-col gap-1.5">
+            <label for="ai-model-select" class="text-xs font-semibold text-foreground">모델</label>
+            <select id="ai-model-select"
+              data-hs-select='{
+                "placeholder": "모델을 선택하세요...",
+                "toggleTag": "<button type=\"button\" aria-expanded=\"false\"></button>",
+                "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-2 ps-3 pe-9 flex text-nowrap w-full cursor-pointer bg-surface border border-border text-foreground rounded-lg text-start text-sm hover:bg-surface-1 focus:outline-none focus:border-primary transition-colors",
+                "dropdownClasses": "mt-1.5 z-[99999] w-full max-h-48 p-1 space-y-0.5 bg-card border border-border rounded-xl shadow-xl overflow-hidden overflow-y-auto",
+                "optionClasses": "hs-selected:bg-primary/10 hs-selected:text-primary py-2 px-3 w-full text-sm text-foreground cursor-pointer hover:bg-surface rounded-lg focus:outline-none",
+                "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"shrink-0 size-3.5 text-primary\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                "extraMarkup": "<div class=\"absolute top-1/2 right-2.5 -translate-y-1/2 pointer-events-none\"><svg class=\"shrink-0 size-3.5 text-muted-foreground\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m7 15 5 5 5-5\"/><path d=\"m7 9 5-5 5 5\"/></svg></div>"
+              }'
+              class="hidden">
+              <option value="us.anthropic.claude-haiku-4-5-20251001-v1:0">Claude Haiku 4.5</option>
+              <option value="us.anthropic.claude-sonnet-4-6">Claude Sonnet 4.6</option>
+              <option value="us.anthropic.claude-opus-4-6-v1">Claude Opus 4.6</option>
+            </select>
+            <p class="text-[11px] text-muted-foreground">토큰 발급: AWS 콘솔 → Bedrock → API 접근</p>
+          </div>
+
+          <hr class="border-border">
+
+          <!-- 취합 기준 -->
+          <div class="flex flex-col gap-4">
+            <h4 class="text-xs font-semibold text-foreground">취합 기준</h4>
+
+            <!-- 정렬 방식 -->
+            <div class="flex flex-col gap-1.5">
+              <label for="ai-sort-select" class="text-xs text-muted-foreground">정렬 방식</label>
+              <select id="ai-sort-select"
+                data-hs-select='{
+                  "toggleTag": "<button type=\"button\" aria-expanded=\"false\"></button>",
+                  "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-2 ps-3 pe-9 flex text-nowrap w-full cursor-pointer bg-surface border border-border text-foreground rounded-lg text-start text-sm hover:bg-surface-1 focus:outline-none focus:border-primary transition-colors",
+                  "dropdownClasses": "mt-1.5 z-[99999] w-full p-1 space-y-0.5 bg-card border border-border rounded-xl shadow-xl overflow-hidden",
+                  "optionClasses": "hs-selected:bg-primary/10 hs-selected:text-primary py-2 px-3 w-full text-sm text-foreground cursor-pointer hover:bg-surface rounded-lg focus:outline-none",
+                  "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"shrink-0 size-3.5 text-primary\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                  "extraMarkup": "<div class=\"absolute top-1/2 right-2.5 -translate-y-1/2 pointer-events-none\"><svg class=\"shrink-0 size-3.5 text-muted-foreground\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m7 15 5 5 5-5\"/><path d=\"m7 9 5-5 5 5\"/></svg></div>"
+                }'
+                class="hidden">
+                <option value="dist">거리순 (가까운 군집 우선)</option>
+                <option value="danger">위험도 + 거리 (위험도 높은 군집 우선)</option>
+                <option value="recent">최신순 (최근 제보 있는 군집 우선)</option>
+              </select>
+            </div>
+
+            <!-- 최대 거리 / 최대 군집 수 -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="flex flex-col gap-1.5">
+                <label for="ai-max-dist" class="text-xs text-muted-foreground">최대 거리 (m)</label>
+                <input type="number" id="ai-max-dist" min="100" max="50000" step="100" value="2000"
+                  class="py-2 px-3.5 block w-full bg-surface border border-border rounded-xl text-sm text-foreground outline-none focus:border-primary transition-colors"/>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label for="ai-max-count" class="text-xs text-muted-foreground">최대 군집 수</label>
+                <input type="number" id="ai-max-count" min="1" max="50" step="1" value="10"
+                  class="py-2 px-3.5 block w-full bg-surface border border-border rounded-xl text-sm text-foreground outline-none focus:border-primary transition-colors"/>
+              </div>
+            </div>
+
+            <!-- 최소 제보 수 -->
+            <div class="flex flex-col gap-1.5">
+              <label for="ai-min-reports" class="text-xs text-muted-foreground">최소 제보 수 (건 이상인 군집만)</label>
+              <input type="number" id="ai-min-reports" min="1" max="100" step="1" value="1"
+                class="py-2 px-3.5 block w-full bg-surface border border-border rounded-xl text-sm text-foreground outline-none focus:border-primary transition-colors"/>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 푸터 -->
+        <div class="px-5 py-4 border-t border-border flex flex-col gap-2">
+          <button id="ai-save-btn" type="button"
+            class="w-full py-2.5 px-4 inline-flex justify-center items-center gap-2 rounded-xl font-semibold bg-primary text-white text-sm hover:bg-primary/90 active:scale-95 transition-all">
+            저장하고 요약 시작
+          </button>
+          <button id="ai-clear-btn" type="button"
+            class="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-center">
+            AI 요약 끄기 / 토큰 초기화
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /ai-modal -->
+
+  <!-- 카카오 지도 API (services: 역지오코딩, clusterer: 마커 클러스터링) -->
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=82c99f718e19c13b6028995f893ca1b9&libraries=services,clusterer"></script>
+
+  <!-- Preline UI JS -->
+  <script src="https://cdn.jsdelivr.net/npm/preline@2.7.0/dist/preline.min.js"></script>
+
+  <!-- 메인 페이지 JS -->
+</body>
+</html>

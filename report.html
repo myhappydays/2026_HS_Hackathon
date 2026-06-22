@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="theme-crimson" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>위험 제보하기 - Fermata</title>
+  <link rel="icon" href="/2026_HS_Hackathon/favicon.ico" sizes="any">
+  <link rel="icon" href="/2026_HS_Hackathon/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/2026_HS_Hackathon/apple-touch-icon.png">
+
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
+          colors: {
+            background:   'var(--background)',
+            'background-1': 'var(--background-1)',
+            'background-2': 'var(--background-2)',
+            foreground:   'var(--foreground)',
+            primary: {
+              DEFAULT: 'var(--primary)',
+              50:  'var(--primary-50)',  100: 'var(--primary-100)',
+              200: 'var(--primary-200)', 300: 'var(--primary-300)',
+              400: 'var(--primary-400)', 500: 'var(--primary-500)',
+              600: 'var(--primary-600)', 700: 'var(--primary-700)',
+              800: 'var(--primary-800)', 900: 'var(--primary-900)',
+              950: 'var(--primary-950)',
+            },
+            muted: {
+              DEFAULT: 'var(--muted)',
+              foreground:   'var(--muted-foreground)',
+              'foreground-1': 'var(--muted-foreground-1)',
+              'foreground-2': 'var(--muted-foreground-2)',
+            },
+            border:  'var(--border)',
+            card:    { DEFAULT: 'var(--card)', header: 'var(--card-header)', footer: 'var(--card-footer)' },
+            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
+          }
+        }
+      },
+      plugins: [
+        function({ addVariant }) {
+          addVariant('hs-dropdown-open', '.hs-dropdown.open &');
+          addVariant('hs-accordion-active', '.hs-accordion.active &');
+        }
+      ]
+    }
+  </script>
+
+  <!-- Rose Theme CSS -->
+
+  <style>
+    body { font-family: var(--font-sans); }
+    #location-map { width: 100%; height: 100%; }
+    /* 이미지 프리뷰 */
+    #image-preview { object-fit: cover; }
+  </style>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/report-BMm64zk5.js"></script>
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-Y9Y7vo0D.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-_dmIh-7l.js">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/utils-BhWJbhSi.css">
+</head>
+<body class="bg-background text-foreground min-h-screen">
+
+  <!-- 모바일 앱 래퍼 -->
+  <div class="w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+
+    <!-- 상단 헤더 (뒤로가기) -->
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+      <a href="/index.html" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
+        <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+      </a>
+      <h1 class="font-bold text-base text-foreground">위험 제보하기</h1>
+    </header>
+
+    <!-- 제보 폼 -->
+    <main class="flex-1 overflow-y-auto px-4 py-5 pb-10">
+      <form id="report-form" class="space-y-5">
+
+        <!-- 사진 첨부 -->
+        <div>
+          <label class="block text-sm font-semibold text-foreground mb-2">
+            사진 첨부 <span class="text-primary">*</span>
+          </label>
+          <!-- 이미지 없을 때 업로드 버튼 -->
+          <label id="image-upload-label" for="image-input"
+            class="flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed border-border bg-surface cursor-pointer hover:bg-surface-1 transition">
+            <svg class="w-8 h-8 text-muted-foreground mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+            </svg>
+            <span class="text-sm text-muted-foreground">탭하여 사진 선택</span>
+            <span class="text-xs text-muted-foreground mt-1">자동으로 압축 처리됩니다</span>
+          </label>
+          <input id="image-input" type="file" accept="image/*" capture="environment" class="hidden">
+          <!-- 이미지 프리뷰 (선택 후 표시) -->
+          <div id="image-preview-wrap" class="hidden relative">
+            <img id="image-preview" class="w-full h-40 rounded-xl object-cover" src="" alt="미리보기">
+            <button type="button" id="image-remove-btn"
+              class="absolute top-2 right-2 w-7 h-7 rounded-full bg-background-2/80 flex items-center justify-center">
+              <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <div id="image-size-badge"
+              class="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-background-2/80 text-xs text-muted-foreground"></div>
+          </div>
+        </div>
+
+        <!-- 제목 -->
+        <div>
+          <label for="title" class="block text-sm font-semibold text-foreground mb-2">
+            제목 <span class="text-primary">*</span>
+          </label>
+          <input id="title" name="title" type="text" required
+            placeholder="예: 인도 블록 함몰, 가로등 파손 등"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition">
+        </div>
+
+        <!-- 상세 설명 -->
+        <div>
+          <label for="description" class="block text-sm font-semibold text-foreground mb-2">
+            상세 설명
+          </label>
+          <textarea id="description" name="description" rows="3"
+            placeholder="위험 상황을 자세히 설명해 주세요..."
+            class="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition resize-none"></textarea>
+        </div>
+
+        <!-- 위치 -->
+        <div>
+          <label class="block text-sm font-semibold text-foreground mb-2">
+            위치 <span class="text-primary">*</span>
+          </label>
+          <!-- 지도 + 중앙 고정 핀 래퍼 -->
+          <div class="relative rounded-xl border border-border mb-2 bg-surface overflow-hidden" style="height:200px">
+            <div id="location-map" style="width:100%;height:100%"></div>
+            <!-- 핀은 지도 위에 absolute로 올림 — z-index 높게 -->
+            <div class="pointer-events-none absolute inset-0 flex items-end justify-center"
+              style="padding-bottom:100px; z-index:100">
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg"
+                style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">
+                <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="#E32636"/>
+                <circle cx="14" cy="14" r="5.5" fill="white"/>
+              </svg>
+            </div>
+          </div>
+          <div id="location-address"
+            class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface border border-border text-sm text-muted-foreground">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+            </svg>
+            <span id="address-text">현재 위치를 가져오는 중...</span>
+          </div>
+          <input type="hidden" id="lat" name="lat">
+          <input type="hidden" id="lng" name="lng">
+        </div>
+
+        <!-- 위험도 (선택사항 - 자동 분류 가능) -->
+        <div>
+          <label class="block text-sm font-semibold text-foreground mb-1">위험도</label>
+          <p class="text-xs text-muted-foreground mb-2">선택하지 않으면 내용을 기반으로 자동 분류됩니다.</p>
+          <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="danger" value="high" class="peer hidden">
+              <div class="w-full text-center px-3 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground peer-checked:bg-red-500/10 peer-checked:border-red-500 peer-checked:text-red-400 transition">
+                높음
+              </div>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="danger" value="medium" class="peer hidden">
+              <div class="w-full text-center px-3 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground peer-checked:bg-amber-500/10 peer-checked:border-amber-500 peer-checked:text-amber-400 transition">
+                보통
+              </div>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="danger" value="low" class="peer hidden">
+              <div class="w-full text-center px-3 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground peer-checked:bg-emerald-500/10 peer-checked:border-emerald-500 peer-checked:text-emerald-400 transition">
+                낮음
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 분류 (선택사항 - 자동 분류 가능) -->
+        <div>
+          <label class="block text-sm font-semibold text-foreground mb-1">분류</label>
+          <p class="text-xs text-muted-foreground mb-2">선택하지 않으면 내용을 기반으로 자동 분류됩니다.</p>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="category" value="road" class="peer hidden">
+              <div class="text-center px-2 py-2 rounded-xl border border-border bg-surface text-xs font-medium text-muted-foreground peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition">
+                도로/교통
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="category" value="facility" class="peer hidden">
+              <div class="text-center px-2 py-2 rounded-xl border border-border bg-surface text-xs font-medium text-muted-foreground peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition">
+                시설/건물
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="category" value="weather" class="peer hidden">
+              <div class="text-center px-2 py-2 rounded-xl border border-border bg-surface text-xs font-medium text-muted-foreground peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition">
+                기상/환경
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="category" value="safety" class="peer hidden">
+              <div class="text-center px-2 py-2 rounded-xl border border-border bg-surface text-xs font-medium text-muted-foreground peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition">
+                치안/안전
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="category" value="etc" class="peer hidden">
+              <div class="text-center px-2 py-2 rounded-xl border border-border bg-surface text-xs font-medium text-muted-foreground peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary transition">
+                생활/기타
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- localStorage 용량 경고 (Preline Alert, 조건부 표시) -->
+        <div id="storage-warning"
+          class="hidden p-4 rounded-xl bg-red-500/10 border border-red-500/30"
+          role="alert">
+          <div class="flex gap-3">
+            <svg class="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+            <div class="flex-1">
+              <p class="text-xs font-semibold text-red-400">저장 공간 부족</p>
+              <p class="text-xs text-red-400/80 mt-0.5">4MB를 초과했습니다. 기존 제보를 삭제 후 다시 시도해 주세요.</p>
+            </div>
+            <button type="button" class="hs-remove-element-field text-red-400/60 hover:text-red-400 transition"
+              data-hs-remove-element="#storage-warning">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 제출 버튼 -->
+        <button type="submit" id="submit-btn"
+          class="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-600 active:bg-primary-700 transition disabled:opacity-50 disabled:pointer-events-none">
+          제보 등록하기
+        </button>
+
+        <!-- 모델 다운로드 진행 배너 -->
+        <div id="embedder-banner" class="hidden bg-surface border border-border rounded-lg px-4 py-3">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <svg class="size-3.5 text-muted-foreground shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3"/>
+              </svg>
+              <span class="text-xs font-medium text-foreground">AI 군집 모델 로딩 중</span>
+            </div>
+            <span id="embedder-pct" class="text-xs text-muted-foreground tabular-nums">0%</span>
+          </div>
+          <div class="w-full h-1 bg-border rounded-full overflow-hidden">
+            <div id="embedder-bar" class="h-full bg-primary rounded-full transition-[width] duration-200" style="width:0%"></div>
+          </div>
+          <p class="mt-1.5 text-[11px] text-muted-foreground">로딩 완료 전 제보해도 정상 등록되지만 AI 군집화가 적용되지 않을 수 있습니다.</p>
+        </div>
+
+      </form>
+    </main>
+
+  </div><!-- /모바일 앱 래퍼 -->
+
+  <!-- Toast 알림 (제보 등록 완료/오류) — Preline data-hs-toast -->
+  <!-- 성공 토스트 -->
+  <div id="toast-success"
+    class="hs-toast hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-[390px]"
+    role="alert">
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
+      <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <p class="flex-1 text-sm font-medium">제보가 등록되었습니다!</p>
+      <button type="button" class="hs-toast-close-btn text-white/70 hover:text-white transition"
+        data-hs-toast-close="[data-hs-toast-id='toast-success']">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 오류 토스트 -->
+  <div id="toast-error"
+    class="hs-toast hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-[390px]"
+    role="alert">
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/25">
+      <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+      <p class="flex-1 text-sm font-medium" id="toast-error-msg">오류가 발생했습니다.</p>
+      <button type="button" class="hs-toast-close-btn text-white/70 hover:text-white transition"
+        data-hs-toast-close="[data-hs-toast-id='toast-error']">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 카카오 지도 API -->
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=82c99f718e19c13b6028995f893ca1b9&libraries=services"></script>
+
+  <!-- Preline UI JS -->
+  <script src="https://cdn.jsdelivr.net/npm/preline@2.7.0/dist/preline.min.js"></script>
+
+  <!-- 제보 페이지 JS -->
+</body>
+</html>
