@@ -12,10 +12,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main:      resolve(__dirname, 'index.html'),
-        report:    resolve(__dirname, 'report.html'),
-        detail:    resolve(__dirname, 'detail.html'),
-        llmtest:   resolve(__dirname, 'llm-test.html'),
+        main:   resolve(__dirname, 'index.html'),
+        report: resolve(__dirname, 'report.html'),
+        detail: resolve(__dirname, 'detail.html'),
       }
     }
   }
