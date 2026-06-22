@@ -98,7 +98,7 @@ Write a short Korean safety notification based on the hazard reports.
 - Line 1: a warm greeting-style header with a relevant emoji — reads like "안녕하세요! 오늘 ~하니 조심하세요" or similar, ≤20 chars, no period
 - Lines 2–4: 2–3 sentences of Korean prose, each sentence on its own line
 - NO blank lines anywhere in the output — every line follows immediately after the previous
-- Use 1–2 emojis naturally in the prose lines, not in the header
+- Use 1–2 emojis naturally in the prose lines, not in the header; choose from music-related emojis: 🎵 🎶 🎼 🎹 🎸 🎺 🎻 🥁 🪗 🪘 🎷
 - Vary Korean sentence endings — never use the same ending on consecutive lines
 - Include specific location names
 </format>

@@ -361,7 +361,10 @@ async function runAISummary({ force = false } = {}) {
 
   try {
     const text = await summarizeArea(payload, { force })
-    aiSummaryText.innerHTML = text.split('\n').map(l => `<span>${l}</span>`).join('<br>')
+    const lines = text.split('\n')
+    aiSummaryText.innerHTML = lines.map((l, i) =>
+      i === 0 ? `<strong>${l}</strong>` : `<span>${l}</span>`
+    ).join('<br>')
     aiAlertLoading.classList.add('hidden')
     aiAlertResult.classList.remove('hidden')
   } catch (e) {
