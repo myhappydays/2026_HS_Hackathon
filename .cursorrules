@@ -1,0 +1,20 @@
+# Project Coding Guidelines
+
+## UI & Styling Constraints
+
+1. **Brand Color & Palette (브랜드 컬러 지침)**
+   - The primary brand color is **Rose**: `oklch(51.4% .222 16.935)` (approx. Hex `#c70036`, Hue 344).
+   - Use a premium, modern dark mode palette: background should utilize clean **Zinc** neutral grays (e.g. `zinc-900`, `zinc-950` / `#18181b`, `#09090b`) to make the Rose accent color pop cleanly without looking muddy or cheap.
+
+2. **Typography (서체 지침)**
+   - The default font stack is **Pretendard**.
+   - Ensure the Pretendard CDN link is included in HTML, and Tailwind's `sans` font stack is mapped to `var(--font-sans)` which resolves to Pretendard.
+
+3. **Dark Mode Only (다크모드 고정 개발)**
+   - All styling and UI elements must be designed and developed exclusively for Dark Mode.
+   - The HTML element must have the `dark` class locked at all times. Do not implement light/dark mode toggling, switches, or theme-switching scripts.
+
+4. **Mobile View Only (모바일 뷰만 개발, 반응형 X)**
+   - Layouts must be built exclusively for mobile screens (width 375px to 430px).
+   - Do NOT use Tailwind responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`). All grids, flexbox layouts, padding, and text sizing must use fixed mobile/small screen styling values.
+   - Wrap the main application container in a centered mobile frame (e.g., `w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background`) to display a centered mobile app interface on all desktop viewports.

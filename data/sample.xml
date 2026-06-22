@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <head>
+    <totalCount>10</totalCount>
+    <numOfRows>10</numOfRows>
+    <pageNo>1</pageNo>
+    <type>XML</type>
+    <RESULT>
+      <resultCode>00</resultCode>
+      <resultMsg>NORMAL SERVICE.</resultMsg>
+    </RESULT>
+  </head>
+  <row>
+    <covid19_regis>150</covid19_regis>
+    <illg_parking>3420</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>1</seq>
+    <smry>서울특별시 종로구 분야별 안전신고</smry>
+    <safe_regis>1890</safe_regis>
+    <comu_inconven_regis>4120</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>420</covid19_regis>
+    <illg_parking>8200</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>2</seq>
+    <smry>서울특별시 강남구 분야별 안전신고</smry>
+    <safe_regis>3110</safe_regis>
+    <comu_inconven_regis>9520</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>280</covid19_regis>
+    <illg_parking>4120</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>3</seq>
+    <smry>경기도 수원시 분야별 안전신고</smry>
+    <safe_regis>1950</safe_regis>
+    <comu_inconven_regis>5080</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>90</covid19_regis>
+    <illg_parking>2540</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>4</seq>
+    <smry>인천광역시 부평구 분야별 안전신고</smry>
+    <safe_regis>1120</safe_regis>
+    <comu_inconven_regis>2950</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>110</covid19_regis>
+    <illg_parking>1980</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>5</seq>
+    <smry>대구광역시 수성구 분야별 안전신고</smry>
+    <safe_regis>980</safe_regis>
+    <comu_inconven_regis>2100</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>130</covid19_regis>
+    <illg_parking>2210</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>6</seq>
+    <smry>부산광역시 해운대구 분야별 안전신고</smry>
+    <safe_regis>1540</safe_regis>
+    <comu_inconven_regis>3400</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>85</covid19_regis>
+    <illg_parking>1430</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>7</seq>
+    <smry>대전광역시 서구 분야별 안전신고</smry>
+    <safe_regis>750</safe_regis>
+    <comu_inconven_regis>1650</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>95</covid19_regis>
+    <illg_parking>1120</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>8</seq>
+    <smry>광주광역시 북구 분야별 안전신고</smry>
+    <safe_regis>890</safe_regis>
+    <comu_inconven_regis>1890</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>70</covid19_regis>
+    <illg_parking>1320</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>9</seq>
+    <smry>울산광역시 남구 분야별 안전신고</smry>
+    <safe_regis>640</safe_regis>
+    <comu_inconven_regis>1420</comu_inconven_regis>
+  </row>
+  <row>
+    <covid19_regis>45</covid19_regis>
+    <illg_parking>650</illg_parking>
+    <wrttimeid>2024</wrttimeid>
+    <seq>10</seq>
+    <smry>세종특별자치시 분야별 안전신고</smry>
+    <safe_regis>410</safe_regis>
+    <comu_inconven_regis>880</comu_inconven_regis>
+  </row>
+</response>

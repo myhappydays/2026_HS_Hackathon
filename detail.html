@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="theme-crimson" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>위험 상세 - 위험지도</title>
+
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
+          colors: {
+            background:   'var(--background)',
+            'background-1': 'var(--background-1)',
+            'background-2': 'var(--background-2)',
+            foreground:   'var(--foreground)',
+            primary: {
+              DEFAULT: 'var(--primary)',
+              50:  'var(--primary-50)',  100: 'var(--primary-100)',
+              200: 'var(--primary-200)', 300: 'var(--primary-300)',
+              400: 'var(--primary-400)', 500: 'var(--primary-500)',
+              600: 'var(--primary-600)', 700: 'var(--primary-700)',
+              800: 'var(--primary-800)', 900: 'var(--primary-900)',
+              950: 'var(--primary-950)',
+            },
+            muted: {
+              DEFAULT: 'var(--muted)',
+              foreground:   'var(--muted-foreground)',
+              'foreground-1': 'var(--muted-foreground-1)',
+              'foreground-2': 'var(--muted-foreground-2)',
+            },
+            border:  'var(--border)',
+            card:    { DEFAULT: 'var(--card)', header: 'var(--card-header)', footer: 'var(--card-footer)' },
+            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
+          }
+        }
+      },
+      plugins: [
+        function({ addVariant }) {
+          addVariant('hs-dropdown-open', '.hs-dropdown.open &');
+          addVariant('hs-accordion-active', '.hs-accordion.active &');
+        }
+      ]
+    }
+  </script>
+
+  <!-- Rose Theme CSS -->
+  <link rel="stylesheet" href="/css/themes/crimson.css">
+
+  <style>
+    body { font-family: var(--font-sans); }
+    /* Preline 캐러셀 pagination dots 스타일 */
+    #hs-carousel .hs-carousel-pagination-item span {
+      display: block; width: 6px; height: 6px; border-radius: 9999px;
+      background: rgba(255,255,255,0.4); transition: background 0.2s, width 0.2s;
+    }
+    #hs-carousel .hs-carousel-pagination-item.active span {
+      background: white; width: 18px;
+    }
+  </style>
+</head>
+<body class="bg-background text-foreground min-h-screen">
+
+  <!-- 모바일 앱 래퍼 -->
+  <div class="w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+
+    <!-- 상단 헤더 (뒤로가기) -->
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+      <a href="/index.html" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
+        <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+      </a>
+      <h1 class="font-bold text-base text-foreground">위험 상세</h1>
+    </header>
+
+    <main class="flex-1 overflow-y-auto pb-10" id="detail-main">
+
+      <!-- 로딩 상태 -->
+      <div id="loading-state" class="flex items-center justify-center py-20">
+        <span class="text-sm text-muted-foreground">불러오는 중...</span>
+      </div>
+
+      <!-- 상세 콘텐츠 (JS로 렌더링) -->
+      <div id="detail-content" class="hidden">
+
+        <!-- 사진 캐러셀 (Preline data-hs-carousel, JS로 슬라이드 주입 후 초기화) -->
+        <div id="carousel-wrap" class="bg-surface">
+          <div id="hs-carousel"
+            class="hs-carousel relative overflow-hidden w-full"
+            data-hs-carousel='{
+              "isInfiniteLoop": true,
+              "isDraggable": true
+            }'>
+            <!-- 슬라이드 목록 (detail.js가 동적으로 채움) -->
+            <div class="hs-carousel-body flex transition-transform duration-300" id="carousel-body">
+            </div>
+
+            <!-- 이전/다음 버튼 -->
+            <button type="button"
+              class="hs-carousel-prev hs-carousel:disabled:opacity-20 absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-background/70 border border-border text-foreground hover:bg-background transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+              <span class="sr-only">이전</span>
+            </button>
+            <button type="button"
+              class="hs-carousel-next hs-carousel:disabled:opacity-20 absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-background/70 border border-border text-foreground hover:bg-background transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+              <span class="sr-only">다음</span>
+            </button>
+
+            <!-- 페이지네이션 dots -->
+            <div class="hs-carousel-pagination absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+              <!-- Preline이 자동으로 dot 생성: active dot은 hs-carousel-active 클래스 수신 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 대표 정보 -->
+        <div class="px-4 pt-4 pb-3 border-b border-border">
+          <!-- 뱃지 영역 -->
+          <div class="flex items-center gap-2 mb-2" id="badge-area">
+            <!-- JS로 렌더링 -->
+          </div>
+          <h2 class="text-lg font-bold text-foreground leading-snug" id="cluster-title"></h2>
+          <p class="mt-1.5 text-sm text-muted-foreground leading-relaxed" id="cluster-description"></p>
+          <div class="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+            </svg>
+            <span id="cluster-address"></span>
+          </div>
+          <div class="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span id="cluster-time"></span>
+          </div>
+        </div>
+
+        <!-- 같은 사건으로 묶인 제보 목록 -->
+        <div class="px-4 pt-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-sm text-foreground">관련 제보</h3>
+            <span class="text-xs text-muted-foreground" id="related-count"></span>
+          </div>
+          <div class="space-y-3" id="related-list">
+            <!-- JS로 동적 렌더링 -->
+          </div>
+        </div>
+
+      </div><!-- /detail-content -->
+
+      <!-- 에러 상태 (잘못된 ID 등) -->
+      <div id="error-state" class="hidden flex flex-col items-center justify-center py-20 gap-3 px-4">
+        <div class="w-14 h-14 rounded-full bg-surface flex items-center justify-center">
+          <svg class="w-7 h-7 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+        </div>
+        <p class="text-sm text-muted-foreground text-center">해당 제보를 찾을 수 없습니다.</p>
+        <a href="/index.html" class="text-sm text-primary font-medium">홈으로 돌아가기</a>
+      </div>
+
+    </main>
+  </div><!-- /모바일 앱 래퍼 -->
+
+  <!-- Preline UI JS -->
+  <script src="https://cdn.jsdelivr.net/npm/preline@2.7.0/dist/preline.min.js"></script>
+
+  <!-- 상세 페이지 JS -->
+  <script type="module" src="/src/detail.js"></script>
+</body>
+</html>
