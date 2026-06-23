@@ -199,8 +199,24 @@ export function generateHeatmapPoints() {
 let heatmap = null
 let isHeatmapMode = false
 
+function setToggleActive(mode) {
+  const pinBtn  = document.getElementById('view-pin-btn')
+  const heatBtn = document.getElementById('view-heat-btn')
+  if (mode === 'pin') {
+    pinBtn.classList.add('bg-primary', 'text-white')
+    pinBtn.classList.remove('text-muted-foreground')
+    heatBtn.classList.remove('bg-primary', 'text-white')
+    heatBtn.classList.add('text-muted-foreground')
+  } else {
+    heatBtn.classList.add('bg-primary', 'text-white')
+    heatBtn.classList.remove('text-muted-foreground')
+    pinBtn.classList.remove('bg-primary', 'text-white')
+    pinBtn.classList.add('text-muted-foreground')
+  }
+}
+
 function showHeatmap() {
-  if (!kakaoMap || typeof kakao.maps.visualization === 'undefined') return
+  if (!kakaoMap || typeof kakao === 'undefined' || !kakao.maps.visualization) return
   if (heatmap) { heatmap.setMap(kakaoMap); return }
 
   const points = generateHeatmapPoints()
@@ -220,30 +236,19 @@ function hideHeatmap() {
 
 // 토글 버튼 이벤트
 document.getElementById('view-pin-btn').addEventListener('click', () => {
-  if (isHeatmapMode) {
-    isHeatmapMode = false
-    hideHeatmap()
-    renderMarkers()
-    document.getElementById('view-pin-btn').classList.add('bg-primary', 'text-white')
-    document.getElementById('view-pin-btn').classList.remove('text-muted-foreground')
-    document.getElementById('view-heat-btn').classList.remove('bg-primary', 'text-white')
-    document.getElementById('view-heat-btn').classList.add('text-muted-foreground')
-  }
+  if (!isHeatmapMode) return
+  isHeatmapMode = false
+  hideHeatmap()
+  if (window._clusterer) window._clusterer.setMap(kakaoMap)
+  setToggleActive('pin')
 })
 
 document.getElementById('view-heat-btn').addEventListener('click', () => {
-  if (!isHeatmapMode) {
-    isHeatmapMode = true
-    // 마커 클러스터러는 지도에서 제거 — 전역 변수로 관리 필요하므로 renderMarkers 재호출 방지
-    if (typeof window._clusterer !== 'undefined' && window._clusterer) {
-      window._clusterer.setMap(null)
-    }
-    showHeatmap()
-    document.getElementById('view-heat-btn').classList.add('bg-primary', 'text-white')
-    document.getElementById('view-heat-btn').classList.remove('text-muted-foreground')
-    document.getElementById('view-pin-btn').classList.remove('bg-primary', 'text-white')
-    document.getElementById('view-pin-btn').classList.add('text-muted-foreground')
-  }
+  if (isHeatmapMode) return
+  isHeatmapMode = true
+  if (window._clusterer) window._clusterer.setMap(null)
+  showHeatmap()
+  setToggleActive('heat')
 })
 
 // ── 리스트 렌더링 ────────────────────────────────────────
@@ -557,10 +562,8 @@ function seedDemoData() {
 }
 
 document.getElementById('seed-btn').addEventListener('click', () => {
-  if (!confirm('테스트 데이터를 주입하고 페이지를 새로고침합니다.\n기존 데이터는 덮어씌워집니다.\n(히트맵 포인트도 재생성됩니다)')) return
+  if (!confirm('제보/클러스터 테스트 데이터를 주입합니다.\n기존 데이터는 덮어씌워집니다.\n(히트맵 포인트는 별도 유지됩니다)')) return
   seedDemoData()
-  localStorage.removeItem('heatmap_points') // 히트맵 포인트 재생성 트리거
-  heatmap = null                             // 캐시된 인스턴스 초기화
   location.reload()
 })
 

@@ -112,16 +112,14 @@
       </div>
       <!-- 뷰 토글 (핀 / 히트맵) -->
       <div class="absolute top-3 right-3 z-10">
-        <div class="hs-tab-active:bg-primary inline-flex rounded-lg border border-border bg-background/90 backdrop-blur-sm p-0.5 shadow-sm" role="group">
+        <div class="inline-flex rounded-lg border border-border bg-background/90 backdrop-blur-sm p-0.5 shadow-sm" role="group">
           <button type="button" id="view-pin-btn"
-            class="hs-tab-active:bg-primary hs-tab-active:text-white py-1.5 px-3 inline-flex items-center gap-1.5 text-xs font-medium rounded-md text-foreground transition-colors active"
-            data-hs-tab="#view-pin" aria-controls="view-pin">
+            class="py-1.5 px-3 inline-flex items-center gap-1.5 text-xs font-medium rounded-md transition-colors bg-primary text-white">
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
             핀
           </button>
           <button type="button" id="view-heat-btn"
-            class="hs-tab-active:bg-primary hs-tab-active:text-white py-1.5 px-3 inline-flex items-center gap-1.5 text-xs font-medium rounded-md text-muted-foreground transition-colors"
-            data-hs-tab="#view-heat" aria-controls="view-heat">
+            class="py-1.5 px-3 inline-flex items-center gap-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
             히트맵
           </button>
