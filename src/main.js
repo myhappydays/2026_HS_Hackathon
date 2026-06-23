@@ -185,7 +185,7 @@ function smoothNoise(x, y, seed = 0) {
 // ── 히트맵 — DOM img + 이벤트 기반 위치 동기화 ──────────
 
 const HM_CENTER_LAT = 37.2132, HM_CENTER_LNG = 126.9521
-const HM_RADIUS_M   = 2000  // 반경 2km
+const HM_RADIUS_M   = 5000  // 반경 5km — 마을 단위
 
 // 카카오맵 레벨별 1픽셀 = ?미터 (위도 37° 기준, 타일 256px)
 const KAKAO_M_PER_PX = {
@@ -199,7 +199,7 @@ let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
 function buildHeatmapDataUrl() {
   if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 30, PX = 36, SIZE = GRID * PX, SEED = 4242
+  const GRID = 40, PX = 28, SIZE = GRID * PX, SEED = 4242
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
@@ -212,19 +212,19 @@ function buildHeatmapDataUrl() {
       const dist = Math.sqrt(dx * dx + dy * dy) * 2
       if (dist > 1) continue
 
-      const n = smoothNoise(nx * 3,  ny * 3,  SEED)     * 0.6
-             + smoothNoise(nx * 7,  ny * 7,  SEED + 37) * 0.3
-             + smoothNoise(nx * 14, ny * 14, SEED + 73) * 0.1
-      const normalized = n * 0.5 + 0.5          // -1~1 → 0~1
-      const edgeFade   = Math.pow(1 - dist, 0.4) // 경계만 살짝 페이드
+      // 저주파 위주 — 큰 덩어리 2~3개만 형성
+      const n = smoothNoise(nx * 1.8, ny * 1.8, SEED)      * 0.7
+             + smoothNoise(nx * 3.5, ny * 3.5, SEED + 37)  * 0.3
+      const normalized = n * 0.5 + 0.5   // 0~1
 
-      // 거듭제곱으로 편향 강화 — 높은 값은 더 높게, 낮은 값은 더 낮게
-      const biased = Math.pow(normalized * edgeFade, 2.5)
+      // edgeFade 없음 — 경계까지 고르게
+      // 거듭제곱으로 편향: 높은곳 진하게, 낮은곳 투명
+      const biased = Math.pow(normalized, 3.0)
 
-      if (biased < 0.05) continue  // 낮은 값 완전 투명
+      if (biased < 0.08) continue
 
-      const t     = Math.min(1, biased / 0.6)   // 상위 구간에 색 집중
-      const alpha = Math.min(0.95, biased * 2.5)
+      const t     = Math.min(1, biased)
+      const alpha = Math.min(0.90, t * 1.1)
 
       // 보라 → 자홍 → 빨강
       const r = Math.round(120 + t * 135)
