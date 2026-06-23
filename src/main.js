@@ -40,6 +40,7 @@ function makeMarkerImage(color) {
 let kakaoMap = null
 let userLat = 37.5665
 let userLng = 126.9780
+let globalMarkers = []  // 히트맵 토글 시 show/hide용
 
 function initMap(lat, lng) {
   if (typeof kakao === 'undefined') {
@@ -92,6 +93,7 @@ function renderMarkers() {
     })
     return marker
   })
+  globalMarkers = markers
 
   const DANGER_PRIORITY = { high: 0, medium: 1, low: 2 }
 
@@ -146,7 +148,7 @@ function renderMarkers() {
 
 const HEATMAP_KEY = 'heatmap_points'
 
-/** 심플 2D 펄린-스타일 노이즈 (gradient noise) */
+/** 심플 2D 펄린-스타일 노이즈 (gradient noise, 완전 결정론적) */
 function smoothNoise(x, y, seed = 0) {
   const ix = Math.floor(x), iy = Math.floor(y)
   const fx = x - ix, fy = y - iy
@@ -164,35 +166,45 @@ function smoothNoise(x, y, seed = 0) {
   return lerp(lerp(n00, n10, fade(fx)), lerp(n01, n11, fade(fx)), fade(fy))
 }
 
-/** 협성대 캠퍼스 중심 기준 펄린 노이즈 히트맵 포인트 생성 */
-export function generateHeatmapPoints() {
-  const stored = localStorage.getItem(HEATMAP_KEY)
-  if (stored) {
-    try { return JSON.parse(stored) } catch { /* 손상 시 재생성 */ }
-  }
+/**
+ * 현재 위치 기준 2km 반경, 펄린 노이즈 기반 히트맵 포인트 생성.
+ * Math.random() 미사용 — 완전 결정론적 (lat/lng 소수점 3자리를 시드로)
+ */
+function generateHeatmapPoints(centerLat, centerLng) {
+  // 캐시 확인 — 중심이 같으면 재사용
+  try {
+    const stored = JSON.parse(localStorage.getItem(HEATMAP_KEY) || 'null')
+    if (stored && Math.abs(stored.lat - centerLat) < 0.001 && Math.abs(stored.lng - centerLng) < 0.001) {
+      return stored.points
+    }
+  } catch { /* 손상 시 재생성 */ }
 
-  const CENTER_LAT = 37.2130, CENTER_LNG = 126.9520
-  const LAT_SPREAD = 0.006, LNG_SPREAD = 0.008
-  const COUNT = 300
+  // 위도 1도 ≈ 111km, 경도 1도 ≈ 111km * cos(lat)
+  const LAT_PER_M = 1 / 111000
+  const LNG_PER_M = 1 / (111000 * Math.cos(centerLat * Math.PI / 180))
+  const RADIUS_M  = 2000  // 2km
+  const GRID      = 20    // 20×20 격자
+  const SEED      = Math.round(centerLat * 1000) ^ Math.round(centerLng * 1000)
+
   const points = []
+  for (let gy = 0; gy < GRID; gy++) {
+    for (let gx = 0; gx < GRID; gx++) {
+      // 격자 중심 좌표 (-1~1 정규화)
+      const nx = gx / (GRID - 1), ny = gy / (GRID - 1)
+      // 옥타브 2개 합산
+      const n = smoothNoise(nx * 4, ny * 4, SEED) * 0.6
+             + smoothNoise(nx * 8, ny * 8, SEED + 99) * 0.4
+      const weight = Math.max(0, Math.round(n * 10 + 5))  // 0~10
+      if (weight <= 0) continue
 
-  for (let i = 0; i < COUNT; i++) {
-    // 노이즈 좌표 (grid 4x4)
-    const nx = (i % 20) / 5, ny = Math.floor(i / 20) / 5
-    const noise = smoothNoise(nx, ny, 42) * 0.5 + 0.5          // 0~1
-    const noise2 = smoothNoise(nx * 2.3, ny * 2.3, 137) * 0.3  // 두 번째 옥타브
-
-    // 노이즈 기반으로 핫스팟 쪽으로 편향
-    const angle = Math.random() * Math.PI * 2
-    const r = Math.pow(Math.random(), 0.5) * (noise + noise2 + 0.2)
-    const lat = CENTER_LAT + Math.sin(angle) * r * LAT_SPREAD
-    const lng = CENTER_LNG + Math.cos(angle) * r * LNG_SPREAD
-    const weight = Math.round((noise + noise2) * 8 + 1)  // 1~10
-
-    points.push({ lat, lng, weight })
+      // 격자 → 실제 좌표 (2km 박스 내)
+      const lat = centerLat + (ny - 0.5) * 2 * RADIUS_M * LAT_PER_M
+      const lng = centerLng + (nx - 0.5) * 2 * RADIUS_M * LNG_PER_M
+      points.push({ lat, lng, weight })
+    }
   }
 
-  try { localStorage.setItem(HEATMAP_KEY, JSON.stringify(points)) } catch { /* 무시 */ }
+  try { localStorage.setItem(HEATMAP_KEY, JSON.stringify({ lat: centerLat, lng: centerLng, points })) } catch { /* 무시 */ }
   return points
 }
 
@@ -254,18 +266,20 @@ function ensureCanvasHeatmapClass() {
     ctx.clearRect(0, 0, W, H)
 
     const level  = map.getLevel()
-    const RADIUS = Math.max(20, Math.round(80 / Math.pow(1.5, level - 3)))
+    const RADIUS = Math.max(15, Math.round(120 / Math.pow(1.6, level - 3)))
 
     this._pts.forEach(p => {
+      // LatLng → Wcongnamul coords → 컨테이너 픽셀
       const latlng = new kakao.maps.LatLng(p.lat, p.lng)
-      const pos    = proj.containerPointFromCoords(latlng)
+      const coords = latlng.toCoords()
+      const pos    = proj.containerPointFromCoords(coords)
       const x = pos.x, y = pos.y
       if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return
 
-      const alpha = Math.min(0.85, (p.weight / 10) * 0.6 + 0.15)
+      const alpha = Math.min(0.8, (p.weight / 10) * 0.55 + 0.2)
       const grad  = ctx.createRadialGradient(x, y, 0, x, y, RADIUS)
-      grad.addColorStop(0,   `rgba(220,38,38,${alpha})`)
-      grad.addColorStop(0.4, `rgba(251,146,60,${(alpha * 0.55).toFixed(2)})`)
+      grad.addColorStop(0,   `rgba(220,38,38,${alpha.toFixed(2)})`)
+      grad.addColorStop(0.5, `rgba(251,146,60,${(alpha * 0.5).toFixed(2)})`)
       grad.addColorStop(1,   'rgba(251,146,60,0)')
       ctx.beginPath()
       ctx.arc(x, y, RADIUS, 0, Math.PI * 2)
@@ -286,15 +300,22 @@ function showHeatmap() {
   if (!kakaoMap) return
   ensureCanvasHeatmapClass()
   if (!CanvasHeatmap) { console.warn('CanvasHeatmap 클래스 초기화 실패'); return }
-  if (heatmap) { heatmap.setMap(kakaoMap); return }
 
-  const points = generateHeatmapPoints()
+  // 마커 + 클러스터러 숨기기
+  globalMarkers.forEach(m => m.setVisible(false))
+  if (window._clusterer) window._clusterer.setMap(null)
+
+  if (heatmap) { heatmap.setMap(kakaoMap); return }
+  const points = generateHeatmapPoints(userLat, userLng)
   heatmap = new CanvasHeatmap(points)
   heatmap.setMap(kakaoMap)
 }
 
 function hideHeatmap() {
-  if (heatmap) { heatmap.setMap(null) }
+  if (heatmap) heatmap.setMap(null)
+  // 마커 + 클러스터러 복구
+  globalMarkers.forEach(m => m.setVisible(true))
+  if (window._clusterer) window._clusterer.setMap(kakaoMap)
 }
 
 // 토글 버튼 이벤트
@@ -302,14 +323,12 @@ document.getElementById('view-pin-btn').addEventListener('click', () => {
   if (!isHeatmapMode) return
   isHeatmapMode = false
   hideHeatmap()
-  if (window._clusterer) window._clusterer.setMap(kakaoMap)
   setToggleActive('pin')
 })
 
 document.getElementById('view-heat-btn').addEventListener('click', () => {
   if (isHeatmapMode) return
   isHeatmapMode = true
-  if (window._clusterer) window._clusterer.setMap(null)
   showHeatmap()
   setToggleActive('heat')
 })
