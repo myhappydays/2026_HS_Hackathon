@@ -184,15 +184,22 @@ function smoothNoise(x, y, seed = 0) {
 
 // ── 히트맵 — DOM img + 이벤트 기반 위치 동기화 ──────────
 
-const HM_CENTER_LAT = 37.2142, HM_CENTER_LNG = 126.9490  // 봉담읍 도심 쪽으로 조정
+const HM_CENTER_LAT = 37.2132, HM_CENTER_LNG = 126.9521
 const HM_RADIUS_M   = 5000  // 반경 5km — 마을 단위
 
-let heatmapImg    = null
-let heatmapDataUrl = null
+// 카카오맵 레벨별 1픽셀 = ?미터 (위도 37° 기준, 타일 256px)
+const KAKAO_M_PER_PX = {
+  1: 0.6, 2: 1.2, 3: 2.5, 4: 5, 5: 10,
+  6: 20, 7: 40, 8: 80, 9: 160, 10: 320,
+  11: 640, 12: 1280, 13: 2560, 14: 5120,
+}
+
+let heatmapImg   = null   // DOM <img>
+let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
 function buildHeatmapDataUrl() {
   if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 40, PX = 28, SIZE = GRID * PX, SEED = 7391  // 시드 변경 — 도심 핫스팟
+  const GRID = 40, PX = 28, SIZE = GRID * PX, SEED = 4242
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
@@ -205,15 +212,21 @@ function buildHeatmapDataUrl() {
       const dist = Math.sqrt(dx * dx + dy * dy) * 2
       if (dist > 1) continue
 
-      const n = smoothNoise(nx * 1.8, ny * 1.8, SEED)     * 0.7
-             + smoothNoise(nx * 3.5, ny * 3.5, SEED + 37) * 0.3
-      const normalized = n * 0.5 + 0.5
+      // 저주파 위주 — 큰 덩어리 2~3개만 형성
+      const n = smoothNoise(nx * 1.8, ny * 1.8, SEED)      * 0.7
+             + smoothNoise(nx * 3.5, ny * 3.5, SEED + 37)  * 0.3
+      const normalized = n * 0.5 + 0.5   // 0~1
+
+      // edgeFade 없음 — 경계까지 고르게
+      // 거듭제곱으로 편향: 높은곳 진하게, 낮은곳 투명
       const biased = Math.pow(normalized, 3.0)
 
       if (biased < 0.08) continue
 
       const t     = Math.min(1, biased)
       const alpha = Math.min(0.90, t * 1.1)
+
+      // 보라 → 자홍 → 빨강
       const r = Math.round(120 + t * 135)
       const b = Math.round(180 - t * 180)
       ctx.fillStyle = `rgba(${r},0,${b},${alpha.toFixed(2)})`
@@ -227,26 +240,22 @@ function buildHeatmapDataUrl() {
 function positionHeatmapImg() {
   if (!heatmapImg || !kakaoMap) return
   const mapEl  = document.getElementById('map')
-  const bounds = kakaoMap.getBounds()
-  const sw     = bounds.getSouthWest()
-  const ne     = bounds.getNorthEast()
+  const level  = kakaoMap.getLevel()
+  const mPerPx = KAKAO_M_PER_PX[level] || 10
+  const center = kakaoMap.getCenter()
 
-  const mapW = mapEl.offsetWidth
-  const mapH = mapEl.offsetHeight
-  const mapTop = mapEl.offsetTop
+  const dLat = HM_CENTER_LAT - center.getLat()
+  const dLng = HM_CENTER_LNG - center.getLng()
+  const LNG_PER_M = 1 / (111000 * Math.cos(center.getLat() * Math.PI / 180))
+  const dxM = dLng / LNG_PER_M
 
-  // getBounds()로 실제 픽셀당 미터 계산 — 테이블 불필요
-  const latPerPx = (ne.getLat() - sw.getLat()) / mapH
-  const lngPerPx = (ne.getLng() - sw.getLng()) / mapW
+  const mapW = mapEl.offsetWidth, mapH = mapEl.offsetHeight
+  const mapTop = mapEl.offsetTop  // wrapper 기준 map의 y 오프셋
 
-  // 히트맵 중심의 픽셀 위치
-  const cx = (HM_CENTER_LNG - sw.getLng()) / lngPerPx
-  const cy = mapTop + mapH - (HM_CENTER_LAT - sw.getLat()) / latPerPx  // y 반전
+  const cx = mapW / 2 + dxM / mPerPx
+  const cy = mapTop + mapH / 2 - (dLat * 111000) / mPerPx
 
-  const halfLatPx = HM_RADIUS_M / 111000 / latPerPx
-  const halfLngPx = HM_RADIUS_M / (111000 * Math.cos(HM_CENTER_LAT * Math.PI / 180)) / lngPerPx
-  // 정사각형 이미지라 lat 기준 halfPx 사용 (위도 축척 기준)
-  const halfPx = (halfLatPx + halfLngPx) / 2
+  const halfPx = HM_RADIUS_M / mPerPx
   const size   = halfPx * 2
 
   heatmapImg.style.left   = `${cx - halfPx}px`
