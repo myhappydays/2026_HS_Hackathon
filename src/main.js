@@ -219,8 +219,13 @@ function buildHeatmapDataUrl() {
       const raw   = Math.max(0, n * 0.55 + boost * 0.45)
       const alpha = Math.min(0.75, raw * 0.9)
       if (alpha < 0.05) continue
-      const g = Math.round(raw * 140)
-      ctx.fillStyle = `rgba(220,${g},0,${alpha.toFixed(2)})`
+
+      // GnBu colormap: 낮은값 연두→청록, 높은값 진파랑
+      const t = raw
+      const r = Math.round((1 - t) * 120)
+      const g = Math.round(180 - t * 80)
+      const b = Math.round(100 + t * 155)
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`
       ctx.fillRect(gx * PX, gy * PX, PX, PX)
     }
   }
@@ -239,11 +244,12 @@ function positionHeatmapImg() {
   const dLng = HM_CENTER_LNG - center.getLng()
   const LNG_PER_M = 1 / (111000 * Math.cos(center.getLat() * Math.PI / 180))
   const dxM = dLng / LNG_PER_M
-  const dyM = dLat / 111000 * 111000  // dLat * 111000m
 
   const mapW = mapEl.offsetWidth, mapH = mapEl.offsetHeight
+  const mapTop = mapEl.offsetTop  // wrapper 기준 map의 y 오프셋
+
   const cx = mapW / 2 + dxM / mPerPx
-  const cy = mapH / 2 - (dLat * 111000) / mPerPx
+  const cy = mapTop + mapH / 2 - (dLat * 111000) / mPerPx
 
   const halfPx = HM_RADIUS_M / mPerPx
   const size   = halfPx * 2
