@@ -123,6 +123,7 @@ function renderMarkers() {
     ],
     calculator: [99999], // 항상 index 0 → clustered 이벤트에서 직접 교체
   })
+  window._clusterer = clusterer
 
   // 클러스터 생성 후 포함된 마커들의 최고 위험도로 색상 교체
   kakao.maps.event.addListener(clusterer, 'clustered', clusterList => {
@@ -140,6 +141,110 @@ function renderMarkers() {
     })
   })
 }
+
+// ── 히트맵 ───────────────────────────────────────────────
+
+const HEATMAP_KEY = 'heatmap_points'
+
+/** 심플 2D 펄린-스타일 노이즈 (gradient noise) */
+function smoothNoise(x, y, seed = 0) {
+  const ix = Math.floor(x), iy = Math.floor(y)
+  const fx = x - ix, fy = y - iy
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10)
+  const lerp  = (a, b, t) => a + t * (b - a)
+  const grad  = (h, dx, dy) => {
+    const v = (h ^ seed) & 3
+    return v === 0 ? dx + dy : v === 1 ? -dx + dy : v === 2 ? dx - dy : -dx - dy
+  }
+  const h = (a, b) => ((a * 1619 + b * 31337 + seed * 6971) ^ (a * 31337)) & 0xffff
+  const n00 = grad(h(ix,   iy),   fx,     fy)
+  const n10 = grad(h(ix+1, iy),   fx-1,   fy)
+  const n01 = grad(h(ix,   iy+1), fx,     fy-1)
+  const n11 = grad(h(ix+1, iy+1), fx-1,   fy-1)
+  return lerp(lerp(n00, n10, fade(fx)), lerp(n01, n11, fade(fx)), fade(fy))
+}
+
+/** 협성대 캠퍼스 중심 기준 펄린 노이즈 히트맵 포인트 생성 */
+export function generateHeatmapPoints() {
+  const stored = localStorage.getItem(HEATMAP_KEY)
+  if (stored) {
+    try { return JSON.parse(stored) } catch { /* 손상 시 재생성 */ }
+  }
+
+  const CENTER_LAT = 37.2130, CENTER_LNG = 126.9520
+  const LAT_SPREAD = 0.006, LNG_SPREAD = 0.008
+  const COUNT = 300
+  const points = []
+
+  for (let i = 0; i < COUNT; i++) {
+    // 노이즈 좌표 (grid 4x4)
+    const nx = (i % 20) / 5, ny = Math.floor(i / 20) / 5
+    const noise = smoothNoise(nx, ny, 42) * 0.5 + 0.5          // 0~1
+    const noise2 = smoothNoise(nx * 2.3, ny * 2.3, 137) * 0.3  // 두 번째 옥타브
+
+    // 노이즈 기반으로 핫스팟 쪽으로 편향
+    const angle = Math.random() * Math.PI * 2
+    const r = Math.pow(Math.random(), 0.5) * (noise + noise2 + 0.2)
+    const lat = CENTER_LAT + Math.sin(angle) * r * LAT_SPREAD
+    const lng = CENTER_LNG + Math.cos(angle) * r * LNG_SPREAD
+    const weight = Math.round((noise + noise2) * 8 + 1)  // 1~10
+
+    points.push({ lat, lng, weight })
+  }
+
+  try { localStorage.setItem(HEATMAP_KEY, JSON.stringify(points)) } catch { /* 무시 */ }
+  return points
+}
+
+let heatmap = null
+let isHeatmapMode = false
+
+function showHeatmap() {
+  if (!kakaoMap || typeof kakao.maps.visualization === 'undefined') return
+  if (heatmap) { heatmap.setMap(kakaoMap); return }
+
+  const points = generateHeatmapPoints()
+  const data = new kakao.maps.visualization.HeatmapData(
+    points.map(p => ({
+      position: new kakao.maps.LatLng(p.lat, p.lng),
+      weight: p.weight,
+    }))
+  )
+  heatmap = new kakao.maps.visualization.Heatmap({ data, radius: 35, opacity: 0.7 })
+  heatmap.setMap(kakaoMap)
+}
+
+function hideHeatmap() {
+  if (heatmap) heatmap.setMap(null)
+}
+
+// 토글 버튼 이벤트
+document.getElementById('view-pin-btn').addEventListener('click', () => {
+  if (isHeatmapMode) {
+    isHeatmapMode = false
+    hideHeatmap()
+    renderMarkers()
+    document.getElementById('view-pin-btn').classList.add('bg-primary', 'text-white')
+    document.getElementById('view-pin-btn').classList.remove('text-muted-foreground')
+    document.getElementById('view-heat-btn').classList.remove('bg-primary', 'text-white')
+    document.getElementById('view-heat-btn').classList.add('text-muted-foreground')
+  }
+})
+
+document.getElementById('view-heat-btn').addEventListener('click', () => {
+  if (!isHeatmapMode) {
+    isHeatmapMode = true
+    // 마커 클러스터러는 지도에서 제거 — 전역 변수로 관리 필요하므로 renderMarkers 재호출 방지
+    if (typeof window._clusterer !== 'undefined' && window._clusterer) {
+      window._clusterer.setMap(null)
+    }
+    showHeatmap()
+    document.getElementById('view-heat-btn').classList.add('bg-primary', 'text-white')
+    document.getElementById('view-heat-btn').classList.remove('text-muted-foreground')
+    document.getElementById('view-pin-btn').classList.remove('bg-primary', 'text-white')
+    document.getElementById('view-pin-btn').classList.add('text-muted-foreground')
+  }
+})
 
 // ── 리스트 렌더링 ────────────────────────────────────────
 
@@ -452,8 +557,10 @@ function seedDemoData() {
 }
 
 document.getElementById('seed-btn').addEventListener('click', () => {
-  if (!confirm('테스트 데이터를 주입하고 페이지를 새로고침합니다.\n기존 데이터는 덮어씌워집니다.')) return
+  if (!confirm('테스트 데이터를 주입하고 페이지를 새로고침합니다.\n기존 데이터는 덮어씌워집니다.\n(히트맵 포인트도 재생성됩니다)')) return
   seedDemoData()
+  localStorage.removeItem('heatmap_points') // 히트맵 포인트 재생성 트리거
+  heatmap = null                             // 캐시된 인스턴스 초기화
   location.reload()
 })
 
