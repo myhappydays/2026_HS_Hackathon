@@ -19,6 +19,14 @@ const STORAGE_KEY_CACHE      = 'bedrock_summary_cache'
 
 const CACHE_TTL_MS = 30 * 60 * 1000 // 30분
 
+/** 캐시된 요약 텍스트만 반환 (TTL 무관). 없으면 null. */
+export function getCachedSummary() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(STORAGE_KEY_CACHE) || 'null')
+    return cached?.summary ?? null
+  } catch { return null }
+}
+
 const RUNTIME_ENDPOINT = 'https://bedrock-runtime.us-east-1.amazonaws.com'
 const DEFAULT_MODEL    = 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
 

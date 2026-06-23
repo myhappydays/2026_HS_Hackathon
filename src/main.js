@@ -8,7 +8,7 @@ import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
 import { haversineDistance } from './clustering.js'
 import {
   isConfigured, getToken, saveToken, getModel, saveModel,
-  getSettings, saveSettings, MODELS, summarizeArea,
+  getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
 } from './bedrock.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 
@@ -311,6 +311,21 @@ aiRefreshBtn?.addEventListener('click', () => runAISummary({ force: true }))
 
 // 요약 실행
 async function runAISummary({ force = false } = {}) {
+  // 캐시가 있으면 토큰 유무와 무관하게 먼저 표시
+  if (!force) {
+    const cached = getCachedSummary()
+    if (cached) {
+      const lines = cached.split('\n')
+      aiSummaryText.innerHTML = lines.map((l, i) =>
+        i === 0 ? `<strong>${l}</strong>` : `<span>${l}</span>`
+      ).join('<br>')
+      aiAlertWrap.classList.remove('hidden')
+      aiAlertLoading.classList.add('hidden')
+      aiAlertResult.classList.remove('hidden')
+      aiAlertError.classList.add('hidden')
+    }
+  }
+
   if (!isConfigured()) return
 
   const allClusters = getClusters()
