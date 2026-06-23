@@ -167,7 +167,7 @@ function smoothNoise(x, y, seed = 0) {
 }
 
 /**
- * 협성대 캠퍼스 고정 좌표 기준 2km 반경, 펄린 노이즈 히트맵 포인트 생성.
+ * 협성대 캠퍼스 고정 좌표 기준, 펄린 노이즈 히트맵 포인트 생성.
  * Math.random() 미사용 — 완전 결정론적. localStorage에 캐시.
  */
 function generateHeatmapPoints() {
@@ -176,21 +176,33 @@ function generateHeatmapPoints() {
     if (stored?.points?.length) return stored.points
   } catch { /* 손상 시 재생성 */ }
 
-  const CENTER_LAT = 37.2130, CENTER_LNG = 126.9520
+  const CENTER_LAT = 37.2132, CENTER_LNG = 126.9521  // 협성대 중심
   const LAT_PER_M  = 1 / 111000
   const LNG_PER_M  = 1 / (111000 * Math.cos(CENTER_LAT * Math.PI / 180))
-  const RADIUS_M   = 2000
-  const GRID       = 20
+  const RADIUS_M   = 800   // 캠퍼스 반경 ~800m
+  const GRID       = 40    // 40×40 촘촘한 격자
   const SEED       = 4242
 
   const points = []
   for (let gy = 0; gy < GRID; gy++) {
     for (let gx = 0; gx < GRID; gx++) {
       const nx = gx / (GRID - 1), ny = gy / (GRID - 1)
-      const n = smoothNoise(nx * 4, ny * 4, SEED)       * 0.6
-             + smoothNoise(nx * 8, ny * 8, SEED + 99)   * 0.4
-      const weight = Math.max(0, Math.round(n * 10 + 5))
+
+      // 중심에서의 거리 (0~1), 중심에서 멀수록 weight 감소
+      const dx = nx - 0.5, dy = ny - 0.5
+      const dist = Math.sqrt(dx * dx + dy * dy) * 2  // 0~1.41
+      if (dist > 1) continue  // 원형 경계 밖 제외
+
+      // 펄린 노이즈 옥타브 3개
+      const n = smoothNoise(nx * 6,  ny * 6,  SEED)      * 0.5
+             + smoothNoise(nx * 12, ny * 12, SEED + 37)  * 0.3
+             + smoothNoise(nx * 24, ny * 24, SEED + 73)  * 0.2
+      // 중심 가중치: 중심에 가까울수록 높게
+      const centerBoost = Math.pow(1 - dist, 1.5)
+      const raw = n * 0.6 + centerBoost * 0.4
+      const weight = Math.max(0, Math.round(raw * 10))
       if (weight <= 0) continue
+
       const lat = CENTER_LAT + (ny - 0.5) * 2 * RADIUS_M * LAT_PER_M
       const lng = CENTER_LNG + (nx - 0.5) * 2 * RADIUS_M * LNG_PER_M
       points.push({ lat, lng, weight })
@@ -259,7 +271,10 @@ function ensureCanvasHeatmapClass() {
     ctx.clearRect(0, 0, W, H)
 
     const level  = map.getLevel()
-    const RADIUS = Math.max(15, Math.round(120 / Math.pow(1.6, level - 3)))
+    const RADIUS = Math.max(8, Math.round(60 / Math.pow(1.5, level - 4)))
+
+    // globalAlpha로 누적 블렌딩 — 포인트 겹칠수록 진해짐
+    ctx.globalCompositeOperation = 'source-over'
 
     this._pts.forEach(p => {
       const latlng = new kakao.maps.LatLng(p.lat, p.lng)
@@ -267,10 +282,10 @@ function ensureCanvasHeatmapClass() {
       const x = pos.x, y = pos.y
       if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return
 
-      const alpha = Math.min(0.8, (p.weight / 10) * 0.55 + 0.2)
+      const alpha = (p.weight / 10) * 0.35
       const grad  = ctx.createRadialGradient(x, y, 0, x, y, RADIUS)
       grad.addColorStop(0,   `rgba(220,38,38,${alpha.toFixed(2)})`)
-      grad.addColorStop(0.5, `rgba(251,146,60,${(alpha * 0.5).toFixed(2)})`)
+      grad.addColorStop(0.4, `rgba(234,88,12,${(alpha * 0.7).toFixed(2)})`)
       grad.addColorStop(1,   'rgba(251,146,60,0)')
       ctx.beginPath()
       ctx.arc(x, y, RADIUS, 0, Math.PI * 2)
