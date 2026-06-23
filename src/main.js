@@ -199,7 +199,7 @@ let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
 function buildHeatmapDataUrl() {
   if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 40, PX = 28, SIZE = GRID * PX, SEED = 4242
+  const GRID = 40, PX = 28, SIZE = GRID * PX, SEED = 8831  // 봉담 도심 핫스팟
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
