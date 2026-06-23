@@ -166,54 +166,7 @@ function smoothNoise(x, y, seed = 0) {
   return lerp(lerp(n00, n10, fade(fx)), lerp(n01, n11, fade(fx)), fade(fy))
 }
 
-/**
- * 협성대 캠퍼스 고정 좌표 기준, 펄린 노이즈 히트맵 포인트 생성.
- * Math.random() 미사용 — 완전 결정론적. localStorage에 캐시.
- */
-function generateHeatmapPoints() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(HEATMAP_KEY) || 'null')
-    if (stored?.points?.length) return stored.points
-  } catch { /* 손상 시 재생성 */ }
-
-  const CENTER_LAT = 37.2132, CENTER_LNG = 126.9521  // 협성대 중심
-  const LAT_PER_M  = 1 / 111000
-  const LNG_PER_M  = 1 / (111000 * Math.cos(CENTER_LAT * Math.PI / 180))
-  const RADIUS_M   = 800   // 캠퍼스 반경 ~800m
-  const GRID       = 40    // 40×40 촘촘한 격자
-  const SEED       = 4242
-
-  const points = []
-  for (let gy = 0; gy < GRID; gy++) {
-    for (let gx = 0; gx < GRID; gx++) {
-      const nx = gx / (GRID - 1), ny = gy / (GRID - 1)
-
-      // 중심에서의 거리 (0~1), 중심에서 멀수록 weight 감소
-      const dx = nx - 0.5, dy = ny - 0.5
-      const dist = Math.sqrt(dx * dx + dy * dy) * 2  // 0~1.41
-      if (dist > 1) continue  // 원형 경계 밖 제외
-
-      // 펄린 노이즈 옥타브 3개
-      const n = smoothNoise(nx * 6,  ny * 6,  SEED)      * 0.5
-             + smoothNoise(nx * 12, ny * 12, SEED + 37)  * 0.3
-             + smoothNoise(nx * 24, ny * 24, SEED + 73)  * 0.2
-      // 중심 가중치: 중심에 가까울수록 높게
-      const centerBoost = Math.pow(1 - dist, 1.5)
-      const raw = n * 0.6 + centerBoost * 0.4
-      const weight = Math.max(0, Math.round(raw * 10))
-      if (weight <= 0) continue
-
-      const lat = CENTER_LAT + (ny - 0.5) * 2 * RADIUS_M * LAT_PER_M
-      const lng = CENTER_LNG + (nx - 0.5) * 2 * RADIUS_M * LNG_PER_M
-      points.push({ lat, lng, weight })
-    }
-  }
-
-  try { localStorage.setItem(HEATMAP_KEY, JSON.stringify({ points })) } catch { /* 무시 */ }
-  return points
-}
-
-let heatmap = null
+let heatmap = null        // kakao.maps.CustomOverlay 인스턴스
 let isHeatmapMode = false
 
 function setToggleActive(mode) {
@@ -232,94 +185,100 @@ function setToggleActive(mode) {
   }
 }
 
-// ── Canvas AbstractOverlay 히트맵 클래스 (전역 정의) ─────
-let CanvasHeatmap = null
+// ── 히트맵 — 오프스크린 Canvas → CustomOverlay ───────────
 
-function ensureCanvasHeatmapClass() {
-  if (CanvasHeatmap) return
-  if (typeof kakao === 'undefined' || !kakao.maps.AbstractOverlay) return
+const CENTER_LAT = 37.2132, CENTER_LNG = 126.9521  // 협성대 중심
+const RADIUS_M   = 900   // 반경 900m
+const LAT_SPAN   = RADIUS_M / 111000
+const LNG_SPAN   = RADIUS_M / (111000 * Math.cos(CENTER_LAT * Math.PI / 180))
 
-  CanvasHeatmap = function (pts) {
-    this._pts = pts
-    this._canvas = null
-    kakao.maps.AbstractOverlay.call(this)
-  }
-  CanvasHeatmap.prototype = Object.create(kakao.maps.AbstractOverlay.prototype)
-  CanvasHeatmap.prototype.constructor = CanvasHeatmap
+// 히트맵 이미지 좌상단/우하단 LatLng (CustomOverlay 위치 계산용)
+const HEAT_SW = new Array(2)  // [lat, lng] 좌하단
+const HEAT_NE = new Array(2)  // [lat, lng] 우상단
 
-  CanvasHeatmap.prototype.onAdd = function () {
-    const panel = this.getPanels().overlayLayer
-    const canvas = document.createElement('canvas')
-    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;'
-    panel.appendChild(canvas)
-    this._canvas = canvas
-  }
+/**
+ * 오프스크린 Canvas에 그리드 히트맵 렌더링 → dataURL 반환
+ * AbstractOverlay 없이 한 번만 그림
+ */
+function buildHeatmapImage() {
+  const GRID  = 40
+  const PX    = 16          // 셀 하나 픽셀 크기
+  const SIZE  = GRID * PX   // 640×640
 
-  CanvasHeatmap.prototype.draw = function () {
-    if (!this._canvas) return
-    const map    = this.getMap()
-    const proj   = map.getProjection()
-    const mapEl  = document.getElementById('map')
-    const W = mapEl.offsetWidth, H = mapEl.offsetHeight
-    const canvas = this._canvas
-    canvas.width  = W
-    canvas.height = H
-    canvas.style.width  = W + 'px'
-    canvas.style.height = H + 'px'
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = SIZE
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, SIZE, SIZE)
 
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, W, H)
+  const SEED = 4242
 
-    const level  = map.getLevel()
-    const RADIUS = Math.max(8, Math.round(60 / Math.pow(1.5, level - 4)))
+  for (let gy = 0; gy < GRID; gy++) {
+    for (let gx = 0; gx < GRID; gx++) {
+      const nx = gx / (GRID - 1), ny = gy / (GRID - 1)
+      const dx = nx - 0.5, dy = ny - 0.5
+      const dist = Math.sqrt(dx * dx + dy * dy) * 2
+      if (dist > 1) continue
 
-    // globalAlpha로 누적 블렌딩 — 포인트 겹칠수록 진해짐
-    ctx.globalCompositeOperation = 'source-over'
+      const n = smoothNoise(nx * 6,  ny * 6,  SEED)     * 0.5
+             + smoothNoise(nx * 12, ny * 12, SEED + 37) * 0.3
+             + smoothNoise(nx * 24, ny * 24, SEED + 73) * 0.2
+      const centerBoost = Math.pow(1 - dist, 1.8)
+      const raw    = Math.max(0, n * 0.55 + centerBoost * 0.45)
+      const alpha  = Math.min(0.75, raw * 0.9)
+      if (alpha < 0.05) continue
 
-    this._pts.forEach(p => {
-      const latlng = new kakao.maps.LatLng(p.lat, p.lng)
-      const pos    = proj.containerPointFromCoords(latlng)
-      const x = pos.x, y = pos.y
-      if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return
-
-      const alpha = (p.weight / 10) * 0.35
-      const grad  = ctx.createRadialGradient(x, y, 0, x, y, RADIUS)
-      grad.addColorStop(0,   `rgba(220,38,38,${alpha.toFixed(2)})`)
-      grad.addColorStop(0.4, `rgba(234,88,12,${(alpha * 0.7).toFixed(2)})`)
-      grad.addColorStop(1,   'rgba(251,146,60,0)')
-      ctx.beginPath()
-      ctx.arc(x, y, RADIUS, 0, Math.PI * 2)
-      ctx.fillStyle = grad
-      ctx.fill()
-    })
-  }
-
-  CanvasHeatmap.prototype.onRemove = function () {
-    if (this._canvas && this._canvas.parentNode) {
-      this._canvas.parentNode.removeChild(this._canvas)
+      // 빨강(high) → 주황(mid) → 노랑(low) 색상 보간
+      const r = 220
+      const g = Math.round(raw * 140)
+      const b = 0
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`
+      ctx.fillRect(gx * PX, gy * PX, PX, PX)
     }
-    this._canvas = null
   }
+
+  return canvas.toDataURL('image/png')
 }
 
 function showHeatmap() {
   if (!kakaoMap) return
-  ensureCanvasHeatmapClass()
-  if (!CanvasHeatmap) { console.warn('CanvasHeatmap 클래스 초기화 실패'); return }
 
-  // 클러스터러 + 개별 마커 모두 지도에서 제거
+  // 마커 + 클러스터러 숨기기
   if (window._clusterer) window._clusterer.setMap(null)
   globalMarkers.forEach(m => m.setMap(null))
 
   if (heatmap) { heatmap.setMap(kakaoMap); return }
-  const points = generateHeatmapPoints()
-  heatmap = new CanvasHeatmap(points)
+
+  const dataUrl = buildHeatmapImage()
+
+  // 히트맵 커버 범위 (중심 ± span)
+  const swLat = CENTER_LAT - LAT_SPAN, swLng = CENTER_LNG - LNG_SPAN
+  const neLat = CENTER_LAT + LAT_SPAN, neLng = CENTER_LNG + LNG_SPAN
+
+  // 중심 좌표에 CustomOverlay로 배치
+  // content: img를 지도 좌표 범위에 정확히 맞추려면
+  // 카카오맵 proj로 sw/ne 픽셀 거리를 계산해서 img 크기 지정
+  const proj = kakaoMap.getProjection()
+  const swPt = proj.containerPointFromCoords(new kakao.maps.LatLng(swLat, swLng))
+  const nePt = proj.containerPointFromCoords(new kakao.maps.LatLng(neLat, neLng))
+  const pxW  = Math.abs(nePt.x - swPt.x)
+  const pxH  = Math.abs(swPt.y - nePt.y)
+
+  const img = document.createElement('img')
+  img.src = dataUrl
+  img.style.cssText = `width:${pxW}px;height:${pxH}px;opacity:0.72;pointer-events:none;display:block;`
+
+  heatmap = new kakao.maps.CustomOverlay({
+    position: new kakao.maps.LatLng(neLat, swLng),  // 좌상단 고정
+    content:  img,
+    xAnchor:  0,
+    yAnchor:  0,
+    zIndex:   1,
+  })
   heatmap.setMap(kakaoMap)
 }
 
 function hideHeatmap() {
   if (heatmap) heatmap.setMap(null)
-  // 클러스터러 + 마커 복구
   if (window._clusterer) window._clusterer.setMap(kakaoMap)
   globalMarkers.forEach(m => m.setMap(kakaoMap))
 }
@@ -652,8 +611,6 @@ function seedDemoData() {
 document.getElementById('seed-btn').addEventListener('click', () => {
   if (!confirm('테스트 데이터를 주입하고 페이지를 새로고침합니다.\n기존 데이터는 덮어씌워집니다.')) return
   seedDemoData()
-  localStorage.removeItem(HEATMAP_KEY)  // 히트맵 포인트 재생성
-  heatmap = null
   location.reload()
 })
 
