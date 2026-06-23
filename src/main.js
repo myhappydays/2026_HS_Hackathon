@@ -216,22 +216,76 @@ function setToggleActive(mode) {
 }
 
 function showHeatmap() {
-  if (!kakaoMap || typeof kakao === 'undefined' || !kakao.maps.visualization) return
+  if (!kakaoMap) return
   if (heatmap) { heatmap.setMap(kakaoMap); return }
 
   const points = generateHeatmapPoints()
-  const data = new kakao.maps.visualization.HeatmapData(
-    points.map(p => ({
-      position: new kakao.maps.LatLng(p.lat, p.lng),
-      weight: p.weight,
-    }))
-  )
-  heatmap = new kakao.maps.visualization.Heatmap({ data, radius: 35, opacity: 0.7 })
+
+  // ── Canvas AbstractOverlay 히트맵 ──────────────────────
+  function CanvasHeatmap(pts) {
+    this._pts = pts
+    this._canvas = null
+  }
+  CanvasHeatmap.prototype = new kakao.maps.AbstractOverlay()
+
+  CanvasHeatmap.prototype.onAdd = function () {
+    const panel = this.getPanels().overlayLayer
+    this._canvas = document.createElement('canvas')
+    this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;'
+    panel.appendChild(this._canvas)
+  }
+
+  CanvasHeatmap.prototype.draw = function () {
+    const map    = this.getMap()
+    const proj   = map.getProjection()
+    const bounds = map.getBounds()
+    const sw     = proj.containerPointFromCoords(bounds.getSouthWest())
+    const ne     = proj.containerPointFromCoords(bounds.getNorthEast())
+
+    const mapEl  = document.getElementById('map')
+    const W = mapEl.offsetWidth, H = mapEl.offsetHeight
+    const canvas = this._canvas
+    canvas.width  = W
+    canvas.height = H
+    canvas.style.width  = W + 'px'
+    canvas.style.height = H + 'px'
+
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, W, H)
+
+    const RADIUS = Math.max(30, Math.round(W / 12))
+
+    // 각 포인트를 radial gradient로 그림
+    this._pts.forEach(p => {
+      const pos = proj.containerPointFromCoords(new kakao.maps.LatLng(p.lat, p.lng))
+      const x = pos.x, y = pos.y
+      if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return
+
+      const alpha = Math.min(1, (p.weight / 10) * 0.55 + 0.1)
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, RADIUS)
+      grad.addColorStop(0,   `rgba(220,38,38,${alpha})`)
+      grad.addColorStop(0.4, `rgba(251,146,60,${alpha * 0.6})`)
+      grad.addColorStop(1,   'rgba(251,146,60,0)')
+      ctx.beginPath()
+      ctx.arc(x, y, RADIUS, 0, Math.PI * 2)
+      ctx.fillStyle = grad
+      ctx.fill()
+    })
+  }
+
+  CanvasHeatmap.prototype.onRemove = function () {
+    if (this._canvas && this._canvas.parentNode) {
+      this._canvas.parentNode.removeChild(this._canvas)
+    }
+    this._canvas = null
+  }
+
+  heatmap = new CanvasHeatmap(points)
   heatmap.setMap(kakaoMap)
 }
 
 function hideHeatmap() {
-  if (heatmap) heatmap.setMap(null)
+  if (heatmap) { heatmap.setMap(null) }
 }
 
 // 토글 버튼 이벤트
@@ -562,7 +616,7 @@ function seedDemoData() {
 }
 
 document.getElementById('seed-btn').addEventListener('click', () => {
-  if (!confirm('제보/클러스터 테스트 데이터를 주입합니다.\n기존 데이터는 덮어씌워집니다.\n(히트맵 포인트는 별도 유지됩니다)')) return
+  if (!confirm('테스트 데이터를 주입하고 페이지를 새로고침합니다.\n기존 데이터는 덮어씌워집니다.')) return
   seedDemoData()
   location.reload()
 })
