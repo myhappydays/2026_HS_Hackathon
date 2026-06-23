@@ -270,8 +270,16 @@ function showHeatmap() {
     mapEl.appendChild(img)
     heatmapImg = img
 
-    // 지도 이동/줌 완전히 끝난 후에만 위치 갱신 (깜빡임 방지)
-    kakao.maps.event.addListener(kakaoMap, 'idle', positionHeatmapImg)
+    // 줌 시작 시 숨기고, idle(애니메이션 완전 종료)에서만 복구
+    kakao.maps.event.addListener(kakaoMap, 'zoom_start', () => {
+      if (heatmapImg) heatmapImg.style.display = 'none'
+    })
+    kakao.maps.event.addListener(kakaoMap, 'idle', () => {
+      if (heatmapImg && isHeatmapMode) {
+        positionHeatmapImg()
+        heatmapImg.style.display = 'block'
+      }
+    })
   }
   heatmapImg.style.display = 'block'
   positionHeatmapImg()
