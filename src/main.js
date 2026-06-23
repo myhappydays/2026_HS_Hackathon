@@ -270,9 +270,8 @@ function showHeatmap() {
     mapEl.appendChild(img)
     heatmapImg = img
 
-    // 지도 이동/줌 때마다 위치 갱신
-    kakao.maps.event.addListener(kakaoMap, 'center_changed', positionHeatmapImg)
-    kakao.maps.event.addListener(kakaoMap, 'zoom_changed',   positionHeatmapImg)
+    // 지도 이동/줌 완전히 끝난 후에만 위치 갱신 (깜빡임 방지)
+    kakao.maps.event.addListener(kakaoMap, 'idle', positionHeatmapImg)
   }
   heatmapImg.style.display = 'block'
   positionHeatmapImg()
