@@ -72,9 +72,13 @@
   <!-- Rose Theme CSS -->
   <link rel="stylesheet" href="/css/themes/crimson.css">
 
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
   <style>
     body { font-family: var(--font-sans); }
     #map { width: 100%; height: 240px; }
+    #heatmap-container { width: 100%; height: 240px; display: none; }
 
     @keyframes ai-pulse {
       0%, 100% { opacity: 1; }
@@ -106,6 +110,8 @@
     <!-- 지도 뷰 -->
     <div id="map-wrapper" class="relative overflow-hidden">
       <div id="map" class="w-full bg-surface"></div>
+      <!-- 히트맵 뷰 (Leaflet) — 토글 시 카카오맵 대체 -->
+      <div id="heatmap-container"></div>
       <!-- 지도 로딩 전 플레이스홀더 -->
       <div id="map-placeholder" class="absolute inset-0 flex items-center justify-center bg-surface">
         <span class="text-muted-foreground text-sm">지도 불러오는 중...</span>
@@ -388,6 +394,10 @@
 
   <!-- 카카오 지도 API (services: 역지오코딩, clusterer: 마커 클러스터링) -->
   <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=82c99f718e19c13b6028995f893ca1b9&libraries=services,clusterer,visualization"></script>
+
+  <!-- Leaflet JS + Leaflet.heat (히트맵 뷰) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
   <!-- Preline UI JS -->
   <script src="https://cdn.jsdelivr.net/npm/preline@2.7.0/dist/preline.min.js"></script>

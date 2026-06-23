@@ -144,9 +144,11 @@ function renderMarkers() {
   })
 }
 
-// ── 히트맵 ───────────────────────────────────────────────
+// ── 히트맵 (Leaflet.heat) ───────────────────────────────
 
 let isHeatmapMode = false
+let leafletMap    = null   // Leaflet 지도 인스턴스 (히트맵 뷰)
+let heatLayer     = null   // L.heatLayer 인스턴스
 
 function setToggleActive(mode) {
   const pinBtn  = document.getElementById('view-pin-btn')
@@ -163,6 +165,11 @@ function setToggleActive(mode) {
     pinBtn.classList.add('text-muted-foreground')
   }
 }
+
+// ── 펄린 노이즈 → Leaflet.heat 포인트 배열 변환 ─────────
+
+const HM_CENTER_LAT = 37.2132, HM_CENTER_LNG = 126.9521
+const HM_RADIUS_DEG = 0.045  // 약 5km
 
 /** 심플 2D 펄린-스타일 노이즈 (gradient noise, 완전 결정론적) */
 function smoothNoise(x, y, seed = 0) {
@@ -182,28 +189,10 @@ function smoothNoise(x, y, seed = 0) {
   return lerp(lerp(n00, n10, fade(fx)), lerp(n01, n11, fade(fx)), fade(fy))
 }
 
-// ── 히트맵 — DOM img + 이벤트 기반 위치 동기화 ──────────
-
-const HM_CENTER_LAT = 37.2132, HM_CENTER_LNG = 126.9521
-const HM_RADIUS_M   = 5000  // 반경 5km — 마을 단위
-
-// 카카오맵 레벨별 1픽셀 = ?미터 (위도 37° 기준, 타일 256px)
-const KAKAO_M_PER_PX = {
-  1: 0.6, 2: 1.2, 3: 2.5, 4: 5, 5: 10,
-  6: 20, 7: 40, 8: 80, 9: 160, 10: 320,
-  11: 640, 12: 1280, 13: 2560, 14: 5120,
-}
-
-let heatmapImg   = null   // DOM <img>
-let heatmapDataUrl = null // 미리 렌더링된 dataUrl
-
-function buildHeatmapDataUrl() {
-  if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 40, PX = 28, SIZE = GRID * PX, SEED = 8831  // 봉담 도심 핫스팟
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = SIZE
-  const ctx = canvas.getContext('2d')
-  ctx.clearRect(0, 0, SIZE, SIZE)
+/** 펄린 노이즈로 [lat, lng, intensity] 포인트 배열 생성 (Leaflet.heat용) */
+function buildHeatPoints() {
+  const GRID = 60, SEED = 8831
+  const points = []
 
   for (let gy = 0; gy < GRID; gy++) {
     for (let gx = 0; gx < GRID; gx++) {
@@ -212,82 +201,66 @@ function buildHeatmapDataUrl() {
       const dist = Math.sqrt(dx * dx + dy * dy) * 2
       if (dist > 1) continue
 
-      // 저주파 위주 — 큰 덩어리 2~3개만 형성
-      const n = smoothNoise(nx * 1.8, ny * 1.8, SEED)      * 0.7
-             + smoothNoise(nx * 3.5, ny * 3.5, SEED + 37)  * 0.3
-      const normalized = n * 0.5 + 0.5   // 0~1
+      // 중주파(블록 단위) 위주 + 고주파 디테일 혼합
+      const n = smoothNoise(nx * 4.5, ny * 4.5, SEED)      * 0.55
+             + smoothNoise(nx * 9.0, ny * 9.0, SEED + 37)  * 0.30
+             + smoothNoise(nx * 18,  ny * 18,  SEED + 99)  * 0.15
+      const normalized = n * 0.5 + 0.5
 
-      // edgeFade 없음 — 경계까지 고르게
-      // 거듭제곱으로 편향: 높은곳 진하게, 낮은곳 투명
-      const biased = Math.pow(normalized, 3.0)
+      // power 높여서 낮은 곳 거의 투명, 핫스팟만 진하게
+      const biased = Math.pow(normalized, 4.0)
+      if (biased < 0.04) continue
 
-      if (biased < 0.08) continue
-
-      const t     = Math.min(1, biased)
-      const alpha = Math.min(0.90, t * 1.1)
-
-      // 보라 → 자홍 → 빨강
-      const r = Math.round(120 + t * 135)
-      const b = Math.round(180 - t * 180)
-      ctx.fillStyle = `rgba(${r},0,${b},${alpha.toFixed(2)})`
-      ctx.fillRect(gx * PX, gy * PX, PX, PX)
+      const lat = HM_CENTER_LAT + (0.5 - ny) * HM_RADIUS_DEG * 2
+      const lng = HM_CENTER_LNG + (nx - 0.5) * HM_RADIUS_DEG * 2
+      points.push([lat, lng, Math.min(1, biased * 2.0)])
     }
   }
-  heatmapDataUrl = canvas.toDataURL('image/png')
-  return heatmapDataUrl
+  return points
 }
 
-function positionHeatmapImg() {
-  if (!heatmapImg || !kakaoMap) return
-  const mapEl  = document.getElementById('map')
-  const level  = kakaoMap.getLevel()
-  const mPerPx = KAKAO_M_PER_PX[level] || 10
-  const center = kakaoMap.getCenter()
-
-  const dLat = HM_CENTER_LAT - center.getLat()
-  const dLng = HM_CENTER_LNG - center.getLng()
-  const LNG_PER_M = 1 / (111000 * Math.cos(center.getLat() * Math.PI / 180))
-  const dxM = dLng / LNG_PER_M
-
-  const mapW = mapEl.offsetWidth, mapH = mapEl.offsetHeight
-  const mapTop = mapEl.offsetTop  // wrapper 기준 map의 y 오프셋
-
-  const cx = mapW / 2 + dxM / mPerPx
-  const cy = mapTop + mapH / 2 - (dLat * 111000) / mPerPx
-
-  const halfPx = HM_RADIUS_M / mPerPx
-  const size   = halfPx * 2
-
-  heatmapImg.style.left   = `${cx - halfPx}px`
-  heatmapImg.style.top    = `${cy - halfPx}px`
-  heatmapImg.style.width  = `${size}px`
-  heatmapImg.style.height = `${size}px`
-}
+// 한 번만 계산해두기
+const HEAT_POINTS = buildHeatPoints()
 
 function showHeatmap() {
-  if (!kakaoMap) return
+  // 카카오맵/마커 숨기기
+  document.getElementById('map').style.display = 'none'
   if (window._clusterer) window._clusterer.setMap(null)
   globalMarkers.forEach(m => m.setMap(null))
 
-  if (!heatmapImg) {
-    const wrapper = document.getElementById('map-wrapper')
-    const img = document.createElement('img')
-    img.id  = 'heatmap-overlay'
-    img.src = buildHeatmapDataUrl()
-    img.style.cssText = 'position:absolute;opacity:0.88;pointer-events:none;image-rendering:pixelated;z-index:5;'
-    wrapper.appendChild(img)
-    heatmapImg = img
+  // Leaflet 컨테이너 표시
+  const container = document.getElementById('heatmap-container')
+  container.style.display = 'block'
 
-    kakao.maps.event.addListener(kakaoMap, 'idle', () => {
-      if (isHeatmapMode) positionHeatmapImg()
+  // Leaflet 최초 초기화
+  if (!leafletMap) {
+    leafletMap = L.map('heatmap-container', {
+      center: [HM_CENTER_LAT, HM_CENTER_LNG],
+      zoom: 14,
+      zoomControl: false,
+      attributionControl: false,
     })
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(leafletMap)
+
+    heatLayer = L.heatLayer(HEAT_POINTS, {
+      radius: 25,
+      blur: 18,
+      maxZoom: 17,
+      max: 0.6,
+      gradient: { 0.0: '#00c896', 0.5: '#ffbb00', 1.0: '#ef4444' },
+    }).addTo(leafletMap)
   }
-  heatmapImg.style.display = 'block'
-  positionHeatmapImg()
+
+  // Leaflet은 숨겨진 상태에서 초기화되면 크기 계산이 틀림 — 표시 후 강제 리사이즈
+  setTimeout(() => leafletMap.invalidateSize(), 0)
 }
 
 function hideHeatmap() {
-  if (heatmapImg) heatmapImg.style.display = 'none'
+  document.getElementById('heatmap-container').style.display = 'none'
+  document.getElementById('map').style.display = 'block'
   if (window._clusterer) window._clusterer.setMap(kakaoMap)
   globalMarkers.forEach(m => m.setMap(kakaoMap))
 }
