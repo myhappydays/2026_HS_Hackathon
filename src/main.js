@@ -199,7 +199,7 @@ let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
 function buildHeatmapDataUrl() {
   if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 80, PX = 12, SIZE = GRID * PX, SEED = 4242
+  const GRID = 60, PX = 20, SIZE = GRID * PX, SEED = 4242
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
@@ -217,14 +217,18 @@ function buildHeatmapDataUrl() {
              + smoothNoise(nx * 24, ny * 24, SEED + 73) * 0.2
       const boost = Math.pow(1 - dist, 1.8)
       const raw   = Math.max(0, n * 0.55 + boost * 0.45)
-      const alpha = Math.min(0.92, raw * 1.1 + 0.1)
-      if (alpha < 0.08) continue
 
-      // GnBu colormap
-      const t = raw
-      const r = Math.round((1 - t) * 120)
-      const g = Math.round(180 - t * 80)
-      const b = Math.round(100 + t * 155)
+      // 임계값 이하 완전 투명
+      if (raw < 0.25) continue
+
+      // 0.25~1 → 0~1 재정규화
+      const t = (raw - 0.25) / 0.75
+      const alpha = Math.min(0.95, t * 0.85 + 0.1)
+
+      // 보라(낮) → 자홍 → 빨강(높)
+      const r = Math.round(120 + t * 135)   // 120→255
+      const g = Math.round(0)
+      const b = Math.round(180 - t * 180)   // 180→0
       ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`
       ctx.fillRect(gx * PX, gy * PX, PX, PX)
     }
