@@ -9,6 +9,8 @@
  * - 폼 제출 → Report 생성 → 군집 배정 → localStorage 저장
  */
 
+document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.html`
+
 import { generateId, compressImage, relativeTime } from './utils.js'
 import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
