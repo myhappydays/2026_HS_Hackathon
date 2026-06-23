@@ -235,17 +235,15 @@ function positionHeatmapImg() {
   const mPerPx = KAKAO_M_PER_PX[level] || 10
   const center = kakaoMap.getCenter()
 
-  // 히트맵 중심의 지도 내 픽셀 오프셋
   const dLat = HM_CENTER_LAT - center.getLat()
   const dLng = HM_CENTER_LNG - center.getLng()
-  const LAT_PER_M = 1 / 111000
   const LNG_PER_M = 1 / (111000 * Math.cos(center.getLat() * Math.PI / 180))
   const dxM = dLng / LNG_PER_M
-  const dyM = dLat / LAT_PER_M
+  const dyM = dLat / 111000 * 111000  // dLat * 111000m
 
   const mapW = mapEl.offsetWidth, mapH = mapEl.offsetHeight
-  const cx = mapW / 2 + dxM / mPerPx   // 히트맵 중심 픽셀 x
-  const cy = mapH / 2 - dyM / mPerPx   // y는 위쪽이 +lat이므로 반전
+  const cx = mapW / 2 + dxM / mPerPx
+  const cy = mapH / 2 - (dLat * 111000) / mPerPx
 
   const halfPx = HM_RADIUS_M / mPerPx
   const size   = halfPx * 2
@@ -262,23 +260,16 @@ function showHeatmap() {
   globalMarkers.forEach(m => m.setMap(null))
 
   if (!heatmapImg) {
-    const mapEl = document.getElementById('map')
+    const wrapper = document.getElementById('map-wrapper')
     const img = document.createElement('img')
+    img.id  = 'heatmap-overlay'
     img.src = buildHeatmapDataUrl()
-    img.style.cssText = 'position:absolute;opacity:0.72;pointer-events:none;image-rendering:pixelated;'
-    mapEl.style.position = 'relative'
-    mapEl.appendChild(img)
+    img.style.cssText = 'position:absolute;opacity:0.72;pointer-events:none;image-rendering:pixelated;z-index:5;'
+    wrapper.appendChild(img)
     heatmapImg = img
 
-    // 줌 시작 시 숨기고, idle(애니메이션 완전 종료)에서만 복구
-    kakao.maps.event.addListener(kakaoMap, 'zoom_start', () => {
-      if (heatmapImg) heatmapImg.style.display = 'none'
-    })
     kakao.maps.event.addListener(kakaoMap, 'idle', () => {
-      if (heatmapImg && isHeatmapMode) {
-        positionHeatmapImg()
-        heatmapImg.style.display = 'block'
-      }
+      if (isHeatmapMode) positionHeatmapImg()
     })
   }
   heatmapImg.style.display = 'block'
