@@ -217,7 +217,7 @@ form.addEventListener('submit', async e => {
 
   // 성공 토스트 표시 후 메인으로 이동
   showToast('success')
-  setTimeout(() => { location.href = '/2026_HS_Hackathon/index.html' }, 1200)
+  setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1200)
 })
 
 // ── Toast 헬퍼 ───────────────────────────────────────────
