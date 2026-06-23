@@ -110,9 +110,9 @@
       <div id="map-placeholder" class="absolute inset-0 flex items-center justify-center bg-surface">
         <span class="text-muted-foreground text-sm">지도 불러오는 중...</span>
       </div>
-      <!-- 뷰 토글 (핀 / 히트맵) -->
-      <div class="absolute top-3 right-3 z-10">
-        <div class="inline-flex rounded-lg border border-border bg-background/90 backdrop-blur-sm p-0.5 shadow-sm" role="group">
+      <!-- 뷰 토글 — #map 밖 형제이지만 absolute로 지도 위에 겹침, z-index로 카카오 레이어 위에 -->
+      <div class="absolute top-3 right-3 z-[9999] pointer-events-none">
+        <div class="inline-flex rounded-lg border border-border bg-background/90 backdrop-blur-sm p-0.5 shadow-sm pointer-events-auto" role="group">
           <button type="button" id="view-pin-btn"
             class="py-1.5 px-3 inline-flex items-center gap-1.5 text-xs font-medium rounded-md transition-colors bg-primary text-white">
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
