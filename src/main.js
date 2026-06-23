@@ -212,23 +212,23 @@ function buildHeatmapDataUrl() {
       const dist = Math.sqrt(dx * dx + dy * dy) * 2
       if (dist > 1) continue
 
-      const n = smoothNoise(nx * 6,  ny * 6,  SEED)     * 0.5
-             + smoothNoise(nx * 12, ny * 12, SEED + 37) * 0.3
-             + smoothNoise(nx * 24, ny * 24, SEED + 73) * 0.2
-      const boost = Math.pow(1 - dist, 1.8)
-      const raw   = Math.max(0, n * 0.55 + boost * 0.45)
+      // 저주파 노이즈로 넓게 퍼진 패턴
+      const n = smoothNoise(nx * 3,  ny * 3,  SEED)      * 0.5
+             + smoothNoise(nx * 7,  ny * 7,  SEED + 37)  * 0.35
+             + smoothNoise(nx * 14, ny * 14, SEED + 73)  * 0.15
+      // centerBoost 제거 — 전체 범위에 고르게
+      const edgeFade = Math.pow(1 - dist, 0.5)   // 경계만 살짝 페이드
+      const raw = Math.max(0, (n * 0.5 + 0.5) * edgeFade)
 
-      // 임계값 이하 완전 투명
-      if (raw < 0.25) continue
+      if (raw < 0.2) continue
 
-      // 0.25~1 → 0~1 재정규화
-      const t = (raw - 0.25) / 0.75
-      const alpha = Math.min(0.95, t * 0.85 + 0.1)
+      const t = Math.min(1, (raw - 0.2) / 0.8)
+      const alpha = Math.min(0.92, t * 0.8 + 0.15)
 
-      // 보라(낮) → 자홍 → 빨강(높)
-      const r = Math.round(120 + t * 135)   // 120→255
-      const g = Math.round(0)
-      const b = Math.round(180 - t * 180)   // 180→0
+      // 보라 → 자홍 → 빨강
+      const r = Math.round(120 + t * 135)
+      const g = 0
+      const b = Math.round(180 - t * 180)
       ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`
       ctx.fillRect(gx * PX, gy * PX, PX, PX)
     }
