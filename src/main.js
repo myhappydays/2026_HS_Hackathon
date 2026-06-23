@@ -199,7 +199,7 @@ let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
 function buildHeatmapDataUrl() {
   if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 60, PX = 20, SIZE = GRID * PX, SEED = 4242
+  const GRID = 30, PX = 36, SIZE = GRID * PX, SEED = 4242
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
@@ -212,24 +212,24 @@ function buildHeatmapDataUrl() {
       const dist = Math.sqrt(dx * dx + dy * dy) * 2
       if (dist > 1) continue
 
-      // 저주파 노이즈로 넓게 퍼진 패턴
-      const n = smoothNoise(nx * 3,  ny * 3,  SEED)      * 0.5
-             + smoothNoise(nx * 7,  ny * 7,  SEED + 37)  * 0.35
-             + smoothNoise(nx * 14, ny * 14, SEED + 73)  * 0.15
-      // centerBoost 제거 — 전체 범위에 고르게
-      const edgeFade = Math.pow(1 - dist, 0.5)   // 경계만 살짝 페이드
-      const raw = Math.max(0, (n * 0.5 + 0.5) * edgeFade)
+      const n = smoothNoise(nx * 3,  ny * 3,  SEED)     * 0.6
+             + smoothNoise(nx * 7,  ny * 7,  SEED + 37) * 0.3
+             + smoothNoise(nx * 14, ny * 14, SEED + 73) * 0.1
+      const normalized = n * 0.5 + 0.5          // -1~1 → 0~1
+      const edgeFade   = Math.pow(1 - dist, 0.4) // 경계만 살짝 페이드
 
-      if (raw < 0.2) continue
+      // 거듭제곱으로 편향 강화 — 높은 값은 더 높게, 낮은 값은 더 낮게
+      const biased = Math.pow(normalized * edgeFade, 2.5)
 
-      const t = Math.min(1, (raw - 0.2) / 0.8)
-      const alpha = Math.min(0.92, t * 0.8 + 0.15)
+      if (biased < 0.05) continue  // 낮은 값 완전 투명
+
+      const t     = Math.min(1, biased / 0.6)   // 상위 구간에 색 집중
+      const alpha = Math.min(0.95, biased * 2.5)
 
       // 보라 → 자홍 → 빨강
       const r = Math.round(120 + t * 135)
-      const g = 0
       const b = Math.round(180 - t * 180)
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`
+      ctx.fillStyle = `rgba(${r},0,${b},${alpha.toFixed(2)})`
       ctx.fillRect(gx * PX, gy * PX, PX, PX)
     }
   }
