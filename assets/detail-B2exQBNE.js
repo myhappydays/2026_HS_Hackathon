@@ -1,8 +1,8 @@
-import{a as e,c as t,r as n,t as r,u as i}from"./utils-Y9Y7vo0D.js";var a=document.getElementById(`loading-state`),o=document.getElementById(`detail-content`),s=document.getElementById(`error-state`),c=new URLSearchParams(location.search).get(`id`);function l(){if(!c){u();return}let e=t(c);if(!e){u();return}let n=i(e.representId);if(!n){u();return}d(e,n)}function u(){a.classList.add(`hidden`),s.classList.remove(`hidden`)}function d(t,s){let c=t.reportIds.map(e=>i(e)).filter(Boolean).filter(e=>e.imageBase64);f(c);let l=n(t.danger),u=r(t.category);document.getElementById(`badge-area`).innerHTML=`
+import{a as e,c as t,r as n,t as r,u as i}from"./utils-Y9Y7vo0D.js";var a=`/2026_HS_Hackathon/`;document.getElementById(`nav-home`).href=`${a}index.html`,document.getElementById(`nav-home-fallback`).href=`${a}index.html`;var o=document.getElementById(`loading-state`),s=document.getElementById(`detail-content`),c=document.getElementById(`error-state`),l=new URLSearchParams(location.search).get(`id`);function u(){if(!l){d();return}let e=t(l);if(!e){d();return}let n=i(e.representId);if(!n){d();return}f(e,n)}function d(){o.classList.add(`hidden`),c.classList.remove(`hidden`)}function f(t,a){let c=t.reportIds.map(e=>i(e)).filter(Boolean).filter(e=>e.imageBase64);p(c);let l=n(t.danger),u=r(t.category);document.getElementById(`badge-area`).innerHTML=`
     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${l.bg} ${l.text}">${l.label}</span>
     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${u}</span>
     ${t.reportIds.length>1?`<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">제보 ${t.reportIds.length}건</span>`:``}
-  `,document.getElementById(`cluster-title`).textContent=s.title,document.getElementById(`cluster-description`).textContent=s.description||`상세 설명이 없습니다.`,document.getElementById(`cluster-address`).textContent=s.location.address||`위치 정보 없음`,document.getElementById(`cluster-time`).textContent=`${e(t.createdAt)} 최초 등록 · ${e(t.updatedAt)} 업데이트`,document.getElementById(`related-count`).textContent=`${t.reportIds.length}건`;let d=document.getElementById(`related-list`);d.innerHTML=`
+  `,document.getElementById(`cluster-title`).textContent=a.title,document.getElementById(`cluster-description`).textContent=a.description||`상세 설명이 없습니다.`,document.getElementById(`cluster-address`).textContent=a.location.address||`위치 정보 없음`,document.getElementById(`cluster-time`).textContent=`${e(t.createdAt)} 최초 등록 · ${e(t.updatedAt)} 업데이트`,document.getElementById(`related-count`).textContent=`${t.reportIds.length}건`;let d=document.getElementById(`related-list`);d.innerHTML=`
     <div class="hs-accordion-group space-y-3">
       ${c.map((t,i)=>{let a=n(t.danger),o=r(t.category);return`
         <div class="hs-accordion bg-card border border-border rounded-xl overflow-hidden" id="acc-${t.id}">
@@ -60,7 +60,7 @@ import{a as e,c as t,r as n,t as r,u as i}from"./utils-Y9Y7vo0D.js";var a=docume
         </div>
         `}).join(``)}
     </div>
-  `,window.HSAccordion&&window.HSAccordion.autoInit(),a.classList.add(`hidden`),o.classList.remove(`hidden`)}function f(e){let t=document.getElementById(`carousel-wrap`);if(e.length===0){t.classList.add(`hidden`);return}let n=document.getElementById(`carousel-body`);n.innerHTML=e.map(e=>`
+  `,window.HSAccordion&&window.HSAccordion.autoInit(),o.classList.add(`hidden`),s.classList.remove(`hidden`)}function p(e){let t=document.getElementById(`carousel-wrap`);if(e.length===0){t.classList.add(`hidden`);return}let n=document.getElementById(`carousel-body`);n.innerHTML=e.map(e=>`
     <div class="hs-carousel-slide flex-shrink-0 w-full">
       <img src="${e.imageBase64}" alt="제보 사진"
         class="w-full object-cover" style="height:260px;">
@@ -69,4 +69,4 @@ import{a as e,c as t,r as n,t as r,u as i}from"./utils-Y9Y7vo0D.js";var a=docume
       <span class="hs-carousel-pagination-item${t===0?` active`:``}">
         <span></span>
       </span>
-    `).join(``)),e.length<=1&&(t.querySelector(`.hs-carousel-prev`)?.classList.add(`hidden`),t.querySelector(`.hs-carousel-next`)?.classList.add(`hidden`),r&&r.classList.add(`hidden`)),window.HSCarousel&&window.HSCarousel.autoInit()}l();
+    `).join(``)),e.length<=1&&(t.querySelector(`.hs-carousel-prev`)?.classList.add(`hidden`),t.querySelector(`.hs-carousel-next`)?.classList.add(`hidden`),r&&r.classList.add(`hidden`)),window.HSCarousel&&window.HSCarousel.autoInit()}u();
