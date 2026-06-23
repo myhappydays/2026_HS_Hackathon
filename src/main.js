@@ -146,7 +146,23 @@ function renderMarkers() {
 
 // ── 히트맵 ───────────────────────────────────────────────
 
-const HEATMAP_KEY = 'heatmap_points'
+let isHeatmapMode = false
+
+function setToggleActive(mode) {
+  const pinBtn  = document.getElementById('view-pin-btn')
+  const heatBtn = document.getElementById('view-heat-btn')
+  if (mode === 'pin') {
+    pinBtn.classList.add('bg-primary', 'text-white')
+    pinBtn.classList.remove('text-muted-foreground')
+    heatBtn.classList.remove('bg-primary', 'text-white')
+    heatBtn.classList.add('text-muted-foreground')
+  } else {
+    heatBtn.classList.add('bg-primary', 'text-white')
+    heatBtn.classList.remove('text-muted-foreground')
+    pinBtn.classList.remove('bg-primary', 'text-white')
+    pinBtn.classList.add('text-muted-foreground')
+  }
+}
 
 /** 심플 2D 펄린-스타일 노이즈 (gradient noise, 완전 결정론적) */
 function smoothNoise(x, y, seed = 0) {
@@ -166,51 +182,28 @@ function smoothNoise(x, y, seed = 0) {
   return lerp(lerp(n00, n10, fade(fx)), lerp(n01, n11, fade(fx)), fade(fy))
 }
 
-let heatmap = null        // kakao.maps.CustomOverlay 인스턴스
-let isHeatmapMode = false
+// ── 히트맵 — DOM img + 이벤트 기반 위치 동기화 ──────────
 
-function setToggleActive(mode) {
-  const pinBtn  = document.getElementById('view-pin-btn')
-  const heatBtn = document.getElementById('view-heat-btn')
-  if (mode === 'pin') {
-    pinBtn.classList.add('bg-primary', 'text-white')
-    pinBtn.classList.remove('text-muted-foreground')
-    heatBtn.classList.remove('bg-primary', 'text-white')
-    heatBtn.classList.add('text-muted-foreground')
-  } else {
-    heatBtn.classList.add('bg-primary', 'text-white')
-    heatBtn.classList.remove('text-muted-foreground')
-    pinBtn.classList.remove('bg-primary', 'text-white')
-    pinBtn.classList.add('text-muted-foreground')
-  }
+const HM_CENTER_LAT = 37.2132, HM_CENTER_LNG = 126.9521
+const HM_RADIUS_M   = 900  // 반경 900m
+
+// 카카오맵 레벨별 1픽셀 = ?미터 (위도 37° 기준, 타일 256px)
+const KAKAO_M_PER_PX = {
+  1: 0.6, 2: 1.2, 3: 2.5, 4: 5, 5: 10,
+  6: 20, 7: 40, 8: 80, 9: 160, 10: 320,
+  11: 640, 12: 1280, 13: 2560, 14: 5120,
 }
 
-// ── 히트맵 — 오프스크린 Canvas → CustomOverlay ───────────
+let heatmapImg   = null   // DOM <img>
+let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
-const CENTER_LAT = 37.2132, CENTER_LNG = 126.9521  // 협성대 중심
-const RADIUS_M   = 900   // 반경 900m
-const LAT_SPAN   = RADIUS_M / 111000
-const LNG_SPAN   = RADIUS_M / (111000 * Math.cos(CENTER_LAT * Math.PI / 180))
-
-// 히트맵 이미지 좌상단/우하단 LatLng (CustomOverlay 위치 계산용)
-const HEAT_SW = new Array(2)  // [lat, lng] 좌하단
-const HEAT_NE = new Array(2)  // [lat, lng] 우상단
-
-/**
- * 오프스크린 Canvas에 그리드 히트맵 렌더링 → dataURL 반환
- * AbstractOverlay 없이 한 번만 그림
- */
-function buildHeatmapImage() {
-  const GRID  = 40
-  const PX    = 16          // 셀 하나 픽셀 크기
-  const SIZE  = GRID * PX   // 640×640
-
+function buildHeatmapDataUrl() {
+  if (heatmapDataUrl) return heatmapDataUrl
+  const GRID = 40, PX = 16, SIZE = GRID * PX, SEED = 4242
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
   ctx.clearRect(0, 0, SIZE, SIZE)
-
-  const SEED = 4242
 
   for (let gy = 0; gy < GRID; gy++) {
     for (let gx = 0; gx < GRID; gx++) {
@@ -222,63 +215,71 @@ function buildHeatmapImage() {
       const n = smoothNoise(nx * 6,  ny * 6,  SEED)     * 0.5
              + smoothNoise(nx * 12, ny * 12, SEED + 37) * 0.3
              + smoothNoise(nx * 24, ny * 24, SEED + 73) * 0.2
-      const centerBoost = Math.pow(1 - dist, 1.8)
-      const raw    = Math.max(0, n * 0.55 + centerBoost * 0.45)
-      const alpha  = Math.min(0.75, raw * 0.9)
+      const boost = Math.pow(1 - dist, 1.8)
+      const raw   = Math.max(0, n * 0.55 + boost * 0.45)
+      const alpha = Math.min(0.75, raw * 0.9)
       if (alpha < 0.05) continue
-
-      // 빨강(high) → 주황(mid) → 노랑(low) 색상 보간
-      const r = 220
       const g = Math.round(raw * 140)
-      const b = 0
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`
+      ctx.fillStyle = `rgba(220,${g},0,${alpha.toFixed(2)})`
       ctx.fillRect(gx * PX, gy * PX, PX, PX)
     }
   }
+  heatmapDataUrl = canvas.toDataURL('image/png')
+  return heatmapDataUrl
+}
 
-  return canvas.toDataURL('image/png')
+function positionHeatmapImg() {
+  if (!heatmapImg || !kakaoMap) return
+  const mapEl  = document.getElementById('map')
+  const level  = kakaoMap.getLevel()
+  const mPerPx = KAKAO_M_PER_PX[level] || 10
+  const center = kakaoMap.getCenter()
+
+  // 히트맵 중심의 지도 내 픽셀 오프셋
+  const dLat = HM_CENTER_LAT - center.getLat()
+  const dLng = HM_CENTER_LNG - center.getLng()
+  const LAT_PER_M = 1 / 111000
+  const LNG_PER_M = 1 / (111000 * Math.cos(center.getLat() * Math.PI / 180))
+  const dxM = dLng / LNG_PER_M
+  const dyM = dLat / LAT_PER_M
+
+  const mapW = mapEl.offsetWidth, mapH = mapEl.offsetHeight
+  const cx = mapW / 2 + dxM / mPerPx   // 히트맵 중심 픽셀 x
+  const cy = mapH / 2 - dyM / mPerPx   // y는 위쪽이 +lat이므로 반전
+
+  const halfPx = HM_RADIUS_M / mPerPx
+  const size   = halfPx * 2
+
+  heatmapImg.style.left   = `${cx - halfPx}px`
+  heatmapImg.style.top    = `${cy - halfPx}px`
+  heatmapImg.style.width  = `${size}px`
+  heatmapImg.style.height = `${size}px`
 }
 
 function showHeatmap() {
   if (!kakaoMap) return
-
-  // 마커 + 클러스터러 숨기기
   if (window._clusterer) window._clusterer.setMap(null)
   globalMarkers.forEach(m => m.setMap(null))
 
-  if (heatmap) { heatmap.setMap(kakaoMap); return }
+  if (!heatmapImg) {
+    const mapEl = document.getElementById('map')
+    const img = document.createElement('img')
+    img.src = buildHeatmapDataUrl()
+    img.style.cssText = 'position:absolute;opacity:0.72;pointer-events:none;image-rendering:pixelated;'
+    mapEl.style.position = 'relative'
+    mapEl.appendChild(img)
+    heatmapImg = img
 
-  const dataUrl = buildHeatmapImage()
-
-  // 히트맵 커버 범위 (중심 ± span)
-  const swLat = CENTER_LAT - LAT_SPAN, swLng = CENTER_LNG - LNG_SPAN
-  const neLat = CENTER_LAT + LAT_SPAN, neLng = CENTER_LNG + LNG_SPAN
-
-  // 중심 좌표에 CustomOverlay로 배치
-  // content: img를 지도 좌표 범위에 정확히 맞추려면
-  // 카카오맵 proj로 sw/ne 픽셀 거리를 계산해서 img 크기 지정
-  const proj = kakaoMap.getProjection()
-  const swPt = proj.containerPointFromCoords(new kakao.maps.LatLng(swLat, swLng))
-  const nePt = proj.containerPointFromCoords(new kakao.maps.LatLng(neLat, neLng))
-  const pxW  = Math.abs(nePt.x - swPt.x)
-  const pxH  = Math.abs(swPt.y - nePt.y)
-
-  const img = document.createElement('img')
-  img.src = dataUrl
-  img.style.cssText = `width:${pxW}px;height:${pxH}px;opacity:0.72;pointer-events:none;display:block;`
-
-  heatmap = new kakao.maps.CustomOverlay({
-    position: new kakao.maps.LatLng(neLat, swLng),  // 좌상단 고정
-    content:  img,
-    xAnchor:  0,
-    yAnchor:  0,
-    zIndex:   1,
-  })
-  heatmap.setMap(kakaoMap)
+    // 지도 이동/줌 때마다 위치 갱신
+    kakao.maps.event.addListener(kakaoMap, 'center_changed', positionHeatmapImg)
+    kakao.maps.event.addListener(kakaoMap, 'zoom_changed',   positionHeatmapImg)
+  }
+  heatmapImg.style.display = 'block'
+  positionHeatmapImg()
 }
 
 function hideHeatmap() {
-  if (heatmap) heatmap.setMap(null)
+  if (heatmapImg) heatmapImg.style.display = 'none'
   if (window._clusterer) window._clusterer.setMap(kakaoMap)
   globalMarkers.forEach(m => m.setMap(kakaoMap))
 }
