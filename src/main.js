@@ -185,7 +185,7 @@ function smoothNoise(x, y, seed = 0) {
 // ── 히트맵 — DOM img + 이벤트 기반 위치 동기화 ──────────
 
 const HM_CENTER_LAT = 37.2132, HM_CENTER_LNG = 126.9521
-const HM_RADIUS_M   = 900  // 반경 900m
+const HM_RADIUS_M   = 2000  // 반경 2km
 
 // 카카오맵 레벨별 1픽셀 = ?미터 (위도 37° 기준, 타일 256px)
 const KAKAO_M_PER_PX = {
@@ -199,7 +199,7 @@ let heatmapDataUrl = null // 미리 렌더링된 dataUrl
 
 function buildHeatmapDataUrl() {
   if (heatmapDataUrl) return heatmapDataUrl
-  const GRID = 40, PX = 16, SIZE = GRID * PX, SEED = 4242
+  const GRID = 80, PX = 12, SIZE = GRID * PX, SEED = 4242
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const ctx = canvas.getContext('2d')
@@ -217,10 +217,10 @@ function buildHeatmapDataUrl() {
              + smoothNoise(nx * 24, ny * 24, SEED + 73) * 0.2
       const boost = Math.pow(1 - dist, 1.8)
       const raw   = Math.max(0, n * 0.55 + boost * 0.45)
-      const alpha = Math.min(0.75, raw * 0.9)
-      if (alpha < 0.05) continue
+      const alpha = Math.min(0.92, raw * 1.1 + 0.1)
+      if (alpha < 0.08) continue
 
-      // GnBu colormap: 낮은값 연두→청록, 높은값 진파랑
+      // GnBu colormap
       const t = raw
       const r = Math.round((1 - t) * 120)
       const g = Math.round(180 - t * 80)
@@ -270,7 +270,7 @@ function showHeatmap() {
     const img = document.createElement('img')
     img.id  = 'heatmap-overlay'
     img.src = buildHeatmapDataUrl()
-    img.style.cssText = 'position:absolute;opacity:0.72;pointer-events:none;image-rendering:pixelated;z-index:5;'
+    img.style.cssText = 'position:absolute;opacity:0.88;pointer-events:none;image-rendering:pixelated;z-index:5;'
     wrapper.appendChild(img)
     heatmapImg = img
 
