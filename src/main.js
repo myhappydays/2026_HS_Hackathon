@@ -215,34 +215,34 @@ function setToggleActive(mode) {
   }
 }
 
-function showHeatmap() {
-  if (!kakaoMap) return
-  if (heatmap) { heatmap.setMap(kakaoMap); return }
+// ── Canvas AbstractOverlay 히트맵 클래스 (전역 정의) ─────
+let CanvasHeatmap = null
 
-  const points = generateHeatmapPoints()
+function ensureCanvasHeatmapClass() {
+  if (CanvasHeatmap) return
+  if (typeof kakao === 'undefined' || !kakao.maps.AbstractOverlay) return
 
-  // ── Canvas AbstractOverlay 히트맵 ──────────────────────
-  function CanvasHeatmap(pts) {
+  CanvasHeatmap = function (pts) {
     this._pts = pts
     this._canvas = null
+    kakao.maps.AbstractOverlay.call(this)
   }
-  CanvasHeatmap.prototype = new kakao.maps.AbstractOverlay()
+  CanvasHeatmap.prototype = Object.create(kakao.maps.AbstractOverlay.prototype)
+  CanvasHeatmap.prototype.constructor = CanvasHeatmap
 
   CanvasHeatmap.prototype.onAdd = function () {
     const panel = this.getPanels().overlayLayer
-    this._canvas = document.createElement('canvas')
-    this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;'
-    panel.appendChild(this._canvas)
+    const canvas = document.createElement('canvas')
+    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;'
+    panel.appendChild(canvas)
+    this._canvas = canvas
   }
 
   CanvasHeatmap.prototype.draw = function () {
-    const map    = this.getMap()
-    const proj   = map.getProjection()
-    const bounds = map.getBounds()
-    const sw     = proj.containerPointFromCoords(bounds.getSouthWest())
-    const ne     = proj.containerPointFromCoords(bounds.getNorthEast())
-
-    const mapEl  = document.getElementById('map')
+    if (!this._canvas) return
+    const map   = this.getMap()
+    const proj  = map.getProjection()
+    const mapEl = document.getElementById('map')
     const W = mapEl.offsetWidth, H = mapEl.offsetHeight
     const canvas = this._canvas
     canvas.width  = W
@@ -253,18 +253,19 @@ function showHeatmap() {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, W, H)
 
-    const RADIUS = Math.max(30, Math.round(W / 12))
+    const level  = map.getLevel()
+    const RADIUS = Math.max(20, Math.round(80 / Math.pow(1.5, level - 3)))
 
-    // 각 포인트를 radial gradient로 그림
     this._pts.forEach(p => {
-      const pos = proj.containerPointFromCoords(new kakao.maps.LatLng(p.lat, p.lng))
+      const latlng = new kakao.maps.LatLng(p.lat, p.lng)
+      const pos    = proj.containerPointFromCoords(latlng)
       const x = pos.x, y = pos.y
       if (x < -RADIUS || x > W + RADIUS || y < -RADIUS || y > H + RADIUS) return
 
-      const alpha = Math.min(1, (p.weight / 10) * 0.55 + 0.1)
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, RADIUS)
+      const alpha = Math.min(0.85, (p.weight / 10) * 0.6 + 0.15)
+      const grad  = ctx.createRadialGradient(x, y, 0, x, y, RADIUS)
       grad.addColorStop(0,   `rgba(220,38,38,${alpha})`)
-      grad.addColorStop(0.4, `rgba(251,146,60,${alpha * 0.6})`)
+      grad.addColorStop(0.4, `rgba(251,146,60,${(alpha * 0.55).toFixed(2)})`)
       grad.addColorStop(1,   'rgba(251,146,60,0)')
       ctx.beginPath()
       ctx.arc(x, y, RADIUS, 0, Math.PI * 2)
@@ -279,7 +280,15 @@ function showHeatmap() {
     }
     this._canvas = null
   }
+}
 
+function showHeatmap() {
+  if (!kakaoMap) return
+  ensureCanvasHeatmapClass()
+  if (!CanvasHeatmap) { console.warn('CanvasHeatmap 클래스 초기화 실패'); return }
+  if (heatmap) { heatmap.setMap(kakaoMap); return }
+
+  const points = generateHeatmapPoints()
   heatmap = new CanvasHeatmap(points)
   heatmap.setMap(kakaoMap)
 }
