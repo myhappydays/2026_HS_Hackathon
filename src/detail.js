@@ -6,6 +6,10 @@
 import { getClusterById, getReportById } from './storage.js'
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
 
+const BASE = import.meta.env.BASE_URL
+document.getElementById('nav-home').href = `${BASE}index.html`
+document.getElementById('nav-home-fallback').href = `${BASE}index.html`
+
 const loadingState  = document.getElementById('loading-state')
 const detailContent = document.getElementById('detail-content')
 const errorState    = document.getElementById('error-state')

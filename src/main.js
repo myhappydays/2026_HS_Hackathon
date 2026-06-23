@@ -12,6 +12,8 @@ import {
 } from './bedrock.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 
+document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
+
 const reportList  = document.getElementById('report-list')
 const emptyState  = document.getElementById('empty-state')
 const reportCount = document.getElementById('report-count')
