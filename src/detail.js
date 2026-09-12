@@ -27,6 +27,67 @@ function init() {
   if (!repReport) { showError(); return }
 
   renderDetail(cluster, repReport)
+
+  // 내가 공감한 군집 ID 관리
+  const getLikedList = () => JSON.parse(localStorage.getItem('my_likes') || '[]')
+  const btnLike = document.getElementById('btn-like')
+
+  // 초기 렌더링 시 이미 공감했다면 UI 변경
+  if (getLikedList().includes(cluster.id)) {
+    btnLike.classList.replace('bg-primary/10', 'bg-primary')
+    btnLike.classList.replace('text-primary', 'text-white')
+    btnLike.classList.add('opacity-80', 'cursor-not-allowed')
+    btnLike.innerHTML = `✔️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes || 0}</span>`
+  }
+
+  // 공감 버튼 이벤트
+  btnLike.addEventListener('click', () => {
+    const likedList = getLikedList()
+    
+    // 이미 공감했는지 검사
+    if (likedList.includes(cluster.id)) {
+      alert('이미 공감(위험 확인)을 표시한 제보입니다.')
+      return
+    }
+
+    cluster.likes = (cluster.likes || 0) + 1
+    updateCluster(cluster)
+    
+    // 로컬스토리지에 저장 (1계정당 1회)
+    likedList.push(cluster.id)
+    localStorage.setItem('my_likes', JSON.stringify(likedList))
+
+    // UI 즉시 업데이트
+    btnLike.classList.replace('bg-primary/10', 'bg-primary')
+    btnLike.classList.replace('text-primary', 'text-white')
+    btnLike.classList.add('opacity-80', 'cursor-not-allowed')
+    btnLike.innerHTML = `✔️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes}</span>`
+  })
+
+  // 댓글 폼 이벤트
+  document.getElementById('comment-form').addEventListener('submit', (e) => {
+    e.preventDefault()
+    const input = document.getElementById('comment-input')
+    const text = input.value.trim()
+    if (!text) return
+
+    if (!cluster.comments) cluster.comments = []
+    
+    // 익명 생성기
+    const anonNames = ['익명의 주민', '동네 보안관', '지나가는 행인', '안전 요원', '목격자']
+    const randomName = anonNames[Math.floor(Math.random() * anonNames.length)]
+
+    cluster.comments.push({
+      id: Date.now().toString(),
+      text,
+      author: randomName,
+      createdAt: new Date().toISOString()
+    })
+    
+    updateCluster(cluster)
+    input.value = ''
+    renderDetail(cluster, repReport) // 리렌더링
+  })
 }
 
 function showError() {
@@ -157,6 +218,33 @@ function renderDetail(cluster, repReport) {
       }
     })
   })
+
+  // 공감 렌더링
+  document.getElementById('like-count').textContent = cluster.likes || 0
+
+  // 댓글 렌더링
+  const comments = cluster.comments || []
+  document.getElementById('comment-count').textContent = `${comments.length}개`
+  
+  const commentList = document.getElementById('comment-list')
+  if (comments.length === 0) {
+    commentList.innerHTML = `<p class="text-sm text-muted-foreground text-center py-4">아직 공유된 상황이 없습니다. 첫 번째로 상황을 공유해주세요!</p>`
+  } else {
+    commentList.innerHTML = comments.map(c => `
+      <div class="flex gap-2">
+        <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 font-bold text-xs">
+          ${c.author.charAt(0)}
+        </div>
+        <div class="flex-1 bg-surface border border-border rounded-lg rounded-tl-none p-3">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-semibold text-foreground">${c.author}</span>
+            <span class="text-[10px] text-muted-foreground">${relativeTime(c.createdAt)}</span>
+          </div>
+          <p class="text-sm text-foreground">${c.text}</p>
+        </div>
+      </div>
+    `).join('')
+  }
 
   // 표시
   loadingState.classList.add('hidden')
