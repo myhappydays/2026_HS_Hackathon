@@ -21,21 +21,6 @@
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
 
-  <!-- Theme Init Script (FOUC 방지) -->
-  <script>
-    (function() {
-      try {
-        var saved = localStorage.getItem('fermata_theme');
-        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (saved === 'dark' || (!saved && prefersDark) || !saved) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      } catch (e) {}
-    })();
-  </script>
-
   <!-- Playfair Display (로고용) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,7 +69,7 @@
     }
   </script>
 
-  <!-- Crimson Theme CSS -->
+  <!-- Rose Theme CSS -->
   <link rel="stylesheet" href="/css/themes/crimson.css">
 
   <!-- Leaflet CSS -->
@@ -109,31 +94,16 @@
     input[type=number] { -moz-appearance: textfield; }
   </style>
 </head>
-<body class="bg-background-1 text-foreground min-h-screen">
+<body class="bg-background text-foreground min-h-screen">
 
   <!-- 모바일 앱 래퍼 -->
   <div class="relative w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
 
     <!-- 헤더 -->
-    <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center justify-center">
       <div class="flex items-center gap-2">
-        <img src="/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md shadow-sm">
-        <span class="text-2xl font-semibold text-foreground tracking-tight" style="font-family: 'Playfair Display', serif;">Fermata</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <!-- 라이트/다크 모드 전환 버튼 -->
-        <button type="button" id="theme-toggle-btn"
-          class="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors shadow-sm"
-          title="다크/라이트 모드 전환" aria-label="다크/라이트 모드 전환">
-          <!-- Sun Icon (다크 모드일 때 표시) -->
-          <svg class="theme-icon-sun w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
-          </svg>
-          <!-- Moon Icon (라이트 모드일 때 표시) -->
-          <svg class="theme-icon-moon w-4 h-4 hidden text-slate-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
-          </svg>
-        </button>
+        <img src="/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
+        <span class="text-2xl font-semibold text-foreground" style="font-family: 'Playfair Display', serif;">Fermata</span>
       </div>
     </header>
 
@@ -209,6 +179,27 @@
           </svg>
           <span id="ai-active-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary border-2 border-background"></span>
         </button>
+      </div>
+    </div>
+
+    <!-- 필터 및 정렬 UI -->
+    <div class="px-4 pb-3 flex flex-col gap-3">
+      <!-- 카테고리 칩 -->
+      <div class="flex gap-2 overflow-x-auto pb-1" id="category-filter" style="scrollbar-width: none;">
+        <button class="filter-chip active px-3 py-1.5 rounded-full text-xs font-semibold bg-foreground text-background whitespace-nowrap transition-colors" data-cat="all">전체</button>
+        <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="road">도로/교통</button>
+        <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="weather">기상/자연</button>
+        <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="facility">시설물</button>
+        <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="safety">치안/안전</button>
+      </div>
+      
+      <!-- 정렬 드롭다운 -->
+      <div class="flex justify-end">
+        <select id="sort-filter" class="py-1.5 px-3 block bg-surface border border-border rounded-lg text-xs text-foreground focus:border-primary focus:outline-none">
+          <option value="recent">최신순</option>
+          <option value="nearest">가까운순</option>
+          <option value="danger">위험도순</option>
+        </select>
       </div>
     </div>
 
@@ -423,7 +414,7 @@
   </div><!-- /ai-modal -->
 
   <!-- 카카오 지도 API (services: 역지오코딩, clusterer: 마커 클러스터링) -->
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=82c99f718e19c13b6028995f893ca1b9&libraries=services,clusterer,visualization"></script>
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=7f192d556aecbc3e63ee3ba3a151f1d0&libraries=services,clusterer,visualization"></script>
 
   <!-- Leaflet JS + Leaflet.heat (히트맵 뷰) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
