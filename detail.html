@@ -179,6 +179,17 @@
                 d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span id="cluster-time"></span>
           </div>
+
+          <!-- 공감 버튼 영역 -->
+          <div class="mt-4 flex">
+            <button type="button" id="btn-like"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition text-sm font-semibold">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              ⚠️ 나도 겪었어요 <span id="like-count" class="ml-1 text-primary">0</span>
+            </button>
+          </div>
         </div>
 
         <!-- 같은 사건으로 묶인 제보 목록 -->
@@ -190,6 +201,34 @@
           <div class="space-y-3" id="related-list">
             <!-- JS로 동적 렌더링 -->
           </div>
+        </div>
+
+        <!-- 실시간 댓글(소통) 영역 -->
+        <div class="px-4 py-6 border-t border-border mt-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-sm text-foreground flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+              </svg>
+              실시간 상황 공유
+            </h3>
+            <span class="text-xs text-muted-foreground" id="comment-count">0개</span>
+          </div>
+          
+          <!-- 댓글 목록 -->
+          <div class="space-y-3 mb-4" id="comment-list">
+            <!-- JS로 동적 렌더링 -->
+          </div>
+
+          <!-- 댓글 입력 폼 -->
+          <form id="comment-form" class="flex gap-2">
+            <input type="text" id="comment-input" required placeholder="현장 상황을 공유해주세요..." 
+              class="flex-1 py-2 px-3 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground">
+            <button type="submit" 
+              class="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg text-sm hover:bg-primary/90 transition shadow-sm whitespace-nowrap">
+              등록
+            </button>
+          </form>
         </div>
 
       </div><!-- /detail-content -->
