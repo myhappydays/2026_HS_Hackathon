@@ -11,9 +11,6 @@ import {
   getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
 } from './bedrock.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
-import { initTheme } from './theme.js'
-
-initTheme()
 
 document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
 
@@ -21,6 +18,42 @@ const reportList  = document.getElementById('report-list')
 const emptyState  = document.getElementById('empty-state')
 const reportCount = document.getElementById('report-count')
 const mapPlaceholder = document.getElementById('map-placeholder')
+
+let currentCategory = 'all'
+let currentSort = 'recent'
+
+function getFilteredClusters() {
+  let clusters = getClusters()
+  if (currentCategory !== 'all') {
+    clusters = clusters.filter(c => c.category === currentCategory)
+  }
+  return clusters
+}
+
+// 필터 및 정렬 이벤트 등록
+document.querySelectorAll('.filter-chip').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    document.querySelectorAll('.filter-chip').forEach(b => {
+      b.classList.remove('active', 'bg-foreground', 'text-background')
+      b.classList.add('bg-surface', 'text-muted-foreground')
+    })
+    const target = e.currentTarget
+    target.classList.remove('bg-surface', 'text-muted-foreground')
+    target.classList.add('active', 'bg-foreground', 'text-background')
+    
+    currentCategory = target.getAttribute('data-cat')
+    renderMarkers()
+    renderList(userLat, userLng)
+  })
+})
+
+const sortSelect = document.getElementById('sort-filter')
+if (sortSelect) {
+  sortSelect.addEventListener('change', (e) => {
+    currentSort = e.target.value
+    renderList(userLat, userLng)
+  })
+}
 
 // 위험도별 마커 이미지 (카카오 기본 핀에 색상 오버레이)
 const DANGER_COLOR = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' }
@@ -77,7 +110,15 @@ function initMap(lat, lng) {
 
 function renderMarkers() {
   if (!kakaoMap) return
-  const clusters = getClusters()
+  
+  // 기존 클러스터러 및 마커 초기화
+  if (window._clusterer) {
+    window._clusterer.clear()
+  }
+  globalMarkers.forEach(m => m.setMap(null))
+  globalMarkers = []
+
+  const clusters = getFilteredClusters()
   if (clusters.length === 0) return
 
   // 클러스터 ID → danger 빠른 조회용 맵
@@ -152,7 +193,6 @@ function renderMarkers() {
 let isHeatmapMode = false
 let leafletMap    = null   // Leaflet 지도 인스턴스 (히트맵 뷰)
 let heatLayer     = null   // L.heatLayer 인스턴스
-let currentTileLayer = null
 
 function setToggleActive(mode) {
   const pinBtn  = document.getElementById('view-pin-btn')
@@ -245,13 +285,9 @@ function showHeatmap() {
       attributionControl: false,
     })
 
-    const isDark = document.documentElement.classList.contains('dark')
-    currentTileLayer = L.tileLayer(
-      isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      { maxZoom: 19 }
-    ).addTo(leafletMap)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(leafletMap)
 
     heatLayer = L.heatLayer(HEAT_POINTS, {
       radius: 25,
@@ -260,19 +296,6 @@ function showHeatmap() {
       max: 0.6,
       gradient: { 0.0: '#00c896', 0.5: '#ffbb00', 1.0: '#ef4444' },
     }).addTo(leafletMap)
-
-    window.addEventListener('themechange', e => {
-      if (leafletMap && currentTileLayer) {
-        leafletMap.removeLayer(currentTileLayer)
-        const darkTheme = e.detail.theme === 'dark'
-        currentTileLayer = L.tileLayer(
-          darkTheme
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          { maxZoom: 19 }
-        ).addTo(leafletMap)
-      }
-    })
   }
 
   // Leaflet은 숨겨진 상태에서 초기화되면 크기 계산이 틀림 — 표시 후 강제 리사이즈
@@ -304,20 +327,38 @@ document.getElementById('view-heat-btn').addEventListener('click', () => {
 // ── 리스트 렌더링 ────────────────────────────────────────
 
 function renderList(userLat, userLng) {
-  const clusters = getClusters()
+  const clusters = getFilteredClusters()
   reportCount.textContent = `총 ${clusters.length}건`
 
   if (clusters.length === 0) {
+    reportList.innerHTML = ''
     emptyState.classList.remove('hidden')
     return
   }
   emptyState.classList.add('hidden')
 
-  // 거리 계산 후 거리순 정렬
-  const withDist = clusters.map(c => ({
+  // 거리 계산 및 정렬 적용
+  let processed = clusters.map(c => ({
     ...c,
     dist: haversineDistance(userLat, userLng, c.location.lat, c.location.lng)
-  })).sort((a, b) => a.dist - b.dist)
+  }))
+
+  const DANGER_SCORE = { high: 3, medium: 2, low: 1 }
+
+  processed.sort((a, b) => {
+    if (currentSort === 'nearest') {
+      return a.dist - b.dist
+    } else if (currentSort === 'danger') {
+      const scoreA = DANGER_SCORE[a.danger] || 0
+      const scoreB = DANGER_SCORE[b.danger] || 0
+      if (scoreB !== scoreA) return scoreB - scoreA
+      return new Date(b.createdAt) - new Date(a.createdAt)
+    } else { // 'recent'
+      return new Date(b.createdAt) - new Date(a.createdAt)
+    }
+  })
+
+  const withDist = processed
 
   reportList.innerHTML = withDist.map(cluster => {
     const rep    = getReportById(cluster.representId)
@@ -331,10 +372,10 @@ function renderList(userLat, userLng) {
 
     return `
       <a href="${import.meta.env.BASE_URL}detail.html?id=${cluster.id}"
-        class="group flex gap-3.5 p-3.5 rounded-xl bg-card border border-border shadow-sm hover:shadow-md hover:border-primary/40 active:scale-[0.99] transition-all">
-        <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface border border-border/50">
+        class="flex gap-3 p-3 rounded-xl bg-card border border-border active:bg-surface transition">
+        <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
           ${rep.imageBase64
-            ? `<img src="${rep.imageBase64}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt="썸네일">`
+            ? `<img src="${rep.imageBase64}" class="w-full h-full object-cover" alt="썸네일">`
             : `<div class="w-full h-full flex items-center justify-center">
                  <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                    <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909"/>
@@ -344,19 +385,19 @@ function renderList(userLat, userLng) {
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1.5 mb-1">
-            <span class="inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
-            <span class="text-[11px] text-muted-foreground font-medium">${cat}</span>
-            ${count > 1 ? `<span class="ml-auto text-[11px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded">+${count}건</span>` : ''}
+            <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
+            <span class="text-[10px] text-muted-foreground">${cat}</span>
+            ${count > 1 ? `<span class="ml-auto text-[10px] text-primary font-medium">+${count}건</span>` : ''}
           </div>
-          <p class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">${rep.title}</p>
-          <p class="text-xs text-muted-foreground truncate mt-0.5 leading-relaxed">${rep.description || '상세 설명 없음'}</p>
-          <div class="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground font-medium">
-            <svg class="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/80" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <p class="text-sm font-semibold text-foreground truncate">${rep.title}</p>
+          <p class="text-xs text-muted-foreground truncate mt-0.5">${rep.description || '상세 설명 없음'}</p>
+          <div class="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
+            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
             </svg>
             <span class="truncate">${rep.location.address || '위치 정보 없음'}</span>
-            <span class="ml-auto flex-shrink-0 text-muted-foreground/90 font-mono text-[10px]">${distTxt} · ${time}</span>
+            <span class="ml-auto flex-shrink-0 text-muted-foreground">${distTxt} · ${time}</span>
           </div>
         </div>
       </a>
@@ -642,6 +683,11 @@ if (!isEmbedderReady()) {
 }
 
 // ── 초기화 ───────────────────────────────────────────────
+// DB가 비어있으면 자동 주입
+if (getClusters().length === 0) {
+  seedDemoData()
+}
+
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
     pos => {
