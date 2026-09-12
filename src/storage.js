@@ -88,3 +88,21 @@ export function updateCluster(updated) {
 export function getClusterById(id) {
   return getClusters().find(c => c.id === id)
 }
+
+/** @param {string} id */
+export function deleteReport(id) {
+  const reports = getReports().filter(r => r.id !== id)
+  saveReports(reports)
+}
+
+/** @param {string} id */
+export function deleteCluster(id) {
+  const clusters = getClusters().filter(c => c.id !== id)
+  saveClusters(clusters)
+}
+
+/** @param {Report} updated */
+export function updateReport(updated) {
+  const reports = getReports().map(r => r.id === updated.id ? updated : r)
+  saveReports(reports)
+}
