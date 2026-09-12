@@ -3,11 +3,8 @@
  * 상세 페이지 - 군집 대표 정보 + 관련 제보 리스트 + 사진 캐러셀
  */
 
-import { getClusterById, getReportById } from './storage.js'
+import { getClusterById, getReportById, deleteReport, deleteCluster, updateCluster, updateReport } from './storage.js'
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
-import { initTheme } from './theme.js'
-
-initTheme()
 
 const BASE = import.meta.env.BASE_URL
 document.getElementById('nav-home').href = `${BASE}index.html`
@@ -50,10 +47,10 @@ function renderDetail(cluster, repReport) {
   const ds  = dangerStyle(cluster.danger)
   const cat = categoryLabel(cluster.category)
   document.getElementById('badge-area').innerHTML = `
-    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
-    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface border border-border text-foreground">${cat}</span>
+    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
+    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${cat}</span>
     ${cluster.reportIds.length > 1
-      ? `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/25">제보 ${cluster.reportIds.length}건</span>`
+      ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">제보 ${cluster.reportIds.length}건</span>`
       : ''}
   `
 
@@ -72,9 +69,9 @@ function renderDetail(cluster, repReport) {
         const rds = dangerStyle(r.danger)
         const rcat = categoryLabel(r.category)
         return `
-        <div class="hs-accordion bg-card border border-border rounded-xl shadow-sm overflow-hidden" id="acc-${r.id}">
+        <div class="hs-accordion bg-card border border-border rounded-xl overflow-hidden" id="acc-${r.id}">
           <button type="button"
-            class="hs-accordion-toggle w-full flex gap-3 p-3 text-left hover:bg-surface/60 transition"
+            class="hs-accordion-toggle w-full flex gap-3 p-3 text-left hover:bg-surface/50 transition"
             aria-expanded="false" aria-controls="acc-body-${r.id}">
             <div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
               ${r.imageBase64
@@ -125,6 +122,14 @@ function renderDetail(cluster, repReport) {
                   <span>${relativeTime(r.createdAt)}</span>
                 </div>
               </div>
+              <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
+                <button type="button" class="btn-edit-report py-1.5 px-3 bg-surface border border-border text-foreground hover:bg-surface-1 rounded-lg text-xs font-semibold transition" data-id="${r.id}">
+                  수정
+                </button>
+                <button type="button" class="btn-delete-report py-1.5 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-semibold transition" data-id="${r.id}">
+                  삭제
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -134,6 +139,24 @@ function renderDetail(cluster, repReport) {
 
   // Preline Accordion 재초기화 (동적 DOM 주입 후)
   if (window.HSAccordion) window.HSAccordion.autoInit()
+
+  document.querySelectorAll('.btn-edit-report').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const rid = btn.getAttribute('data-id')
+      handleEditReport(rid)
+    })
+  })
+
+  document.querySelectorAll('.btn-delete-report').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const rid = btn.getAttribute('data-id')
+      if (confirm('이 제보를 삭제하시겠습니까?')) {
+        handleDeleteReport(cluster, rid)
+      }
+    })
+  })
 
   // 표시
   loadingState.classList.add('hidden')
@@ -183,3 +206,46 @@ function renderCarousel(reports) {
 }
 
 init()
+
+function handleDeleteReport(cluster, reportId) {
+  deleteReport(reportId)
+
+  // 군집 업데이트
+  cluster.reportIds = cluster.reportIds.filter(id => id !== reportId)
+
+  if (cluster.reportIds.length === 0) {
+    // 모든 제보가 지워지면 군집도 삭제
+    deleteCluster(cluster.id)
+    alert('모든 제보가 삭제되어 군집이 사라졌습니다.')
+    location.href = `${BASE}index.html`
+  } else {
+    // 대표 제보가 삭제되었다면 다른 제보로 대표 변경
+    if (cluster.representId === reportId) {
+      cluster.representId = cluster.reportIds[0]
+    }
+    updateCluster(cluster)
+    alert('제보가 삭제되었습니다.')
+    location.reload()
+  }
+}
+
+function handleEditReport(reportId) {
+  const report = getReportById(reportId)
+  if (!report) return
+
+  const newDesc = prompt('수정할 내용을 입력하세요 (상세 설명):', report.description || '')
+  
+  if (newDesc !== null && newDesc.trim() !== '') {
+    report.description = newDesc.trim()
+    report.updatedAt = new Date().toISOString()
+    updateReport(report)
+    
+    // 군집 업데이트
+    const cluster = getClusterById(clusterId)
+    cluster.updatedAt = new Date().toISOString()
+    updateCluster(cluster)
+    
+    alert('제보 내용이 수정되었습니다.')
+    location.reload()
+  }
+}
