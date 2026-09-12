@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/myhappydays/2026_HS_Hackathon#readme",
   "devDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.2.8",
     "vite": "^8.0.16"
   },
   "dependencies": {

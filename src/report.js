@@ -9,6 +9,10 @@
  * - 폼 제출 → Report 생성 → 군집 배정 → localStorage 저장
  */
 
+import { initTheme } from './theme.js'
+
+initTheme()
+
 document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.html`
 
 import { generateId, compressImage, relativeTime } from './utils.js'

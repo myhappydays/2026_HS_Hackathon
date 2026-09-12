@@ -44,10 +44,10 @@ export function relativeTime(ts) {
  */
 export function dangerStyle(danger) {
   switch (danger) {
-    case 'high':   return { bg: 'bg-red-500/15',    text: 'text-red-400',    label: '높음' }
-    case 'medium': return { bg: 'bg-amber-500/15',  text: 'text-amber-400',  label: '보통' }
-    case 'low':    return { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: '낮음' }
-    default:       return { bg: 'bg-surface',        text: 'text-muted-foreground', label: '?' }
+    case 'high':   return { bg: 'bg-red-500/15 border border-red-500/25',    text: 'text-red-600 dark:text-red-400 font-semibold',    label: '높음' }
+    case 'medium': return { bg: 'bg-amber-500/15 border border-amber-500/25',  text: 'text-amber-700 dark:text-amber-400 font-semibold',  label: '보통' }
+    case 'low':    return { bg: 'bg-emerald-500/15 border border-emerald-500/25', text: 'text-emerald-700 dark:text-emerald-400 font-semibold', label: '낮음' }
+    default:       return { bg: 'bg-surface border border-border',        text: 'text-muted-foreground', label: '?' }
   }
 }
 

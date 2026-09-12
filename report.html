@@ -12,6 +12,21 @@
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
 
+  <!-- Theme Init Script (FOUC 방지) -->
+  <script>
+    (function() {
+      try {
+        var saved = localStorage.getItem('fermata_theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && prefersDark) || !saved) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -55,7 +70,7 @@
     }
   </script>
 
-  <!-- Rose Theme CSS -->
+  <!-- Crimson Theme CSS -->
   <link rel="stylesheet" href="/css/themes/crimson.css">
 
   <style>
@@ -65,18 +80,32 @@
     #image-preview { object-fit: cover; }
   </style>
 </head>
-<body class="bg-background text-foreground min-h-screen">
+<body class="bg-background-1 text-foreground min-h-screen">
 
   <!-- 모바일 앱 래퍼 -->
   <div class="w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
 
-    <!-- 상단 헤더 (뒤로가기) -->
-    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-      <a id="nav-home" href="#" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
-        <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
-      </a>
-      <h1 class="font-bold text-base text-foreground">위험 제보하기</h1>
+    <!-- 상단 헤더 (뒤로가기 + 테마 전환) -->
+    <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a id="nav-home" href="#" class="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center hover:bg-surface-1 transition">
+          <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+        </a>
+        <h1 class="font-bold text-base text-foreground">위험 제보하기</h1>
+      </div>
+      <button type="button" id="theme-toggle-btn"
+        class="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors shadow-sm"
+        title="다크/라이트 모드 전환" aria-label="다크/라이트 모드 전환">
+        <!-- Sun Icon -->
+        <svg class="theme-icon-sun w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+        </svg>
+        <!-- Moon Icon -->
+        <svg class="theme-icon-moon w-4 h-4 hidden text-slate-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
+        </svg>
+      </button>
     </header>
 
     <!-- 제보 폼 -->
@@ -172,19 +201,19 @@
           <div class="flex gap-2">
             <label class="flex-1 cursor-pointer">
               <input type="radio" name="danger" value="high" class="peer hidden">
-              <div class="w-full text-center px-3 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground peer-checked:bg-red-500/10 peer-checked:border-red-500 peer-checked:text-red-400 transition">
+              <div class="w-full text-center px-3 py-2.5 rounded-xl border border-border bg-surface text-sm font-semibold text-muted-foreground peer-checked:bg-red-500/15 peer-checked:border-red-500 peer-checked:text-red-600 dark:peer-checked:text-red-400 shadow-sm transition">
                 높음
               </div>
             </label>
             <label class="flex-1 cursor-pointer">
               <input type="radio" name="danger" value="medium" class="peer hidden">
-              <div class="w-full text-center px-3 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground peer-checked:bg-amber-500/10 peer-checked:border-amber-500 peer-checked:text-amber-400 transition">
+              <div class="w-full text-center px-3 py-2.5 rounded-xl border border-border bg-surface text-sm font-semibold text-muted-foreground peer-checked:bg-amber-500/15 peer-checked:border-amber-500 peer-checked:text-amber-700 dark:peer-checked:text-amber-400 shadow-sm transition">
                 보통
               </div>
             </label>
             <label class="flex-1 cursor-pointer">
               <input type="radio" name="danger" value="low" class="peer hidden">
-              <div class="w-full text-center px-3 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground peer-checked:bg-emerald-500/10 peer-checked:border-emerald-500 peer-checked:text-emerald-400 transition">
+              <div class="w-full text-center px-3 py-2.5 rounded-xl border border-border bg-surface text-sm font-semibold text-muted-foreground peer-checked:bg-emerald-500/15 peer-checked:border-emerald-500 peer-checked:text-emerald-700 dark:peer-checked:text-emerald-400 shadow-sm transition">
                 낮음
               </div>
             </label>

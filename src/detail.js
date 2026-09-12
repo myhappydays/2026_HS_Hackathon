@@ -5,6 +5,9 @@
 
 import { getClusterById, getReportById } from './storage.js'
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
+import { initTheme } from './theme.js'
+
+initTheme()
 
 const BASE = import.meta.env.BASE_URL
 document.getElementById('nav-home').href = `${BASE}index.html`
@@ -47,10 +50,10 @@ function renderDetail(cluster, repReport) {
   const ds  = dangerStyle(cluster.danger)
   const cat = categoryLabel(cluster.category)
   document.getElementById('badge-area').innerHTML = `
-    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
-    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${cat}</span>
+    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
+    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface border border-border text-foreground">${cat}</span>
     ${cluster.reportIds.length > 1
-      ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">제보 ${cluster.reportIds.length}건</span>`
+      ? `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/25">제보 ${cluster.reportIds.length}건</span>`
       : ''}
   `
 
@@ -69,9 +72,9 @@ function renderDetail(cluster, repReport) {
         const rds = dangerStyle(r.danger)
         const rcat = categoryLabel(r.category)
         return `
-        <div class="hs-accordion bg-card border border-border rounded-xl overflow-hidden" id="acc-${r.id}">
+        <div class="hs-accordion bg-card border border-border rounded-xl shadow-sm overflow-hidden" id="acc-${r.id}">
           <button type="button"
-            class="hs-accordion-toggle w-full flex gap-3 p-3 text-left hover:bg-surface/50 transition"
+            class="hs-accordion-toggle w-full flex gap-3 p-3 text-left hover:bg-surface/60 transition"
             aria-expanded="false" aria-controls="acc-body-${r.id}">
             <div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
               ${r.imageBase64
