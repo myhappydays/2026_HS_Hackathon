@@ -11,6 +11,10 @@ import {
   getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
 } from './bedrock.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
+import { initTheme } from './theme.js'
+
+// 테마 초기화 (다크/라이트 모드)
+initTheme()
 
 document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
 
