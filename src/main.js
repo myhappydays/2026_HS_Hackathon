@@ -409,6 +409,9 @@ function initViewMode() {
   })
 }
 
+// 뷰 모드 초기화 즉시 실행
+initViewMode()
+
 // ── 장소 검색 (카카오 Places API) & 지도 부드러운 이동 (panTo) ─────
 
 function initPlaceSearch() {
