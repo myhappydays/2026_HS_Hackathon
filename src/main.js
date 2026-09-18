@@ -122,12 +122,16 @@ function initMap(lat, lng) {
   initPlaceSearch()
 
   // 뷰 모드에 맞춘 지도 캔버스 초기 레이아웃 동기화
-  setTimeout(() => {
+  const relayoutMap = () => {
     if (kakaoMap) {
       kakaoMap.relayout()
       kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng))
     }
-  }, 150)
+  }
+  requestAnimationFrame(relayoutMap)
+  setTimeout(relayoutMap, 50)
+  setTimeout(relayoutMap, 200)
+  setTimeout(relayoutMap, 600)
 }
 
 function renderMarkers() {
@@ -364,13 +368,15 @@ function initViewMode() {
 
   function applyMode(mode, triggerResize = true) {
     if (mode === 'mobile') {
-      document.body.classList.add('mobile-frame-only')
+      document.body.classList.remove('view-wide')
+      document.body.classList.add('view-mobile')
       if (expandIcon) expandIcon.classList.remove('hidden')
       if (mobileIcon) mobileIcon.classList.add('hidden')
       if (modeLabel)  modeLabel.textContent = '와이드 뷰'
       if (toggleBtn)  toggleBtn.title = '데스크톱 와이드 대시보드로 확장'
     } else {
-      document.body.classList.remove('mobile-frame-only')
+      document.body.classList.remove('view-mobile')
+      document.body.classList.add('view-wide')
       if (expandIcon) expandIcon.classList.add('hidden')
       if (mobileIcon) mobileIcon.classList.remove('hidden')
       if (modeLabel)  modeLabel.textContent = '모바일 뷰'
@@ -378,25 +384,21 @@ function initViewMode() {
     }
     localStorage.setItem('fermata_view_mode', mode)
 
+    const doRelayout = () => {
+      if (kakaoMap) {
+        kakaoMap.relayout()
+        kakaoMap.setCenter(new kakao.maps.LatLng(anchorLat, anchorLng))
+      }
+      if (leafletMap) {
+        leafletMap.invalidateSize()
+      }
+    }
+
     if (triggerResize) {
-      setTimeout(() => {
-        if (kakaoMap) {
-          kakaoMap.relayout()
-          kakaoMap.setCenter(new kakao.maps.LatLng(anchorLat, anchorLng))
-        }
-        if (leafletMap) {
-          leafletMap.invalidateSize()
-        }
-      }, 50)
-      setTimeout(() => {
-        if (kakaoMap) {
-          kakaoMap.relayout()
-          kakaoMap.setCenter(new kakao.maps.LatLng(anchorLat, anchorLng))
-        }
-        if (leafletMap) {
-          leafletMap.invalidateSize()
-        }
-      }, 250)
+      requestAnimationFrame(doRelayout)
+      setTimeout(doRelayout, 50)
+      setTimeout(doRelayout, 200)
+      setTimeout(doRelayout, 600)
     }
   }
 
@@ -407,13 +409,16 @@ function initViewMode() {
     toggleBtn.addEventListener('click', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      const isMobileNow = document.body.classList.contains('mobile-frame-only')
+      const isMobileNow = document.body.classList.contains('view-mobile')
       applyMode(isMobileNow ? 'wide' : 'mobile', true)
     })
   }
 
   window.addEventListener('resize', () => {
-    if (kakaoMap) kakaoMap.relayout()
+    if (kakaoMap) {
+      kakaoMap.relayout()
+      kakaoMap.setCenter(new kakao.maps.LatLng(anchorLat, anchorLng))
+    }
     if (leafletMap) leafletMap.invalidateSize()
   })
 }

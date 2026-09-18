@@ -78,24 +78,45 @@
   <style>
     /* ─── 기본 ─────────────────────────── */
     /* ─── 반응형 지도 높이 & 레이아웃 ─────────────────── */
-    #map-container-desktop { width: 100%; height: 280px; position: relative; }
-    #map { width: 100%; height: 280px; }
-    #heatmap-container { width: 100%; height: 280px; display: none; }
+    #map-container-desktop {
+      width: 100%;
+      height: 280px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    #map-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 280px;
+    }
+    #heatmap-container {
+      width: 100%;
+      height: 100%;
+      min-height: 280px;
+      display: none;
+    }
 
+    /* ─── 와이드 대시보드 뷰 스타일 (body.view-wide 이거나, 1024px 이상이고 .view-mobile이 아닐 때) ─── */
+    body.view-wide .app-wrapper,
     @media (min-width: 1024px) {
-      body:not(.mobile-frame-only) .app-wrapper {
+      body:not(.view-mobile) .app-wrapper {
         max-width: 100% !important;
         border-left-width: 0 !important;
         border-right-width: 0 !important;
         box-shadow: none !important;
       }
-      body:not(.mobile-frame-only) #main-dashboard-layout {
+      body:not(.view-mobile) #main-dashboard-layout {
         display: flex !important;
         flex-direction: row !important;
         height: calc(100vh - 57px) !important;
         overflow: hidden !important;
       }
-      body:not(.mobile-frame-only) #sidebar-desktop {
+      body:not(.view-mobile) #sidebar-desktop {
         order: 1 !important;
         width: 440px !important;
         flex-shrink: 0 !important;
@@ -103,7 +124,7 @@
         overflow-y: auto !important;
         border-right: 1px solid var(--border) !important;
       }
-      body:not(.mobile-frame-only) #map-container-desktop {
+      body:not(.view-mobile) #map-container-desktop {
         order: 2 !important;
         flex: 1 1 0% !important;
         height: 100% !important;
@@ -111,18 +132,27 @@
         position: relative !important;
         overflow: hidden !important;
       }
-      body:not(.mobile-frame-only) #map-wrapper {
+      body:not(.view-mobile) #map-wrapper {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
         height: 100% !important;
       }
-      body:not(.mobile-frame-only) #map {
+      body:not(.view-mobile) #map {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
         height: 100% !important;
         min-height: 100% !important;
       }
-      body:not(.mobile-frame-only) #heatmap-container {
+      body:not(.view-mobile) #heatmap-container {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
         height: 100% !important;
         min-height: 100% !important;
       }
-      body:not(.mobile-frame-only) #nav-report-wrap {
+      body:not(.view-mobile) #nav-report-wrap {
         position: fixed !important;
         bottom: 24px !important;
         left: 220px !important;
@@ -131,41 +161,110 @@
       }
     }
 
-    /* 모바일 프레임 강제 고정 모드 */
-    body.mobile-frame-only .app-wrapper {
+    body.view-wide .app-wrapper {
+      max-width: 100% !important;
+      border-left-width: 0 !important;
+      border-right-width: 0 !important;
+      box-shadow: none !important;
+    }
+    body.view-wide #main-dashboard-layout {
+      display: flex !important;
+      flex-direction: row !important;
+      height: calc(100vh - 57px) !important;
+      overflow: hidden !important;
+    }
+    body.view-wide #sidebar-desktop {
+      order: 1 !important;
+      width: 440px !important;
+      flex-shrink: 0 !important;
+      height: 100% !important;
+      overflow-y: auto !important;
+      border-right: 1px solid var(--border) !important;
+    }
+    body.view-wide #map-container-desktop {
+      order: 2 !important;
+      flex: 1 1 0% !important;
+      height: 100% !important;
+      min-height: 100% !important;
+      position: relative !important;
+      overflow: hidden !important;
+    }
+    body.view-wide #map-wrapper {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    body.view-wide #map {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 100% !important;
+    }
+    body.view-wide #heatmap-container {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 100% !important;
+    }
+    body.view-wide #nav-report-wrap {
+      position: fixed !important;
+      bottom: 24px !important;
+      left: 220px !important;
+      transform: translateX(-50%) !important;
+      z-index: 40 !important;
+    }
+
+    /* ─── 모바일 뷰 강제 고정 모드 (body.view-mobile) ─── */
+    body.view-mobile .app-wrapper {
       max-width: 430px !important;
       margin-left: auto !important;
       margin-right: auto !important;
       border-left-width: 1px !important;
       border-right-width: 1px !important;
     }
-    body.mobile-frame-only #main-dashboard-layout {
+    body.view-mobile #main-dashboard-layout {
       display: flex !important;
       flex-direction: column !important;
       height: auto !important;
+      overflow: visible !important;
     }
-    body.mobile-frame-only #sidebar-desktop {
+    body.view-mobile #sidebar-desktop {
       order: 2 !important;
       width: 100% !important;
       height: auto !important;
       border-right-width: 0 !important;
     }
-    body.mobile-frame-only #map-container-desktop {
+    body.view-mobile #map-container-desktop {
       order: 1 !important;
       width: 100% !important;
       height: 280px !important;
+      position: relative !important;
+      flex: none !important;
     }
-    body.mobile-frame-only #map {
+    body.view-mobile #map-wrapper {
+      position: relative !important;
+      width: 100% !important;
       height: 280px !important;
     }
-    body.mobile-frame-only #heatmap-container {
+    body.view-mobile #map {
+      position: relative !important;
+      width: 100% !important;
       height: 280px !important;
     }
-    body.mobile-frame-only #nav-report-wrap {
+    body.view-mobile #heatmap-container {
+      position: relative !important;
+      width: 100% !important;
+      height: 280px !important;
+    }
+    body.view-mobile #nav-report-wrap {
       position: fixed !important;
       bottom: 24px !important;
       left: 50% !important;
       transform: translateX(-50%) !important;
+      z-index: 40 !important;
     }
 
     /* ─── 헤더 glassmorphism ────────────── */
