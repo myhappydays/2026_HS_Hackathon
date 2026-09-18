@@ -87,8 +87,8 @@
 </head>
 <body class="bg-background-1 text-foreground min-h-screen">
 
-  <!-- 모바일/데스크탑 래퍼 -->
-  <div class="w-full max-w-[430px] lg:max-w-2xl mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+  <!-- 모바일 앱 래퍼 -->
+  <div class="w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
 
     <!-- 상단 헤더 (뒤로가기 + 테마 전환) -->
     <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
@@ -180,21 +180,14 @@
             <span id="cluster-time"></span>
           </div>
 
-          <!-- 공감 버튼 & 해결 상태 전환 영역 -->
-          <div class="mt-4 flex items-center justify-between gap-2 flex-wrap">
+          <!-- 공감 버튼 영역 -->
+          <div class="mt-4 flex">
             <button type="button" id="btn-like"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition text-sm font-semibold">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
               ⚠️ 나도 겪었어요 <span id="like-count" class="ml-1 text-primary">0</span>
-            </button>
-
-            <!-- 해결 상태 토글 버튼 -->
-            <button type="button" id="btn-toggle-status"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-border text-foreground hover:bg-surface-1 transition text-xs font-semibold shadow-sm">
-              <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-              <span id="btn-toggle-status-text">해결 완료로 변경</span>
             </button>
           </div>
         </div>

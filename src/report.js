@@ -18,7 +18,7 @@ document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.htm
 import { generateId, compressImage, relativeTime } from './utils.js'
 import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
-import { addReport, isStorageFull, getReports, saveReports } from './storage.js'
+import { addReport, updateReport, isStorageFull, getReports, saveReports } from './storage.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 
 // ── DOM 참조 ─────────────────────────────────────────────
@@ -211,15 +211,15 @@ form.addEventListener('submit', async e => {
     createdAt: Date.now(),
   }
 
-  // localStorage 저장
-  addReport(report)
+  // Firestore 저장
+  await addReport(report)
 
   // 군집 배정 (report 저장 후, async)
   const clusterId = await assignCluster(report)
 
   // report의 clusterId 업데이트
-  const reports = getReports().map(r => r.id === report.id ? { ...r, clusterId } : r)
-  saveReports(reports)
+  report.clusterId = clusterId
+  await updateReport(report)
 
   // 성공 토스트 표시 후 메인으로 이동
   showToast('success')

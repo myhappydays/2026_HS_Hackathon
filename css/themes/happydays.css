@@ -37,20 +37,20 @@
   /* ============================================ */
   /* GLOBAL SURFACES + TEXT                       */
   /* ============================================ */
-
+  
   --background: var(--color-white);
   --background-1: var(--color-happydays-gray-50);
   --background-2: var(--color-happydays-gray-100);
   --background-plain: var(--color-white);
   --foreground: var(--color-happydays-gray-800);
   --foreground-inverse: var(--color-white);
-
+  
   --inverse: var(--color-primary-950);
-
+  
   /* ============================================ */
   /* BORDERS (Full Scale)                         */
   /* ============================================ */
-
+  
   --border: var(--color-happydays-gray-200);
   --border-line-inverse: var(--color-white);
   --border-line-1: var(--color-happydays-gray-100);
@@ -61,11 +61,11 @@
   --border-line-6: var(--color-happydays-gray-600);
   --border-line-7: var(--color-happydays-gray-700);
   --border-line-8: var(--color-happydays-gray-800);
-
+  
   /* ============================================ */
   /* PRIMARY RAMP (Full 11-shade scale)           */
   /* ============================================ */
-
+  
   --primary-50: var(--color-happydays-50);
   --primary-100: var(--color-happydays-100);
   --primary-200: var(--color-happydays-200);
@@ -77,7 +77,7 @@
   --primary-800: var(--color-happydays-800);
   --primary-900: var(--color-happydays-900);
   --primary-950: var(--color-happydays-950);
-
+  
   /* PRIMARY STATES */
   --primary: var(--color-primary-600);
   --primary-line: transparent;
@@ -86,33 +86,33 @@
   --primary-focus: var(--color-primary-700);
   --primary-active: var(--color-primary-700);
   --primary-checked: var(--color-primary-600);
-
+  
   /* ============================================ */
   /* SECONDARY                                    */
   /* ============================================ */
-
+  
   --secondary: var(--color-happydays-gray-900);
   --secondary-line: transparent;
   --secondary-foreground: var(--color-white);
   --secondary-hover: var(--color-happydays-gray-800);
   --secondary-focus: var(--color-happydays-gray-800);
   --secondary-active: var(--color-happydays-gray-800);
-
+  
   /* ============================================ */
   /* LAYER                                        */
   /* ============================================ */
-
+  
   --layer: var(--background-plain);
   --layer-line: var(--border);
   --layer-foreground: var(--foreground);
   --layer-hover: var(--background-1);
   --layer-focus: var(--background-1);
   --layer-active: var(--background-1);
-
+  
   /* ============================================ */
   /* SURFACE                                      */
   /* ============================================ */
-
+  
   --surface: var(--color-happydays-gray-100);
   --surface-1: var(--color-happydays-gray-200);
   --surface-2: var(--color-happydays-gray-300);
@@ -124,11 +124,11 @@
   --surface-hover: var(--color-happydays-gray-200);
   --surface-focus: var(--color-happydays-gray-200);
   --surface-active: var(--color-happydays-gray-200);
-
+  
   /* ============================================ */
   /* MUTED                                        */
   /* ============================================ */
-
+  
   --muted: var(--color-happydays-gray-50);
   --muted-foreground: var(--color-happydays-gray-500);
   --muted-foreground-1: var(--color-happydays-gray-600);
@@ -136,20 +136,20 @@
   --muted-hover: var(--color-happydays-gray-100);
   --muted-focus: var(--color-happydays-gray-100);
   --muted-active: var(--color-happydays-gray-100);
-
+  
   /* ============================================ */
   /* DESTRUCTIVE                                  */
   /* ============================================ */
-
+  
   --destructive: var(--color-red-500);
   --destructive-foreground: var(--color-white);
   --destructive-hover: var(--color-red-600);
   --destructive-focus: var(--color-red-600);
-
+  
   /* ============================================ */
   /* NAVBAR                                       */
   /* ============================================ */
-
+  
   --navbar: var(--background-plain);
   --navbar-line: var(--border);
   --navbar-divider: var(--border);
@@ -159,7 +159,7 @@
   --navbar-nav-active: var(--muted-hover);
   --navbar-nav-list-divider: var(--border);
   --navbar-inverse: var(--inverse);
-
+  
   --navbar-1: var(--background-1);
   --navbar-1-line: var(--border);
   --navbar-1-divider: var(--border);
@@ -168,7 +168,7 @@
   --navbar-1-nav-focus: var(--surface-1);
   --navbar-1-nav-active: var(--surface-1);
   --navbar-1-nav-list-divider: var(--border);
-
+  
   --navbar-2: var(--background-2);
   --navbar-2-line: transparent;
   --navbar-2-divider: var(--border-line-3);
@@ -177,11 +177,11 @@
   --navbar-2-nav-focus: var(--surface-1);
   --navbar-2-nav-active: var(--surface-1);
   --navbar-2-nav-list-divider: var(--border);
-
+  
   /* ============================================ */
   /* SIDEBAR                                      */
   /* ============================================ */
-
+  
   --sidebar: var(--background-plain);
   --sidebar-line: var(--border);
   --sidebar-divider: var(--border);
@@ -191,7 +191,7 @@
   --sidebar-nav-active: var(--muted-hover);
   --sidebar-nav-list-divider: var(--border);
   --sidebar-inverse: var(--inverse);
-
+  
   --sidebar-1: var(--background-1);
   --sidebar-1-line: var(--border);
   --sidebar-1-divider: var(--border);
@@ -200,7 +200,7 @@
   --sidebar-1-nav-focus: var(--surface-1);
   --sidebar-1-nav-active: var(--surface-1);
   --sidebar-1-nav-list-divider: var(--border);
-
+  
   --sidebar-2: var(--background-2);
   --sidebar-2-line: transparent;
   --sidebar-2-divider: var(--border);
@@ -209,22 +209,22 @@
   --sidebar-2-nav-focus: var(--surface-1);
   --sidebar-2-nav-active: var(--surface-1);
   --sidebar-2-nav-list-divider: var(--border);
-
+  
   /* ============================================ */
   /* CARD                                         */
   /* ============================================ */
-
+  
   --card: var(--background-plain);
   --card-line: var(--border);
   --card-divider: var(--border);
   --card-header: var(--background-2);
   --card-footer: var(--background-2);
   --card-inverse: var(--inverse);
-
+  
   /* ============================================ */
   /* DROPDOWN                                     */
   /* ============================================ */
-
+  
   --dropdown: var(--background-plain);
   --dropdown-1: var(--background-plain);
   --dropdown-line: transparent;
@@ -236,11 +236,11 @@
   --dropdown-item-focus: var(--muted-hover);
   --dropdown-item-active: var(--muted-hover);
   --dropdown-inverse: var(--inverse);
-
+  
   /* ============================================ */
   /* SELECT                                       */
   /* ============================================ */
-
+  
   --select: var(--background-plain);
   --select-1: var(--background-plain);
   --select-line: transparent;
@@ -249,57 +249,57 @@
   --select-item-focus: var(--muted-hover);
   --select-item-active: var(--muted-hover);
   --select-inverse: var(--inverse);
-
+  
   /* ============================================ */
   /* OVERLAY                                      */
   /* ============================================ */
-
+  
   --overlay: var(--background-plain);
   --overlay-line: transparent;
   --overlay-divider: var(--border);
   --overlay-header: var(--background-2);
   --overlay-footer: var(--background-2);
   --overlay-inverse: var(--inverse);
-
+  
   /* ============================================ */
   /* POPOVER                                      */
   /* ============================================ */
-
+  
   --popover: var(--background-plain);
   --popover-line: var(--border-line-1);
-
+  
   /* ============================================ */
   /* TOOLTIP                                      */
   /* ============================================ */
-
+  
   --tooltip: var(--inverse);
   --tooltip-foreground: var(--foreground-inverse);
   --tooltip-line: transparent;
-
+  
   /* ============================================ */
   /* TABLE                                        */
   /* ============================================ */
-
+  
   --table-line: var(--border);
-
+  
   /* ============================================ */
   /* SWITCH                                       */
   /* ============================================ */
-
+  
   --switch: var(--background-plain);
-
+  
   /* ============================================ */
   /* FOOTER                                       */
   /* ============================================ */
-
+  
   --footer: var(--background-plain);
   --footer-line: var(--border);
   --footer-inverse: var(--inverse);
-
+  
   /* ============================================ */
   /* SCROLLBAR                                    */
   /* ============================================ */
-
+  
   --scrollbar-track: var(--background-1);
   --scrollbar-thumb: var(--surface-2);
   --scrollbar-track-inverse: transparent;
@@ -307,13 +307,13 @@
   /* ============================================ */
   /* CHARTS (Apexcharts)                          */
   /* ============================================ */
-
+  
   --chart-colors-background: var(--background-plain);
   --chart-colors-background-inverse: var(--inverse);
   --chart-colors-chart-inverse: var(--background-1);
   --chart-colors-foreground: var(--foreground);
   --chart-colors-foreground-inverse: var(--foreground-inverse);
-
+  
   --chart-primary: var(--color-primary-600);
   --chart-colors-primary: var(--color-primary-600);
   --chart-colors-primary-inverse: var(--color-primary-300);
@@ -369,19 +369,19 @@
   --chart-colors-chart-10-inverse: var(--color-happydays-gray-500);
   --chart-colors-chart-10-hex: var(--color-happydays-gray-300);
   --chart-colors-chart-10-hex-inverse: var(--color-happydays-gray-500);
-
+  
   --chart-colors-candlestick-upward: var(--color-green-500);
   --chart-colors-candlestick-upward-inverse: var(--color-green-400);
   --chart-colors-candlestick-downward: var(--color-red-500);
   --chart-colors-candlestick-downward-inverse: var(--color-red-400);
-
+  
   --chart-colors-labels: var(--color-happydays-gray-600);
   --chart-colors-labels-inverse: var(--color-happydays-gray-400);
   --chart-colors-xaxis-labels: var(--color-happydays-gray-500);
   --chart-colors-xaxis-labels-inverse: var(--color-happydays-gray-400);
   --chart-colors-yaxis-labels: var(--color-happydays-gray-500);
   --chart-colors-yaxis-labels-inverse: var(--color-happydays-gray-400);
-
+  
   --chart-colors-grid-border: var(--border);
   --chart-colors-grid-border-inverse: var(--color-happydays-gray-700);
   --chart-colors-bar-ranges: var(--surface-1);
@@ -389,7 +389,7 @@
   /* ============================================ */
   /* MAPS (jsvectormap)                           */
   /* ============================================ */
-
+  
   --map-colors-primary: var(--color-primary-500);
   --map-colors-primary-inverse: var(--color-primary-300);
   --map-colors-default: var(--surface-1);
@@ -405,19 +405,19 @@
   /* ============================================ */
   /* DARK MODE - Custom Gray */
   /* ============================================ */
-
+  
   /* BACKGROUNDS */
   --background: var(--color-happydays-gray-800);
   --background-1: var(--color-happydays-gray-900);
   --background-2: var(--color-happydays-gray-950);
   --background-plain: var(--color-happydays-gray-800);
-
+  
   /* TEXT */
   --foreground: var(--color-happydays-gray-200);
   --foreground-inverse: var(--color-white);
-
+  
   --inverse: var(--color-happydays-gray-950);
-
+  
   /* BORDERS */
   --border: var(--color-happydays-gray-700);
   --border-line-inverse: var(--color-happydays-gray-200);
@@ -429,7 +429,7 @@
   --border-line-6: var(--color-happydays-gray-300);
   --border-line-7: var(--color-happydays-gray-200);
   --border-line-8: var(--color-happydays-gray-100);
-
+  
   /* PRIMARY STATES */
   --primary: var(--color-primary-500);
   --primary-line: transparent;
@@ -438,7 +438,7 @@
   --primary-focus: var(--color-primary-600);
   --primary-active: var(--color-primary-600);
   --primary-checked: var(--color-primary-500);
-
+  
   /* SECONDARY */
   --secondary: var(--color-white);
   --secondary-line: transparent;
@@ -446,7 +446,7 @@
   --secondary-hover: var(--color-happydays-gray-100);
   --secondary-focus: var(--color-happydays-gray-100);
   --secondary-active: var(--color-happydays-gray-100);
-
+  
   /* LAYER */
   --layer: var(--background);
   --layer-line: var(--border);
@@ -454,7 +454,7 @@
   --layer-hover: var(--color-happydays-gray-700);
   --layer-focus: var(--color-happydays-gray-700);
   --layer-active: var(--color-happydays-gray-700);
-
+  
   /* SURFACE */
   --surface: var(--color-happydays-gray-700);
   --surface-1: var(--color-happydays-gray-600);
@@ -467,7 +467,7 @@
   --surface-hover: var(--color-happydays-gray-600);
   --surface-focus: var(--color-happydays-gray-600);
   --surface-active: var(--color-happydays-gray-600);
-
+  
   /* MUTED */
   --muted: var(--color-happydays-gray-800);
   --muted-foreground: var(--color-happydays-gray-500);
@@ -476,13 +476,13 @@
   --muted-hover: var(--color-happydays-gray-700);
   --muted-focus: var(--color-happydays-gray-700);
   --muted-active: var(--color-happydays-gray-700);
-
+  
   /* DESTRUCTIVE */
   --destructive: var(--color-red-500);
   --destructive-foreground: var(--color-white);
   --destructive-hover: var(--color-red-600);
   --destructive-focus: var(--color-red-600);
-
+  
   /* NAVBAR */
   --navbar: var(--background);
   --navbar-line: var(--border);
@@ -493,7 +493,7 @@
   --navbar-nav-active: var(--muted-hover);
   --navbar-nav-list-divider: var(--border);
   --navbar-inverse: var(--inverse);
-
+  
   --navbar-1: var(--background-1);
   --navbar-1-line: var(--border);
   --navbar-1-divider: var(--border);
@@ -502,7 +502,7 @@
   --navbar-1-nav-focus: var(--surface);
   --navbar-1-nav-active: var(--surface);
   --navbar-1-nav-list-divider: var(--border);
-
+  
   --navbar-2: var(--background-2);
   --navbar-2-line: transparent;
   --navbar-2-divider: var(--border);
@@ -511,7 +511,7 @@
   --navbar-2-nav-focus: var(--surface);
   --navbar-2-nav-active: var(--surface);
   --navbar-2-nav-list-divider: var(--border);
-
+  
   /* SIDEBAR */
   --sidebar: var(--background);
   --sidebar-line: var(--border);
@@ -522,7 +522,7 @@
   --sidebar-nav-active: var(--muted-hover);
   --sidebar-nav-list-divider: var(--border);
   --sidebar-inverse: var(--inverse);
-
+  
   --sidebar-1: var(--background-1);
   --sidebar-1-line: var(--border);
   --sidebar-1-divider: var(--border);
@@ -531,7 +531,7 @@
   --sidebar-1-nav-focus: var(--surface);
   --sidebar-1-nav-active: var(--surface);
   --sidebar-1-nav-list-divider: var(--border);
-
+  
   --sidebar-2: var(--background-2);
   --sidebar-2-line: transparent;
   --sidebar-2-divider: var(--border);
@@ -540,7 +540,7 @@
   --sidebar-2-nav-focus: var(--surface);
   --sidebar-2-nav-active: var(--surface);
   --sidebar-2-nav-list-divider: var(--border);
-
+  
   /* CARD */
   --card: var(--background);
   --card-line: var(--border);
@@ -548,7 +548,7 @@
   --card-header: var(--surface);
   --card-footer: var(--surface);
   --card-inverse: var(--inverse);
-
+  
   /* DROPDOWN */
   --dropdown: var(--background-1);
   --dropdown-1: var(--background-2);
@@ -561,7 +561,7 @@
   --dropdown-item-focus: var(--muted-hover);
   --dropdown-item-active: var(--muted-hover);
   --dropdown-inverse: var(--inverse);
-
+  
   /* SELECT */
   --select: var(--background-1);
   --select-1: var(--background-2);
@@ -571,7 +571,7 @@
   --select-item-focus: var(--muted-hover);
   --select-item-active: var(--muted-hover);
   --select-inverse: var(--inverse);
-
+  
   /* OVERLAY */
   --overlay: var(--background);
   --overlay-line: transparent;
@@ -579,27 +579,27 @@
   --overlay-header: var(--surface);
   --overlay-footer: var(--surface);
   --overlay-inverse: var(--inverse);
-
+  
   /* POPOVER */
   --popover: var(--background-1);
   --popover-line: var(--border);
-
+  
   /* TOOLTIP */
   --tooltip: var(--color-white);
   --tooltip-foreground: var(--color-happydays-gray-800);
   --tooltip-line: transparent;
-
+  
   /* TABLE */
   --table-line: var(--border);
-
+  
   /* SWITCH */
   --switch: var(--color-white);
-
+  
   /* FOOTER */
   --footer: var(--background);
   --footer-line: var(--border);
   --footer-inverse: var(--inverse);
-
+  
   /* SCROLLBAR */
   --scrollbar-track: var(--surface);
   --scrollbar-thumb: var(--surface-3);
@@ -673,7 +673,7 @@
   --chart-colors-yaxis-labels: var(--color-happydays-gray-400);
   --chart-colors-grid-border: var(--border);
   --chart-colors-bar-ranges: var(--surface);
-
+  
   /* MAPS - dark mode adjustments */
   --map-colors-default: var(--surface);
   --map-colors-default-inverse: var(--surface-2);

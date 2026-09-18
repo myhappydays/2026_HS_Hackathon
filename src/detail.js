@@ -105,35 +105,15 @@ function renderDetail(cluster, repReport) {
   renderCarousel(allReports)
 
   // 뱃지
-  const isResolved = cluster.status === 'resolved'
   const ds  = dangerStyle(cluster.danger)
   const cat = categoryLabel(cluster.category)
-  const statusBadge = isResolved
-    ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400">
-         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-         해결 완료
-       </span>`
-    : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>`
-
   document.getElementById('badge-area').innerHTML = `
-    ${statusBadge}
+    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${cat}</span>
     ${cluster.reportIds.length > 1
       ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">제보 ${cluster.reportIds.length}건</span>`
       : ''}
   `
-
-  // 상태 토글 버튼
-  const btnToggleStatus = document.getElementById('btn-toggle-status')
-  const btnToggleStatusText = document.getElementById('btn-toggle-status-text')
-  if (btnToggleStatus && btnToggleStatusText) {
-    btnToggleStatusText.textContent = isResolved ? '진행 중으로 변경' : '해결 완료로 변경'
-    btnToggleStatus.onclick = () => {
-      cluster.status = isResolved ? 'active' : 'resolved'
-      updateCluster(cluster)
-      renderDetail(cluster, repReport)
-    }
-  }
 
   // 대표 정보
   document.getElementById('cluster-title').textContent       = repReport.title

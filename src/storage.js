@@ -1,108 +1,123 @@
-/**
- * storage.js
- * localStorage 읽기/쓰기 유틸리티
- *
- * 스키마:
- *   reports  → Report[]
- *   clusters → Cluster[]
- */
+import { db } from './firebase.js';
+import { collection, getDocs, setDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
 
-const KEYS = {
-  REPORTS:  'reports',
-  CLUSTERS: 'clusters',
-}
+const REPORTS_COLLECTION = 'reports';
+const CLUSTERS_COLLECTION = 'clusters';
 
-/** localStorage 전체 사용량 계산 (바이트) */
+/** localStorage 대신 Firestore를 쓰므로 항상 0 반환 */
 export function getStorageUsage() {
-  let total = 0
-  for (const key in localStorage) {
-    if (!localStorage.hasOwnProperty(key)) continue
-    total += (localStorage.getItem(key) || '').length * 2 // UTF-16
-  }
-  return total
+  return 0;
 }
 
-/** 4MB 초과 여부 */
+/** 4MB 초과 여부 (항상 false) */
 export function isStorageFull() {
-  return getStorageUsage() > 4 * 1024 * 1024
+  return false;
 }
 
 // ── Reports ─────────────────────────────────────────────
 
-/** @returns {Report[]} */
-export function getReports() {
+export async function getReports() {
   try {
-    return JSON.parse(localStorage.getItem(KEYS.REPORTS) || '[]')
-  } catch {
-    return []
+    const snapshot = await getDocs(collection(db, REPORTS_COLLECTION));
+    return snapshot.docs.map(doc => doc.data());
+  } catch (e) {
+    console.error("Firestore getReports Error:", e);
+    return [];
   }
 }
 
-/** @param {Report[]} reports */
-export function saveReports(reports) {
-  localStorage.setItem(KEYS.REPORTS, JSON.stringify(reports))
+export async function saveReports(reports) {
+  try {
+    const batch = writeBatch(db);
+    reports.forEach(report => {
+      const docRef = doc(db, REPORTS_COLLECTION, String(report.id));
+      batch.set(docRef, report);
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error("Firestore saveReports Error:", e);
+  }
 }
 
-/** @param {Report} report */
-export function addReport(report) {
-  const reports = getReports()
-  reports.push(report)
-  saveReports(reports)
+export async function addReport(report) {
+  try {
+    await setDoc(doc(db, REPORTS_COLLECTION, String(report.id)), report);
+  } catch (e) {
+    console.error("Firestore addReport Error:", e);
+  }
 }
 
-/** @param {string} id @returns {Report|undefined} */
-export function getReportById(id) {
-  return getReports().find(r => r.id === id)
+export async function getReportById(id) {
+  const reports = await getReports();
+  return reports.find(r => r.id === id);
+}
+
+export async function updateReport(updated) {
+  try {
+    await setDoc(doc(db, REPORTS_COLLECTION, String(updated.id)), updated);
+  } catch (e) {
+    console.error("Firestore updateReport Error:", e);
+  }
+}
+
+export async function deleteReport(id) {
+  try {
+    await deleteDoc(doc(db, REPORTS_COLLECTION, String(id)));
+  } catch (e) {
+    console.error("Firestore deleteReport Error:", e);
+  }
 }
 
 // ── Clusters ─────────────────────────────────────────────
 
-/** @returns {Cluster[]} */
-export function getClusters() {
+export async function getClusters() {
   try {
-    return JSON.parse(localStorage.getItem(KEYS.CLUSTERS) || '[]')
-  } catch {
-    return []
+    const snapshot = await getDocs(collection(db, CLUSTERS_COLLECTION));
+    return snapshot.docs.map(doc => doc.data());
+  } catch (e) {
+    console.error("Firestore getClusters Error:", e);
+    return [];
   }
 }
 
-/** @param {Cluster[]} clusters */
-export function saveClusters(clusters) {
-  localStorage.setItem(KEYS.CLUSTERS, JSON.stringify(clusters))
+export async function saveClusters(clusters) {
+  try {
+    const batch = writeBatch(db);
+    clusters.forEach(cluster => {
+      const docRef = doc(db, CLUSTERS_COLLECTION, String(cluster.id));
+      batch.set(docRef, cluster);
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error("Firestore saveClusters Error:", e);
+  }
 }
 
-/** @param {Cluster} cluster */
-export function addCluster(cluster) {
-  const clusters = getClusters()
-  clusters.push(cluster)
-  saveClusters(clusters)
+export async function addCluster(cluster) {
+  try {
+    await setDoc(doc(db, CLUSTERS_COLLECTION, String(cluster.id)), cluster);
+  } catch (e) {
+    console.error("Firestore addCluster Error:", e);
+  }
 }
 
-/** 특정 cluster 업데이트 @param {Cluster} updated */
-export function updateCluster(updated) {
-  const clusters = getClusters().map(c => c.id === updated.id ? updated : c)
-  saveClusters(clusters)
+export async function updateCluster(updated) {
+  try {
+    await setDoc(doc(db, CLUSTERS_COLLECTION, String(updated.id)), updated);
+  } catch (e) {
+    console.error("Firestore updateCluster Error:", e);
+  }
 }
 
-/** @param {string} id @returns {Cluster|undefined} */
-export function getClusterById(id) {
-  return getClusters().find(c => c.id === id)
+export async function getClusterById(id) {
+  const clusters = await getClusters();
+  return clusters.find(c => c.id === id);
 }
 
-/** @param {string} id */
-export function deleteReport(id) {
-  const reports = getReports().filter(r => r.id !== id)
-  saveReports(reports)
-}
-
-/** @param {string} id */
-export function deleteCluster(id) {
-  const clusters = getClusters().filter(c => c.id !== id)
-  saveClusters(clusters)
-}
-
-/** @param {Report} updated */
-export function updateReport(updated) {
-  const reports = getReports().map(r => r.id === updated.id ? updated : r)
-  saveReports(reports)
+export async function deleteCluster(id) {
+  try {
+    await deleteDoc(doc(db, CLUSTERS_COLLECTION, String(id)));
+  } catch (e) {
+    console.error("Firestore deleteCluster Error:", e);
+  }
 }

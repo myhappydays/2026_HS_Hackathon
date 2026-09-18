@@ -52,18 +52,6 @@ export function dangerStyle(danger) {
 }
 
 /**
- * 상태 → 뱃지 스타일 클래스
- * @param {'resolved'|'active'} status
- * @returns {{ bg: string, text: string, label: string }}
- */
-export function statusBadge(status) {
-  if (status === 'resolved') {
-    return { bg: 'bg-blue-500/15 border border-blue-500/25', text: 'text-blue-600 dark:text-blue-400 font-semibold', label: '해결 완료' }
-  }
-  return { bg: 'bg-amber-500/15 border border-amber-500/25', text: 'text-amber-700 dark:text-amber-400 font-semibold', label: '진행 중' }
-}
-
-/**
  * 분야 → 한국어 레이블
  * @param {string} category
  * @returns {string}

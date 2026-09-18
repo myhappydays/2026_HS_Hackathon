@@ -66,7 +66,7 @@ export async function assignCluster(report) {
   const text         = `${report.title} ${report.description}`
   const { lat, lng } = report.location
 
-  const clusters = getClusters()
+  const clusters = await getClusters()
 
   // 1. 거리 필터
   const nearby = clusters.filter(c => {
@@ -77,7 +77,7 @@ export async function assignCluster(report) {
   // 2. 임베딩 모델 미로드 → 신규 군집 (graceful degradation)
   if (!isEmbedderReady()) {
     console.warn('[clustering] embedder not ready, creating new cluster')
-    return createNewCluster(report, null)
+    return await createNewCluster(report, null)
   }
 
   // 3. 신규 제보 임베딩 (후보 유무와 무관하게 항상 수행)
@@ -85,7 +85,7 @@ export async function assignCluster(report) {
 
   // 4. 후보 없음 → 신규 군집 (벡터는 저장)
   if (nearby.length === 0) {
-    return createNewCluster(report, newVec)
+    return await createNewCluster(report, newVec)
   }
 
   // 5. 후보 군집과 유사도 비교
@@ -101,10 +101,10 @@ export async function assignCluster(report) {
     } else {
       // 벡터 없는 기존 군집 → 대표 제보 텍스트로 즉석 embed 후 군집에 저장
       const { getReportById } = await import('./storage.js')
-      const rep = getReportById(c.representId)
+      const rep = await getReportById(c.representId)
       if (!rep) continue
       cVec = await embed(`${rep.title} ${rep.description}`)
-      updateCluster({ ...c, embeddingVector: Array.from(cVec) })
+      await updateCluster({ ...c, embeddingVector: Array.from(cVec) })
     }
     const score = cosineSimilarity(newVec, cVec)
     if (score > bestScore) {
@@ -116,7 +116,7 @@ export async function assignCluster(report) {
 
   // 6. 임계값 미달 → 신규 군집
   if (bestScore < SIMILARITY_THRESHOLD || !best) {
-    return createNewCluster(report, newVec)
+    return await createNewCluster(report, newVec)
   }
 
   // 7. 기존 군집에 배정 — 대표 벡터를 기존·신규의 평균으로 갱신
@@ -136,10 +136,9 @@ export async function assignCluster(report) {
     reportIds:       [...best.reportIds, report.id],
     embeddingVector: Array.from(mergedVec),
     danger:          newDanger,
-    status:          best.status || 'active',
     updatedAt:       report.createdAt,
   }
-  updateCluster(updated)
+  await updateCluster(updated)
   return best.id
 }
 
@@ -147,9 +146,9 @@ export async function assignCluster(report) {
  * 신규 군집 생성
  * @param {Report} report
  * @param {Float32Array|null} vector - 임베딩 벡터 (없으면 null)
- * @returns {string} 신규 clusterId
+ * @returns {Promise<string>} 신규 clusterId
  */
-function createNewCluster(report, vector) {
+async function createNewCluster(report, vector) {
   const cluster = {
     id:              generateId(),
     representId:     report.id,
@@ -160,11 +159,10 @@ function createNewCluster(report, vector) {
     },
     danger:          report.danger,
     category:        report.category,
-    status:          report.status || 'active',
     embeddingVector: vector ? Array.from(vector) : null,
     createdAt:       report.createdAt,
     updatedAt:       report.createdAt,
   }
-  addCluster(cluster)
+  await addCluster(cluster)
   return cluster.id
 }
