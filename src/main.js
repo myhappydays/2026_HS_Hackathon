@@ -16,9 +16,6 @@ import { initTheme } from './theme.js'
 // 테마 초기화 (다크/라이트 모드)
 initTheme()
 
-// 화면 뷰 모드 (데스크탑 와이드 대시보드 ↔ 모바일 프레임) 초기화
-initViewMode()
-
 document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
 
 const reportList  = document.getElementById('report-list')
@@ -390,14 +387,26 @@ function initViewMode() {
         if (leafletMap) {
           leafletMap.invalidateSize()
         }
-      }, 100)
+      }, 50)
+      setTimeout(() => {
+        if (kakaoMap) {
+          kakaoMap.relayout()
+          kakaoMap.setCenter(new kakao.maps.LatLng(anchorLat, anchorLng))
+        }
+        if (leafletMap) {
+          leafletMap.invalidateSize()
+        }
+      }, 250)
     }
   }
 
   applyMode(savedMode, false)
 
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
+  if (toggleBtn && !toggleBtn.dataset.bound) {
+    toggleBtn.dataset.bound = 'true'
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
       const isMobileNow = document.body.classList.contains('mobile-frame-only')
       applyMode(isMobileNow ? 'wide' : 'mobile', true)
     })

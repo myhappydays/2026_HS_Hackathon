@@ -78,6 +78,7 @@
   <style>
     /* ─── 기본 ─────────────────────────── */
     /* ─── 반응형 지도 높이 & 레이아웃 ─────────────────── */
+    #map-container-desktop { width: 100%; height: 280px; position: relative; }
     #map { width: 100%; height: 280px; }
     #heatmap-container { width: 100%; height: 280px; display: none; }
 
@@ -95,6 +96,7 @@
         overflow: hidden !important;
       }
       body:not(.mobile-frame-only) #sidebar-desktop {
+        order: 1 !important;
         width: 440px !important;
         flex-shrink: 0 !important;
         height: 100% !important;
@@ -102,8 +104,10 @@
         border-right: 1px solid var(--border) !important;
       }
       body:not(.mobile-frame-only) #map-container-desktop {
+        order: 2 !important;
         flex: 1 1 0% !important;
         height: 100% !important;
+        min-height: 100% !important;
         position: relative !important;
         overflow: hidden !important;
       }
@@ -141,19 +145,21 @@
       height: auto !important;
     }
     body.mobile-frame-only #sidebar-desktop {
+      order: 2 !important;
       width: 100% !important;
       height: auto !important;
       border-right-width: 0 !important;
     }
     body.mobile-frame-only #map-container-desktop {
+      order: 1 !important;
       width: 100% !important;
-      height: auto !important;
+      height: 280px !important;
     }
     body.mobile-frame-only #map {
-      height: 260px !important;
+      height: 280px !important;
     }
     body.mobile-frame-only #heatmap-container {
-      height: 260px !important;
+      height: 280px !important;
     }
     body.mobile-frame-only #nav-report-wrap {
       position: fixed !important;
@@ -377,6 +383,87 @@
     <!-- 메인 대시보드 레이아웃 (모바일은 세로 배치, 데스크탑은 좌우 스플릿) -->
     <div id="main-dashboard-layout" class="flex-1 flex flex-col">
 
+      <!-- 우측/상단: 대화면 지도 영역 -->
+      <div id="map-container-desktop" class="w-full relative min-h-[280px]">
+        <div id="map-wrapper" class="relative w-full h-full">
+          <div id="map" class="w-full bg-surface"></div>
+          <!-- 히트맵 뷰 (Leaflet) — 토글 시 카카오맵 대체 -->
+          <div id="heatmap-container"></div>
+          <!-- 지도 로딩 전 플레이스홀더 -->
+          <div id="map-placeholder" class="absolute inset-0 flex items-center justify-center bg-surface z-10">
+            <span class="text-muted-foreground text-sm">지도 불러오는 중...</span>
+          </div>
+
+          <!-- 지도 상단 오버레이 (검색창 + 뷰 토글) -->
+          <div class="absolute top-3 inset-x-3 z-[9999] flex items-center gap-2 pointer-events-none max-w-lg">
+            <!-- 검색창 컨테이너 -->
+            <div id="search-container" class="relative flex-1 pointer-events-auto">
+              <div class="relative flex items-center w-full bg-background/95 dark:bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-xl focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                <span class="pl-2.5 text-muted-foreground shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z"/>
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  id="place-search-input"
+                  placeholder="동네, 장소, 지하철역 검색..."
+                  autocomplete="off"
+                  class="w-full py-2 px-2 text-xs bg-transparent text-foreground placeholder:text-muted-foreground outline-none"
+                />
+                <!-- 로딩 인디케이터 (검색 중) -->
+                <div id="place-search-spinner" class="hidden pr-2 shrink-0">
+                  <svg class="w-3.5 h-3.5 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <!-- 검색어 초기화 버튼 -->
+                <button
+                  type="button"
+                  id="place-search-clear"
+                  class="hidden pr-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  title="검색어 지우기">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- 검색 결과 드롭다운 -->
+              <div id="place-search-dropdown" class="hidden absolute top-full left-0 right-0 mt-1.5 max-h-60 bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-2xl overflow-y-auto z-[10000] p-1 space-y-0.5">
+                <!-- JS에서 결과 목록 주입 -->
+              </div>
+            </div>
+
+            <!-- 뷰 토글 -->
+            <div class="inline-flex rounded-lg border border-border bg-background/90 backdrop-blur-sm p-0.5 shadow-sm pointer-events-auto shrink-0" role="group">
+              <button type="button" id="view-pin-btn"
+                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors bg-primary text-white">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                핀
+              </button>
+              <button type="button" id="view-heat-btn"
+                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors text-muted-foreground">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+                히트맵
+              </button>
+            </div>
+          </div>
+
+          <!-- 내 위치 (GPS) 복귀 플로팅 버튼 -->
+          <button type="button"
+            id="gps-recenter-btn"
+            class="absolute bottom-3 right-3 z-[9990] w-9 h-9 rounded-lg bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 active:scale-95 transition-all"
+            title="현재 위치로 이동">
+            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- 좌측/하단: 제보 목록 및 제어 사이드바 -->
       <aside id="sidebar-desktop" class="w-full flex flex-col bg-background">
 
@@ -524,87 +611,6 @@
 
       </aside>
 
-      <!-- 우측/상단: 대화면 지도 영역 -->
-      <div id="map-container-desktop" class="w-full relative min-h-[280px]">
-        <div id="map-wrapper" class="relative w-full h-full">
-          <div id="map" class="w-full bg-surface"></div>
-          <!-- 히트맵 뷰 (Leaflet) — 토글 시 카카오맵 대체 -->
-          <div id="heatmap-container"></div>
-          <!-- 지도 로딩 전 플레이스홀더 -->
-          <div id="map-placeholder" class="absolute inset-0 flex items-center justify-center bg-surface z-10">
-            <span class="text-muted-foreground text-sm">지도 불러오는 중...</span>
-          </div>
-
-          <!-- 지도 상단 오버레이 (검색창 + 뷰 토글) -->
-          <div class="absolute top-3 inset-x-3 z-[9999] flex items-center gap-2 pointer-events-none max-w-lg">
-            <!-- 검색창 컨테이너 -->
-            <div id="search-container" class="relative flex-1 pointer-events-auto">
-              <div class="relative flex items-center w-full bg-background/95 dark:bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-xl focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                <span class="pl-2.5 text-muted-foreground shrink-0">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z"/>
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  id="place-search-input"
-                  placeholder="동네, 장소, 지하철역 검색..."
-                  autocomplete="off"
-                  class="w-full py-2 px-2 text-xs bg-transparent text-foreground placeholder:text-muted-foreground outline-none"
-                />
-                <!-- 로딩 인디케이터 (검색 중) -->
-                <div id="place-search-spinner" class="hidden pr-2 shrink-0">
-                  <svg class="w-3.5 h-3.5 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </div>
-                <!-- 검색어 초기화 버튼 -->
-                <button
-                  type="button"
-                  id="place-search-clear"
-                  class="hidden pr-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                  title="검색어 지우기">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-
-              <!-- 검색 결과 드롭다운 -->
-              <div id="place-search-dropdown" class="hidden absolute top-full left-0 right-0 mt-1.5 max-h-60 bg-card/95 backdrop-blur-md border border-border rounded-xl shadow-2xl overflow-y-auto z-[10000] p-1 space-y-0.5">
-                <!-- JS에서 결과 목록 주입 -->
-              </div>
-            </div>
-
-            <!-- 뷰 토글 -->
-            <div class="inline-flex rounded-lg border border-border bg-background/90 backdrop-blur-sm p-0.5 shadow-sm pointer-events-auto shrink-0" role="group">
-              <button type="button" id="view-pin-btn"
-                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors bg-primary text-white">
-                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                핀
-              </button>
-              <button type="button" id="view-heat-btn"
-                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors text-muted-foreground">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-                히트맵
-              </button>
-            </div>
-          </div>
-
-          <!-- 내 위치 (GPS) 복귀 플로팅 버튼 -->
-          <button type="button"
-            id="gps-recenter-btn"
-            class="absolute bottom-3 right-3 z-[9990] w-9 h-9 rounded-lg bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 active:scale-95 transition-all"
-            title="현재 위치로 이동">
-            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
     </div><!-- /main-dashboard-layout -->
 
     <!-- 하단 알약 FAB — 제보하기 버튼 -->
@@ -746,7 +752,7 @@
   </div><!-- /ai-modal -->
 
   <!-- 카카오 지도 API (services: 역지오코딩, clusterer: 마커 클러스터링) -->
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=7f192d556aecbc3e63ee3ba3a151f1d0&libraries=services,clusterer,visualization"></script>
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=7f192d556aecbc3e63ee3ba3a151f1d0&libraries=services,clusterer,visualization"></script>
 
   <!-- Leaflet JS + Leaflet.heat (히트맵 뷰) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
