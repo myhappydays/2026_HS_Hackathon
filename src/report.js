@@ -22,15 +22,15 @@ import { addReport, updateReport, isStorageFull, getReports, saveReports } from 
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 import { listenAuthState } from './auth.js'
 
-let currentUser = null;
+let currentUser = null
 listenAuthState((user) => {
   if (user) {
-    currentUser = user;
+    currentUser = user
   } else {
-    alert("제보하기는 로그인 후 이용하실 수 있습니다.");
-    location.href = `${import.meta.env.BASE_URL}index.html`;
+    alert('제보하기는 로그인 후 이용하실 수 있습니다.')
+    location.href = `${import.meta.env.BASE_URL}index.html`
   }
-});
+})
 
 // ── DOM 참조 ─────────────────────────────────────────────
 const imageInput       = document.getElementById('image-input')
@@ -223,7 +223,7 @@ form.addEventListener('submit', async e => {
     createdAt: Date.now(),
   }
 
-  // Firestore 저장
+  // Firestore & local 저장
   await addReport(report)
 
   // 군집 배정 (report 저장 후, async)

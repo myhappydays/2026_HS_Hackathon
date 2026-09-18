@@ -16,6 +16,7 @@ export default defineConfig({
         main:   resolve(__dirname, 'index.html'),
         report: resolve(__dirname, 'report.html'),
         detail: resolve(__dirname, 'detail.html'),
+        mypage: resolve(__dirname, 'mypage.html'),
       }
     }
   }

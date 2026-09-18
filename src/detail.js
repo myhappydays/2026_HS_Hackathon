@@ -17,16 +17,16 @@ const errorState    = document.getElementById('error-state')
 // URL에서 클러스터 ID 읽기
 const clusterId = new URLSearchParams(location.search).get('id')
 
-function init() {
+async function init() {
   if (!clusterId) { showError(); return }
 
-  const cluster = getClusterById(clusterId)
+  const cluster = await getClusterById(clusterId)
   if (!cluster)  { showError(); return }
 
-  const repReport = getReportById(cluster.representId)
+  const repReport = await getReportById(cluster.representId)
   if (!repReport) { showError(); return }
 
-  renderDetail(cluster, repReport)
+  await renderDetail(cluster, repReport)
 
   // 내가 공감한 군집 ID 관리
   const getLikedList = () => JSON.parse(localStorage.getItem('my_likes') || '[]')
@@ -41,7 +41,7 @@ function init() {
   }
 
   // 공감 버튼 이벤트
-  btnLike.addEventListener('click', () => {
+  btnLike.addEventListener('click', async () => {
     const likedList = getLikedList()
     
     // 이미 공감했는지 검사
@@ -51,7 +51,7 @@ function init() {
     }
 
     cluster.likes = (cluster.likes || 0) + 1
-    updateCluster(cluster)
+    await updateCluster(cluster)
     
     // 로컬스토리지에 저장 (1계정당 1회)
     likedList.push(cluster.id)
@@ -64,12 +64,14 @@ function init() {
     btnLike.innerHTML = `✔️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes}</span>`
   })
 
-  // 댓글 폼 이벤트
-  document.getElementById('comment-form').addEventListener('submit', (e) => {
-    e.preventDefault()
+  // 댓글 등록 이벤트
+  document.getElementById('btn-comment-submit').addEventListener('click', async () => {
     const input = document.getElementById('comment-input')
     const text = input.value.trim()
-    if (!text) return
+    if (!text) {
+      alert('공유할 상황을 입력해주세요.')
+      return
+    }
 
     if (!cluster.comments) cluster.comments = []
     
@@ -84,9 +86,9 @@ function init() {
       createdAt: new Date().toISOString()
     })
     
-    updateCluster(cluster)
+    await updateCluster(cluster)
     input.value = ''
-    renderDetail(cluster, repReport) // 리렌더링
+    await renderDetail(cluster, repReport) // 리렌더링
   })
 }
 
@@ -95,25 +97,44 @@ function showError() {
   errorState.classList.remove('hidden')
 }
 
-function renderDetail(cluster, repReport) {
+async function renderDetail(cluster, repReport) {
   // 캐러셀: 군집 내 모든 제보의 사진
-  const allReports = cluster.reportIds
-    .map(id => getReportById(id))
-    .filter(Boolean)
-    .filter(r => r.imageBase64)
+  const allReportsRaw = await Promise.all(cluster.reportIds.map(id => getReportById(id)))
+  const allReports = allReportsRaw.filter(Boolean)
+  const carouselReports = allReports.filter(r => r.imageBase64)
 
-  renderCarousel(allReports)
+  renderCarousel(carouselReports)
 
   // 뱃지
+  const isResolved = cluster.status === 'resolved'
   const ds  = dangerStyle(cluster.danger)
   const cat = categoryLabel(cluster.category)
+  const statusBadge = isResolved
+    ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400">
+         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+         해결 완료
+       </span>`
+    : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>`
+
   document.getElementById('badge-area').innerHTML = `
-    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
+    ${statusBadge}
     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${cat}</span>
     ${cluster.reportIds.length > 1
       ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">제보 ${cluster.reportIds.length}건</span>`
       : ''}
   `
+
+  // 상태 토글 버튼
+  const btnToggleStatus = document.getElementById('btn-toggle-status')
+  const btnToggleStatusText = document.getElementById('btn-toggle-status-text')
+  if (btnToggleStatus && btnToggleStatusText) {
+    btnToggleStatusText.textContent = isResolved ? '진행 중으로 변경' : '해결 완료로 변경'
+    btnToggleStatus.onclick = async () => {
+      cluster.status = isResolved ? 'active' : 'resolved'
+      await updateCluster(cluster)
+      await renderDetail(cluster, repReport)
+    }
+  }
 
   // 대표 정보
   document.getElementById('cluster-title').textContent       = repReport.title
@@ -295,15 +316,15 @@ function renderCarousel(reports) {
 
 init()
 
-function handleDeleteReport(cluster, reportId) {
-  deleteReport(reportId)
+async function handleDeleteReport(cluster, reportId) {
+  await deleteReport(reportId)
 
   // 군집 업데이트
   cluster.reportIds = cluster.reportIds.filter(id => id !== reportId)
 
   if (cluster.reportIds.length === 0) {
     // 모든 제보가 지워지면 군집도 삭제
-    deleteCluster(cluster.id)
+    await deleteCluster(cluster.id)
     alert('모든 제보가 삭제되어 군집이 사라졌습니다.')
     location.href = `${BASE}index.html`
   } else {
@@ -311,14 +332,14 @@ function handleDeleteReport(cluster, reportId) {
     if (cluster.representId === reportId) {
       cluster.representId = cluster.reportIds[0]
     }
-    updateCluster(cluster)
+    await updateCluster(cluster)
     alert('제보가 삭제되었습니다.')
     location.reload()
   }
 }
 
-function handleEditReport(reportId) {
-  const report = getReportById(reportId)
+async function handleEditReport(reportId) {
+  const report = await getReportById(reportId)
   if (!report) return
 
   const newDesc = prompt('수정할 내용을 입력하세요 (상세 설명):', report.description || '')
@@ -326,12 +347,14 @@ function handleEditReport(reportId) {
   if (newDesc !== null && newDesc.trim() !== '') {
     report.description = newDesc.trim()
     report.updatedAt = new Date().toISOString()
-    updateReport(report)
+    await updateReport(report)
     
     // 군집 업데이트
-    const cluster = getClusterById(clusterId)
-    cluster.updatedAt = new Date().toISOString()
-    updateCluster(cluster)
+    const cluster = await getClusterById(clusterId)
+    if (cluster) {
+      cluster.updatedAt = new Date().toISOString()
+      await updateCluster(cluster)
+    }
     
     alert('제보 내용이 수정되었습니다.')
     location.reload()

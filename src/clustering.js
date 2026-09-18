@@ -136,6 +136,7 @@ export async function assignCluster(report) {
     reportIds:       [...best.reportIds, report.id],
     embeddingVector: Array.from(mergedVec),
     danger:          newDanger,
+    status:          best.status || 'active',
     updatedAt:       report.createdAt,
   }
   await updateCluster(updated)
@@ -159,6 +160,7 @@ async function createNewCluster(report, vector) {
     },
     danger:          report.danger,
     category:        report.category,
+    status:          report.status || 'active',
     embeddingVector: vector ? Array.from(vector) : null,
     createdAt:       report.createdAt,
     updatedAt:       report.createdAt,
