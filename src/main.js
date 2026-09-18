@@ -1086,6 +1086,13 @@ if (getClusters().length === 0 || !getClusters().some(c => c.status === 'resolve
   seedDemoData()
 }
 
+// 1. 지도 및 목록 즉시 초기화 (기본 위치로 즉각 렌더링하여 지연/블랙아웃 방지)
+initMap(anchorLat, anchorLng)
+renderList(anchorLat, anchorLng)
+updateActiveDot()
+if (isConfigured()) runAISummary()
+
+// 2. GPS 위치 확인 시 지도 부드럽게 이동 및 목록 갱신
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
     pos => {
@@ -1093,26 +1100,15 @@ if (navigator.geolocation) {
       userLng = pos.coords.longitude
       anchorLat = userLat
       anchorLng = userLng
-      initMap(userLat, userLng)
+      if (kakaoMap) {
+        kakaoMap.panTo(new kakao.maps.LatLng(userLat, userLng))
+        kakaoMap.relayout()
+      }
       renderList(anchorLat, anchorLng)
-      updateActiveDot()
-      if (isConfigured()) runAISummary()
     },
     () => {
-      anchorLat = userLat
-      anchorLng = userLng
-      initMap(userLat, userLng)
-      renderList(anchorLat, anchorLng)
-      updateActiveDot()
-      if (isConfigured()) runAISummary()
+      // 위치 권한 거부/타임아웃 시 기본 위치 유지
     },
-    { timeout: 6000, enableHighAccuracy: true }
+    { timeout: 5000, enableHighAccuracy: true }
   )
-} else {
-  anchorLat = userLat
-  anchorLng = userLng
-  initMap(userLat, userLng)
-  renderList(anchorLat, anchorLng)
-  updateActiveDot()
-  if (isConfigured()) runAISummary()
 }
