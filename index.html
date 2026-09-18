@@ -466,14 +466,14 @@
 
     <!-- 헤더 (글로벌 탑바) -->
     <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border px-4 py-2.5 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
+      <a id="brand-logo-link" href="#" class="flex items-center gap-2.5 cursor-pointer hover:opacity-85 transition-opacity" title="홈으로 이동 / 새로고침">
         <img src="/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
         <span class="text-2xl font-semibold text-foreground" style="font-family: 'Playfair Display', serif;">Fermata</span>
         <span class="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
           <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
           안전 관제 대시보드
         </span>
-      </div>
+      </a>
 
       <div class="flex items-center gap-1.5">
         <!-- 화면 뷰 모드 토글 버튼 (와이드 ↔ 모바일 프레임) -->

@@ -23,10 +23,28 @@ const emptyState  = document.getElementById('empty-state')
 const reportCount = document.getElementById('report-count')
 const mapPlaceholder = document.getElementById('map-placeholder')
 
+// 세션 스토리지 기반 지도 위치 및 검색 상태 유지 (상세 페이지 이동 후 복귀 시 유지)
+const MAP_STATE_KEY = 'fermata_map_state'
+
+function loadSavedMapState() {
+  try {
+    const raw = sessionStorage.getItem(MAP_STATE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch (e) {
+    return null
+  }
+}
+
+const savedMapState = loadSavedMapState()
+
 let currentCategory = 'all'
 let currentSort = 'recent'
-let anchorLat = 37.5665
-let anchorLng = 126.9780
+let anchorLat = (savedMapState && typeof savedMapState.anchorLat === 'number') ? savedMapState.anchorLat : 37.5665
+let anchorLng = (savedMapState && typeof savedMapState.anchorLng === 'number') ? savedMapState.anchorLng : 126.9780
+const initialMapLat = (savedMapState && typeof savedMapState.lat === 'number') ? savedMapState.lat : anchorLat
+const initialMapLng = (savedMapState && typeof savedMapState.lng === 'number') ? savedMapState.lng : anchorLng
+const initialMapLevel = (savedMapState && typeof savedMapState.level === 'number') ? savedMapState.level : 5
 
 function getFilteredClusters() {
   let clusters = getClusters()
@@ -90,6 +108,63 @@ let userLng = 126.9780
 let globalMarkers = []  // 히트맵 토글 시 show/hide용
 let placesService = null
 let searchTargetOverlay = null
+let userDotOverlay = null
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[m]))
+}
+
+function saveMapState(extra = {}) {
+  if (!kakaoMap) return
+  const center = kakaoMap.getCenter()
+  const searchInput = document.getElementById('place-search-input')
+  const searchQuery = searchInput ? searchInput.value.trim() : ''
+  const state = {
+    lat: center.getLat(),
+    lng: center.getLng(),
+    level: kakaoMap.getLevel(),
+    anchorLat: anchorLat,
+    anchorLng: anchorLng,
+    searchQuery: searchQuery,
+    hasSearched: !!searchQuery,
+    ...extra,
+  }
+  try {
+    sessionStorage.setItem(MAP_STATE_KEY, JSON.stringify(state))
+  } catch (e) {}
+}
+
+function showSearchTargetOverlay(lat, lng, label) {
+  if (searchTargetOverlay) {
+    searchTargetOverlay.setMap(null)
+    searchTargetOverlay = null
+  }
+  if (!kakaoMap || !label) return
+
+  const overlayDiv = document.createElement('div')
+  overlayDiv.className = 'flex flex-col items-center pointer-events-none -translate-x-1/2 -translate-y-full'
+  overlayDiv.style.transform = 'translate(-50%, -100%)'
+  overlayDiv.innerHTML = `
+    <div class="relative px-2.5 py-1 rounded-full bg-primary text-white text-[11px] font-bold shadow-xl flex items-center gap-1.5 animate-bounce">
+      <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/>
+      </svg>
+      <span class="max-w-[130px] truncate">${escapeHtml(label)}</span>
+    </div>
+    <div class="w-2.5 h-2.5 bg-primary rotate-45 -mt-1 shadow-md"></div>
+  `
+
+  searchTargetOverlay = new kakao.maps.CustomOverlay({
+    position: new kakao.maps.LatLng(lat, lng),
+    content: overlayDiv,
+    yAnchor: 1.0,
+    zIndex: 999,
+  })
+  searchTargetOverlay.setMap(kakaoMap)
+}
 
 function initMap(lat, lng) {
   if (typeof kakao === 'undefined') {
@@ -100,7 +175,7 @@ function initMap(lat, lng) {
   const mapEl = document.getElementById('map')
   kakaoMap = new kakao.maps.Map(mapEl, {
     center: new kakao.maps.LatLng(lat, lng),
-    level: 5,
+    level: initialMapLevel,
   })
 
   // 현재 위치 파란 점
@@ -110,12 +185,13 @@ function initMap(lat, lng) {
     background:#3b82f6; border:2px solid white;
     box-shadow:0 0 0 4px rgba(59,130,246,0.25);
   `
-  new kakao.maps.CustomOverlay({
-    position: new kakao.maps.LatLng(lat, lng),
+  userDotOverlay = new kakao.maps.CustomOverlay({
+    position: new kakao.maps.LatLng(userLat, userLng),
     content: myDot,
     yAnchor: 0.5,
     zIndex: 1,
-  }).setMap(kakaoMap)
+  })
+  userDotOverlay.setMap(kakaoMap)
 
   if (mapPlaceholder) {
     mapPlaceholder.classList.add('hidden')
@@ -123,6 +199,11 @@ function initMap(lat, lng) {
   }
   renderMarkers()
   initPlaceSearch()
+
+  // 지도 드래그 및 줌 완료 시 상태 자동 저장
+  kakao.maps.event.addListener(kakaoMap, 'idle', () => {
+    saveMapState()
+  })
 
   // 뷰 모드에 맞춘 지도 캔버스 초기 레이아웃 동기화
   const relayoutMap = () => {
@@ -548,6 +629,15 @@ function initPlaceSearch() {
     searchDropdown.classList.remove('hidden')
   }
 
+  // 이전 검색 상태가 있다면 복원
+  if (savedMapState && savedMapState.searchQuery) {
+    searchInput.value = savedMapState.searchQuery
+    if (searchClear) searchClear.classList.remove('hidden')
+    if (savedMapState.hasSearched) {
+      showSearchTargetOverlay(anchorLat, anchorLng, savedMapState.searchQuery)
+    }
+  }
+
   function selectPlace(place) {
     const lat = parseFloat(place.y)
     const lng = parseFloat(place.x)
@@ -572,47 +662,21 @@ function initPlaceSearch() {
       leafletMap.panTo([lat, lng])
     }
 
-    // 기존 검색 핀 오버레이 제거
-    if (searchTargetOverlay) {
-      searchTargetOverlay.setMap(null)
-      searchTargetOverlay = null
-    }
-
-    // 검색된 목적지 강조 커스텀 오버레이 생성 (펄스 + 말풍선)
-    const overlayDiv = document.createElement('div')
-    overlayDiv.className = 'flex flex-col items-center pointer-events-none -translate-x-1/2 -translate-y-full'
-    overlayDiv.style.transform = 'translate(-50%, -100%)'
-    overlayDiv.innerHTML = `
-      <div class="relative px-2.5 py-1 rounded-full bg-primary text-white text-[11px] font-bold shadow-xl flex items-center gap-1.5 animate-bounce">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/>
-        </svg>
-        <span class="max-w-[130px] truncate">${escapeHtml(place.place_name)}</span>
-      </div>
-      <div class="w-2.5 h-2.5 bg-primary rotate-45 -mt-1 shadow-md"></div>
-    `
-
-    searchTargetOverlay = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(lat, lng),
-      content: overlayDiv,
-      yAnchor: 1.0,
-      zIndex: 999,
-    })
-    searchTargetOverlay.setMap(kakaoMap)
-
-    // 8초 후 강조 오버레이 자동 소멸
-    setTimeout(() => {
-      if (searchTargetOverlay) {
-        searchTargetOverlay.setMap(null)
-        searchTargetOverlay = null
-      }
-    }, 8000)
+    showSearchTargetOverlay(lat, lng, place.place_name)
 
     // 기준 위치 갱신 및 리스트 거리 재계산 반영
     anchorLat = lat
     anchorLng = lng
     renderList(anchorLat, anchorLng)
+    saveMapState({
+      lat,
+      lng,
+      level: 4,
+      anchorLat: lat,
+      anchorLng: lng,
+      searchQuery: place.place_name,
+      hasSearched: true,
+    })
   }
 
   // 검색 인풋 입력 이벤트 (디바운스)
@@ -668,6 +732,20 @@ function initPlaceSearch() {
       searchClear.classList.add('hidden')
       searchDropdown.classList.add('hidden')
       searchDropdown.innerHTML = ''
+      if (searchTargetOverlay) {
+        searchTargetOverlay.setMap(null)
+        searchTargetOverlay = null
+      }
+      if (kakaoMap) {
+        const center = kakaoMap.getCenter()
+        anchorLat = center.getLat()
+        anchorLng = center.getLng()
+      } else {
+        anchorLat = userLat
+        anchorLng = userLng
+      }
+      renderList(anchorLat, anchorLng)
+      saveMapState({ searchQuery: '', hasSearched: false })
       searchInput.focus()
     })
   }
@@ -707,6 +785,15 @@ function initPlaceSearch() {
       anchorLat = userLat
       anchorLng = userLng
       renderList(anchorLat, anchorLng)
+      saveMapState({
+        lat: userLat,
+        lng: userLng,
+        level: 5,
+        anchorLat: userLat,
+        anchorLng: userLng,
+        searchQuery: '',
+        hasSearched: false,
+      })
     })
   }
 }
@@ -1084,26 +1171,43 @@ if (!isEmbedderReady()) {
   })
 }
 
+// Fermata 로고 클릭 시 검색 위치 초기화 & 새로고침
+const brandLogoLink = document.getElementById('brand-logo-link')
+if (brandLogoLink) {
+  brandLogoLink.addEventListener('click', (e) => {
+    e.preventDefault()
+    sessionStorage.removeItem(MAP_STATE_KEY)
+    location.href = import.meta.env.BASE_URL || '/'
+  })
+}
+
 // ── 초기화 ───────────────────────────────────────────────
-// 1. 지도 및 목록 즉시 초기화 (기본 위치로 즉각 렌더링하여 지연/블랙아웃 방지)
-initMap(anchorLat, anchorLng)
+// 1. 지도 및 목록 즉시 초기화 (저장된 상태 또는 기본 위치로 즉각 렌더링)
+initMap(initialMapLat, initialMapLng)
 renderList(anchorLat, anchorLng)
 updateActiveDot()
 if (isConfigured()) runAISummary()
 
-// 2. GPS 위치 확인 시 지도 부드럽게 이동 및 목록 갱신
+// 2. GPS 위치 확인 시 파란 점 갱신 및 (저장된 검색 상태가 없는 최초 접속일 때만) 지도 이동
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
     pos => {
       userLat = pos.coords.latitude
       userLng = pos.coords.longitude
-      anchorLat = userLat
-      anchorLng = userLng
-      if (kakaoMap) {
-        kakaoMap.panTo(new kakao.maps.LatLng(userLat, userLng))
-        kakaoMap.relayout()
+      if (userDotOverlay && kakaoMap) {
+        userDotOverlay.setPosition(new kakao.maps.LatLng(userLat, userLng))
       }
-      renderList(anchorLat, anchorLng)
+      // 세션에 저장된 검색/지도 위치가 없을 때만 현재 내 위치로 이동
+      if (!savedMapState) {
+        anchorLat = userLat
+        anchorLng = userLng
+        if (kakaoMap) {
+          kakaoMap.panTo(new kakao.maps.LatLng(userLat, userLng))
+          kakaoMap.relayout()
+        }
+        renderList(anchorLat, anchorLng)
+        saveMapState()
+      }
     },
     () => {
       // 위치 권한 거부/타임아웃 시 기본 위치 유지
