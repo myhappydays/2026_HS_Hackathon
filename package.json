@@ -27,6 +27,7 @@
     "vite": "^8.0.16"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.2.0"
+    "@huggingface/transformers": "^4.2.0",
+    "firebase": "^11.0.1"
   }
 }
