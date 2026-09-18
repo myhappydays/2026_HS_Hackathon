@@ -11,6 +11,31 @@ import {
   getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
 } from './bedrock.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
+import { loginWithGoogle, logout, listenAuthState } from './auth.js'
+
+// ── 인증(로그인) UI 렌더링 ───────────────────────────────
+const authContainer = document.getElementById('auth-container');
+listenAuthState((user) => {
+  if (user) {
+    authContainer.innerHTML = `
+      <a href="${import.meta.env.BASE_URL}mypage.html" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-1 transition-colors text-xs font-semibold text-foreground">
+        <img src="${user.photoURL || '/icon.svg'}" class="w-5 h-5 rounded-full object-cover">
+        마이페이지
+      </a>
+      <button id="logout-btn" class="px-3 py-1.5 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">로그아웃</button>
+    `;
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      logout();
+    });
+  } else {
+    authContainer.innerHTML = `
+      <button id="login-btn" class="px-4 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors">구글 로그인</button>
+    `;
+    document.getElementById('login-btn').addEventListener('click', () => {
+      loginWithGoogle();
+    });
+  }
+});
 
 document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
 

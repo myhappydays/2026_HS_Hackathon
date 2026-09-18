@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, setDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, setDoc, doc, deleteDoc, writeBatch, query, where } from "firebase/firestore";
 
 const REPORTS_COLLECTION = 'reports';
 const CLUSTERS_COLLECTION = 'clusters';
@@ -22,6 +22,18 @@ export async function getReports() {
     return snapshot.docs.map(doc => doc.data());
   } catch (e) {
     console.error("Firestore getReports Error:", e);
+    return [];
+  }
+}
+
+export async function getReportsByUserId(userId) {
+  if (!userId) return [];
+  try {
+    const q = query(collection(db, REPORTS_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data());
+  } catch (e) {
+    console.error("Firestore getReportsByUserId Error:", e);
     return [];
   }
 }

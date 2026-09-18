@@ -100,10 +100,13 @@
   <div class="relative w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
 
     <!-- 헤더 -->
-    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center justify-center">
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <img src="/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
         <span class="text-2xl font-semibold text-foreground" style="font-family: 'Playfair Display', serif;">Fermata</span>
+      </div>
+      <div id="auth-container" class="flex items-center gap-2">
+        <!-- Auth buttons injected by JS -->
       </div>
     </header>
 

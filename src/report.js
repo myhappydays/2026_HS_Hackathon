@@ -20,6 +20,17 @@ import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
 import { addReport, updateReport, isStorageFull, getReports, saveReports } from './storage.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
+import { listenAuthState } from './auth.js'
+
+let currentUser = null;
+listenAuthState((user) => {
+  if (user) {
+    currentUser = user;
+  } else {
+    alert("제보하기는 로그인 후 이용하실 수 있습니다.");
+    location.href = `${import.meta.env.BASE_URL}index.html`;
+  }
+});
 
 // ── DOM 참조 ─────────────────────────────────────────────
 const imageInput       = document.getElementById('image-input')
@@ -197,6 +208,7 @@ form.addEventListener('submit', async e => {
   /** @type {Report} */
   const report = {
     id:          generateId(),
+    userId:      currentUser ? currentUser.uid : 'anonymous',
     clusterId:   '', // assignCluster 후 채움
     title,
     description,

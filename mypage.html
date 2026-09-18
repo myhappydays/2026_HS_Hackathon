@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="theme-crimson" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마이페이지 - Fermata</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
+          colors: {
+            background: 'var(--background)',
+            'background-1': 'var(--background-1)',
+            foreground: 'var(--foreground)',
+            primary: { DEFAULT: 'var(--primary)', 500: 'var(--primary-500)', 600: 'var(--primary-600)' },
+            muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
+            border: 'var(--border)',
+            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)' },
+            card: { DEFAULT: 'var(--card)' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/css/themes/crimson.css">
+  <style>body { font-family: var(--font-sans); }</style>
+</head>
+<body class="bg-background text-foreground min-h-screen">
+
+  <div class="w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+
+    <!-- 헤더 -->
+    <header class="sticky top-0 z-50 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+      <a id="nav-home" href="#" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-surface-1 transition">
+        <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+        </svg>
+      </a>
+      <h1 class="font-bold text-base text-foreground">마이페이지</h1>
+    </header>
+
+    <main class="flex-1 overflow-y-auto pb-10">
+      
+      <!-- 프로필 영역 -->
+      <div class="px-5 py-6 border-b border-border flex items-center gap-4">
+        <img id="profile-img" src="/icon.svg" class="w-16 h-16 rounded-full object-cover border border-border bg-surface" alt="프로필">
+        <div>
+          <h2 id="profile-name" class="text-lg font-bold text-foreground">로딩 중...</h2>
+          <p id="profile-email" class="text-sm text-muted-foreground"></p>
+        </div>
+      </div>
+
+      <!-- 리스트 헤더 -->
+      <div class="px-5 pt-6 pb-2 flex items-center justify-between">
+        <h3 class="font-semibold text-base text-foreground">내가 쓴 제보 목록</h3>
+        <span id="my-report-count" class="text-xs text-muted-foreground">총 0건</span>
+      </div>
+
+      <!-- 내가 쓴 제보 리스트 -->
+      <div id="my-report-list" class="px-4 py-2 flex flex-col gap-3">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+
+      <!-- 빈 상태 UI -->
+      <div id="empty-state" class="hidden flex-col items-center justify-center py-16 gap-3">
+        <div class="w-14 h-14 rounded-full bg-surface flex items-center justify-center">
+          <svg class="w-7 h-7 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+          </svg>
+        </div>
+        <p class="text-sm text-muted-foreground text-center">작성한 제보가 없습니다.</p>
+      </div>
+
+    </main>
+  </div>
+
+  <script type="module" src="/src/mypage.js"></script>
+</body>
+</html>
