@@ -25,6 +25,8 @@ const mapPlaceholder = document.getElementById('map-placeholder')
 
 let currentCategory = 'all'
 let currentSort = 'recent'
+let anchorLat = 37.5665
+let anchorLng = 126.9780
 
 function getFilteredClusters() {
   let clusters = getClusters()
@@ -47,7 +49,7 @@ document.querySelectorAll('.filter-chip').forEach(btn => {
     
     currentCategory = target.getAttribute('data-cat')
     renderMarkers()
-    renderList(userLat, userLng)
+    renderList(anchorLat, anchorLng)
   })
 })
 
@@ -55,19 +57,24 @@ const sortSelect = document.getElementById('sort-filter')
 if (sortSelect) {
   sortSelect.addEventListener('change', (e) => {
     currentSort = e.target.value
-    renderList(userLat, userLng)
+    renderList(anchorLat, anchorLng)
   })
 }
 
-// 위험도별 마커 이미지 (카카오 기본 핀에 색상 오버레이)
-const DANGER_COLOR = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' }
+// 위험도 및 해결 완료별 마커 이미지 (카카오 기본 핀에 색상 및 심볼 오버레이)
+const DANGER_COLOR = { high: '#ef4444', medium: '#f59e0b', low: '#10b981', resolved: '#3b82f6' }
 
-function makeMarkerImage(color) {
+function makeMarkerImage(color, isResolved = false) {
   // SVG 핀을 data URI로 — 카카오 MarkerImage에 사용
+  const inner = isResolved
+    ? `<circle cx="14" cy="14" r="6" fill="white"/>
+       <path d="M10.5 14l2.5 2.5 4.5-4.5" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`
+    : `<circle cx="14" cy="14" r="5.5" fill="white"/>`
+
   const svg = `
     <svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
       <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="${color}"/>
-      <circle cx="14" cy="14" r="5.5" fill="white"/>
+      ${inner}
     </svg>`
   const uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
   return new kakao.maps.MarkerImage(uri, new kakao.maps.Size(28, 36), {
@@ -81,6 +88,8 @@ let kakaoMap = null
 let userLat = 37.5665
 let userLng = 126.9780
 let globalMarkers = []  // 히트맵 토글 시 show/hide용
+let placesService = null
+let searchTargetOverlay = null
 
 function initMap(lat, lng) {
   if (typeof kakao === 'undefined') {
@@ -110,6 +119,7 @@ function initMap(lat, lng) {
 
   mapPlaceholder.classList.add('hidden')
   renderMarkers()
+  initPlaceSearch()
 }
 
 function renderMarkers() {
@@ -125,15 +135,16 @@ function renderMarkers() {
   const clusters = getFilteredClusters()
   if (clusters.length === 0) return
 
-  // 클러스터 ID → danger 빠른 조회용 맵
-  const dangerMap = Object.fromEntries(clusters.map(c => [c.id, c.danger]))
+  // 클러스터 ID → 클러스터 데이터 빠른 조회용 맵
+  const clusterMap = Object.fromEntries(clusters.map(c => [c.id, c]))
 
   const markers = clusters.map(cluster => {
-    const color  = DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium
+    const isResolved = cluster.status === 'resolved'
+    const color  = isResolved ? DANGER_COLOR.resolved : (DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium)
     const pos    = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
     const marker = new kakao.maps.Marker({
       position: pos,
-      image: makeMarkerImage(color),
+      image: makeMarkerImage(color, isResolved),
     })
     marker._clusterId = cluster.id
     kakao.maps.event.addListener(marker, 'click', () => {
@@ -143,7 +154,7 @@ function renderMarkers() {
   })
   globalMarkers = markers
 
-  const DANGER_PRIORITY = { high: 0, medium: 1, low: 2 }
+  const DANGER_PRIORITY = { high: 0, medium: 1, low: 2, resolved: 3 }
 
   function clusterStyle(color) {
     return {
@@ -170,19 +181,21 @@ function renderMarkers() {
       clusterStyle(DANGER_COLOR.high),
       clusterStyle(DANGER_COLOR.medium),
       clusterStyle(DANGER_COLOR.low),
+      clusterStyle(DANGER_COLOR.resolved),
     ],
     calculator: [99999], // 항상 index 0 → clustered 이벤트에서 직접 교체
   })
   window._clusterer = clusterer
 
-  // 클러스터 생성 후 포함된 마커들의 최고 위험도로 색상 교체
+  // 클러스터 생성 후 포함된 마커들의 최고 위험도(또는 전부 해결시 해결)로 색상 교체
   kakao.maps.event.addListener(clusterer, 'clustered', clusterList => {
     clusterList.forEach(cluster => {
       const top = cluster.getMarkers().reduce((best, m) => {
-        const p = DANGER_PRIORITY[dangerMap[m._clusterId]] ?? 1
+        const item = clusterMap[m._clusterId]
+        const p = item?.status === 'resolved' ? 3 : (DANGER_PRIORITY[item?.danger] ?? 1)
         return p < best ? p : best
-      }, 2)
-      const color = [DANGER_COLOR.high, DANGER_COLOR.medium, DANGER_COLOR.low][top]
+      }, 3)
+      const color = [DANGER_COLOR.high, DANGER_COLOR.medium, DANGER_COLOR.low, DANGER_COLOR.resolved][top]
       const el = cluster.getClusterMarker().getContent()
       if (el) {
         el.style.background = color
@@ -328,6 +341,277 @@ document.getElementById('view-heat-btn').addEventListener('click', () => {
   setToggleActive('heat')
 })
 
+// ── 장소 검색 (카카오 Places API) & 지도 부드러운 이동 (panTo) ─────
+
+function initPlaceSearch() {
+  const searchInput = document.getElementById('place-search-input')
+  const searchDropdown = document.getElementById('place-search-dropdown')
+  const searchClear = document.getElementById('place-search-clear')
+  const searchSpinner = document.getElementById('place-search-spinner')
+  const searchContainer = document.getElementById('search-container')
+  const gpsRecenterBtn = document.getElementById('gps-recenter-btn')
+
+  if (!searchInput || !searchDropdown) return
+
+  let searchTimeout = null
+
+  function getPlacesService() {
+    if (!placesService && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services) {
+      placesService = new kakao.maps.services.Places()
+    }
+    return placesService
+  }
+
+  function handleSearch(keyword) {
+    const query = keyword.trim()
+    if (!query) {
+      searchDropdown.classList.add('hidden')
+      searchDropdown.innerHTML = ''
+      if (searchSpinner) searchSpinner.classList.add('hidden')
+      return
+    }
+
+    const ps = getPlacesService()
+    if (!ps) {
+      searchDropdown.innerHTML = `<div class="p-3 text-center text-xs text-muted-foreground">카카오 지도 서비스를 불러오는 중입니다...</div>`
+      searchDropdown.classList.remove('hidden')
+      return
+    }
+
+    if (searchSpinner) searchSpinner.classList.remove('hidden')
+
+    ps.keywordSearch(query, (data, status) => {
+      if (searchSpinner) searchSpinner.classList.add('hidden')
+
+      if (status === kakao.maps.services.Status.OK && data && data.length > 0) {
+        renderSearchResults(data)
+      } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+        searchDropdown.innerHTML = `
+          <div class="px-3 py-4 text-center">
+            <p class="text-xs font-semibold text-foreground">검색 결과가 없습니다</p>
+            <p class="text-[11px] text-muted-foreground mt-1">'${escapeHtml(query)}' 관련 장소나 동네명을 다시 확인해주세요</p>
+          </div>`
+        searchDropdown.classList.remove('hidden')
+      } else {
+        searchDropdown.innerHTML = `
+          <div class="px-3 py-3 text-center text-xs text-muted-foreground">
+            검색 중 문제가 발생했습니다. 다시 시도해주세요.
+          </div>`
+        searchDropdown.classList.remove('hidden')
+      }
+    })
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]))
+  }
+
+  function renderSearchResults(places) {
+    const items = places.slice(0, 6)
+    searchDropdown.innerHTML = items.map((place, idx) => {
+      const category = place.category_group_name || (place.category_name ? place.category_name.split(' > ').pop() : '장소')
+      const address = place.road_address_name || place.address_name || ''
+      const distM = haversineDistance(anchorLat, anchorLng, parseFloat(place.y), parseFloat(place.x))
+      const distTxt = distM < 1000 ? `${Math.round(distM)}m` : `${(distM / 1000).toFixed(1)}km`
+
+      return `
+        <div class="place-result-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-surface active:bg-surface-1 cursor-pointer transition-colors"
+             data-index="${idx}">
+          <div class="mt-0.5 w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-xs font-semibold text-foreground truncate">${escapeHtml(place.place_name)}</span>
+              <span class="text-[10px] text-muted-foreground shrink-0">${distTxt}</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
+              <span class="inline-block text-[10px] px-1 py-0.2 rounded bg-surface border border-border text-foreground font-medium shrink-0">${escapeHtml(category)}</span>
+              <span class="truncate">${escapeHtml(address)}</span>
+            </div>
+          </div>
+        </div>
+      `
+    }).join('')
+
+    searchDropdown.querySelectorAll('.place-result-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.getAttribute('data-index'), 10)
+        selectPlace(items[idx])
+      })
+    })
+
+    searchDropdown.classList.remove('hidden')
+  }
+
+  function selectPlace(place) {
+    const lat = parseFloat(place.y)
+    const lng = parseFloat(place.x)
+
+    searchInput.value = place.place_name
+    searchDropdown.classList.add('hidden')
+    if (searchClear) searchClear.classList.remove('hidden')
+
+    // 만약 히트맵 모드면 핀 모드로 전환
+    if (isHeatmapMode) {
+      isHeatmapMode = false
+      hideHeatmap()
+      setToggleActive('pin')
+    }
+
+    // 지도 슝 부드럽게 이동 (panTo) + 적정 줌 레벨 조정
+    if (kakaoMap) {
+      kakaoMap.setLevel(4, { animate: true })
+      kakaoMap.panTo(new kakao.maps.LatLng(lat, lng))
+    }
+    if (leafletMap) {
+      leafletMap.panTo([lat, lng])
+    }
+
+    // 기존 검색 핀 오버레이 제거
+    if (searchTargetOverlay) {
+      searchTargetOverlay.setMap(null)
+      searchTargetOverlay = null
+    }
+
+    // 검색된 목적지 강조 커스텀 오버레이 생성 (펄스 + 말풍선)
+    const overlayDiv = document.createElement('div')
+    overlayDiv.className = 'flex flex-col items-center pointer-events-none -translate-x-1/2 -translate-y-full'
+    overlayDiv.style.transform = 'translate(-50%, -100%)'
+    overlayDiv.innerHTML = `
+      <div class="relative px-2.5 py-1 rounded-full bg-primary text-white text-[11px] font-bold shadow-xl flex items-center gap-1.5 animate-bounce">
+        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/>
+        </svg>
+        <span class="max-w-[130px] truncate">${escapeHtml(place.place_name)}</span>
+      </div>
+      <div class="w-2.5 h-2.5 bg-primary rotate-45 -mt-1 shadow-md"></div>
+    `
+
+    searchTargetOverlay = new kakao.maps.CustomOverlay({
+      position: new kakao.maps.LatLng(lat, lng),
+      content: overlayDiv,
+      yAnchor: 1.0,
+      zIndex: 999,
+    })
+    searchTargetOverlay.setMap(kakaoMap)
+
+    // 8초 후 강조 오버레이 자동 소멸
+    setTimeout(() => {
+      if (searchTargetOverlay) {
+        searchTargetOverlay.setMap(null)
+        searchTargetOverlay = null
+      }
+    }, 8000)
+
+    // 기준 위치 갱신 및 리스트 거리 재계산 반영
+    anchorLat = lat
+    anchorLng = lng
+    renderList(anchorLat, anchorLng)
+  }
+
+  // 검색 인풋 입력 이벤트 (디바운스)
+  searchInput.addEventListener('input', (e) => {
+    const val = e.target.value
+    if (val.trim()) {
+      if (searchClear) searchClear.classList.remove('hidden')
+    } else {
+      if (searchClear) searchClear.classList.add('hidden')
+    }
+
+    clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => {
+      handleSearch(val)
+    }, 280)
+  })
+
+  // 검색 인풋 포커스 시 이전 결과나 내용 있으면 재검색/표시
+  searchInput.addEventListener('focus', () => {
+    if (searchInput.value.trim().length >= 2) {
+      handleSearch(searchInput.value)
+    }
+  })
+
+  // 엔터 키 입력 시 첫 번째 결과로 즉시 이동
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const query = searchInput.value.trim()
+      if (!query) return
+
+      const ps = getPlacesService()
+      if (!ps) return
+
+      if (searchSpinner) searchSpinner.classList.remove('hidden')
+      ps.keywordSearch(query, (data, status) => {
+        if (searchSpinner) searchSpinner.classList.add('hidden')
+        if (status === kakao.maps.services.Status.OK && data && data.length > 0) {
+          selectPlace(data[0])
+        } else {
+          handleSearch(query)
+        }
+      })
+    } else if (e.key === 'Escape') {
+      searchDropdown.classList.add('hidden')
+    }
+  })
+
+  // 검색어 지우기 버튼 클릭
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      searchInput.value = ''
+      searchClear.classList.add('hidden')
+      searchDropdown.classList.add('hidden')
+      searchDropdown.innerHTML = ''
+      searchInput.focus()
+    })
+  }
+
+  // 외부 클릭 시 드롭다운 닫기
+  document.addEventListener('click', (e) => {
+    if (searchContainer && !searchContainer.contains(e.target)) {
+      searchDropdown.classList.add('hidden')
+    }
+  })
+
+  // 내 위치(GPS) 복귀 버튼
+  if (gpsRecenterBtn) {
+    gpsRecenterBtn.addEventListener('click', () => {
+      if (searchTargetOverlay) {
+        searchTargetOverlay.setMap(null)
+        searchTargetOverlay = null
+      }
+      searchInput.value = ''
+      if (searchClear) searchClear.classList.add('hidden')
+      searchDropdown.classList.add('hidden')
+
+      if (isHeatmapMode) {
+        isHeatmapMode = false
+        hideHeatmap()
+        setToggleActive('pin')
+      }
+
+      if (kakaoMap) {
+        kakaoMap.setLevel(5, { animate: true })
+        kakaoMap.panTo(new kakao.maps.LatLng(userLat, userLng))
+      }
+      if (leafletMap) {
+        leafletMap.panTo([userLat, userLng])
+      }
+
+      anchorLat = userLat
+      anchorLng = userLng
+      renderList(anchorLat, anchorLng)
+    })
+  }
+}
+
 // ── 리스트 렌더링 ────────────────────────────────────────
 
 function renderList(userLat, userLng) {
@@ -367,6 +651,7 @@ function renderList(userLat, userLng) {
   reportList.innerHTML = withDist.map(cluster => {
     const rep    = getReportById(cluster.representId)
     if (!rep) return ''
+    const isResolved = cluster.status === 'resolved'
     const ds     = dangerStyle(cluster.danger)
     const cat    = categoryLabel(cluster.category)
     const time   = relativeTime(cluster.createdAt)
@@ -374,9 +659,16 @@ function renderList(userLat, userLng) {
     const distM  = cluster.dist
     const distTxt = distM < 1000 ? `${Math.round(distM)}m` : `${(distM/1000).toFixed(1)}km`
 
+    const statusBadge = isResolved
+      ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400">
+           <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+           해결 완료
+         </span>`
+      : `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>`
+
     return `
       <a href="${import.meta.env.BASE_URL}detail.html?id=${cluster.id}"
-        class="flex gap-3 p-3 rounded-xl bg-card border border-border active:bg-surface transition">
+        class="flex gap-3 p-3 rounded-xl bg-card border border-border active:bg-surface transition ${isResolved ? 'opacity-85' : ''}">
         <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
           ${rep.imageBase64
             ? `<img src="${rep.imageBase64}" class="w-full h-full object-cover" alt="썸네일">`
@@ -389,7 +681,7 @@ function renderList(userLat, userLng) {
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1.5 mb-1">
-            <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>
+            ${statusBadge}
             <span class="text-[10px] text-muted-foreground">${cat}</span>
             ${count > 1 ? `<span class="ml-auto text-[10px] text-primary font-medium">+${count}건</span>` : ''}
           </div>
@@ -614,42 +906,49 @@ function seedDemoData() {
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
   }
 
-  const r = Array.from({ length: 15 }, uuid)
-  const c = Array.from({ length: 7 },  uuid)
+  const r = Array.from({ length: 18 }, uuid)
+  const c = Array.from({ length: 9 },  uuid)
 
   const reports = [
     // [A] 싱크홀 — 정문 앞 보도
-    { id: r[0],  clusterId: c[0], title: '협성대 정문 앞 보도 싱크홀 발견',        description: '정문 앞 보도 중앙에 직경 약 30cm 크기의 구멍이 생겼습니다. 등하교 학생들이 많아 즉각 조치가 필요합니다.',                            imageBase64: img('#7f1d1d','🕳️','싱크홀 발견'), location: { lat: 37.21320, lng: 126.95190, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     createdAt: daysAgo(3)   },
-    { id: r[1],  clusterId: c[0], title: '협성대 정문 보도 싱크홀 균열 확대',       description: '어제보다 구멍이 직경 50cm 이상으로 커졌고 주변 아스팔트에도 균열이 생겼습니다. 함몰 위험이 높습니다.',                              imageBase64: img('#991b1b','🕳️','균열 확대'),  location: { lat: 37.21322, lng: 126.95192, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     createdAt: daysAgo(2)   },
-    { id: r[2],  clusterId: c[0], title: '협성대 정문 인근 추가 균열 발생',         description: '기존 싱크홀 북쪽 2m 지점에 새로운 균열이 발생했습니다. 지반 침하가 넓은 범위에 걸쳐 진행 중인 것 같습니다.',                        imageBase64: img('#b91c1c','🕳️','추가 균열'),  location: { lat: 37.21325, lng: 126.95188, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     createdAt: hoursAgo(8)  },
+    { id: r[0],  clusterId: c[0], title: '협성대 정문 앞 보도 싱크홀 발견',        description: '정문 앞 보도 중앙에 직경 약 30cm 크기의 구멍이 생겼습니다. 등하교 학생들이 많아 즉각 조치가 필요합니다.',                            imageBase64: img('#7f1d1d','🕳️','싱크홀 발견'), location: { lat: 37.21320, lng: 126.95190, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     status: 'active',   createdAt: daysAgo(3)   },
+    { id: r[1],  clusterId: c[0], title: '협성대 정문 보도 싱크홀 균열 확대',       description: '어제보다 구멍이 직경 50cm 이상으로 커졌고 주변 아스팔트에도 균열이 생겼습니다. 함몰 위험이 높습니다.',                              imageBase64: img('#991b1b','🕳️','균열 확대'),  location: { lat: 37.21322, lng: 126.95192, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     status: 'active',   createdAt: daysAgo(2)   },
+    { id: r[2],  clusterId: c[0], title: '협성대 정문 인근 추가 균열 발생',         description: '기존 싱크홀 북쪽 2m 지점에 새로운 균열이 발생했습니다. 지반 침하가 넓은 범위에 걸쳐 진행 중인 것 같습니다.',                        imageBase64: img('#b91c1c','🕳️','추가 균열'),  location: { lat: 37.21325, lng: 126.95188, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     status: 'active',   createdAt: hoursAgo(8)  },
     // [B] 침수 — 진입로 저지대
-    { id: r[3],  clusterId: c[1], title: '협성대 진입로 저지대 침수 시작',          description: '강우로 진입로 가장 낮은 구간에 물이 차기 시작했습니다. 차량 통행에 주의가 필요합니다.',                                          imageBase64: img('#1e3a5f','🌊','침수 시작'),  location: { lat: 37.21180, lng: 126.95350, address: '경기 화성시 봉담읍 협성대 진입로'                       }, danger: 'high',   category: 'weather',  createdAt: hoursAgo(5)  },
-    { id: r[4],  clusterId: c[1], title: '협성대 진입로 완전 침수 — 통행 불가',     description: '진입로 전 구간이 침수되어 차량과 사람 모두 통행이 불가합니다. 우수관 역류로 홍수 범람 상태입니다.',                               imageBase64: img('#1e40af','🌊','완전 침수'),  location: { lat: 37.21182, lng: 126.95353, address: '경기 화성시 봉담읍 협성대 진입로'                       }, danger: 'high',   category: 'weather',  createdAt: hoursAgo(3)  },
+    { id: r[3],  clusterId: c[1], title: '협성대 진입로 저지대 침수 시작',          description: '강우로 진입로 가장 낮은 구간에 물이 차기 시작했습니다. 차량 통행에 주의가 필요합니다.',                                          imageBase64: img('#1e3a5f','🌊','침수 시작'),  location: { lat: 37.21180, lng: 126.95350, address: '경기 화성시 봉담읍 협성대 진입로'                       }, danger: 'high',   category: 'weather',  status: 'active',   createdAt: hoursAgo(5)  },
+    { id: r[4],  clusterId: c[1], title: '협성대 진입로 완전 침수 — 통행 불가',     description: '진입로 전 구간이 침수되어 차량과 사람 모두 통행이 불가합니다. 우수관 역류로 홍수 범람 상태입니다.',                               imageBase64: img('#1e40af','🌊','완전 침수'),  location: { lat: 37.21182, lng: 126.95353, address: '경기 화성시 봉담읍 협성대 진입로'                       }, danger: 'high',   category: 'weather',  status: 'active',   createdAt: hoursAgo(3)  },
     // [C] 가로등 고장 — 후문 골목
-    { id: r[5],  clusterId: c[2], title: '협성대 후문 골목 가로등 고장',            description: '후문 골목 가로등 3개가 모두 꺼져 있습니다. 야간에 매우 어둡고 CCTV 사각지대입니다.',                                           imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.21150, lng: 126.95130, address: '경기 화성시 봉담읍 협성로 후문길'                       }, danger: 'medium', category: 'facility', createdAt: daysAgo(5)   },
-    { id: r[6],  clusterId: c[2], title: '협성대 후문 가로등 이틀째 미수리',        description: '이틀 전 신고한 가로등이 아직도 수리되지 않았습니다. 늦은 밤 귀갓길 학생들이 많아 위험합니다.',                                  imageBase64: img('#1c1917','🔦','미수리'),     location: { lat: 37.21152, lng: 126.95132, address: '경기 화성시 봉담읍 협성로 후문길'                       }, danger: 'medium', category: 'safety',   createdAt: daysAgo(3)   },
+    { id: r[5],  clusterId: c[2], title: '협성대 후문 골목 가로등 고장',            description: '후문 골목 가로등 3개가 모두 꺼져 있습니다. 야간에 매우 어둡고 CCTV 사각지대입니다.',                                           imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.21150, lng: 126.95130, address: '경기 화성시 봉담읍 협성로 후문길'                       }, danger: 'medium', category: 'facility', status: 'active',   createdAt: daysAgo(5)   },
+    { id: r[6],  clusterId: c[2], title: '협성대 후문 가로등 이틀째 미수리',        description: '이틀 전 신고한 가로등이 아직도 수리되지 않았습니다. 늦은 밤 귀갓길 학생들이 많아 위험합니다.',                                  imageBase64: img('#1c1917','🔦','미수리'),     location: { lat: 37.21152, lng: 126.95132, address: '경기 화성시 봉담읍 협성로 후문길'                       }, danger: 'medium', category: 'safety',   status: 'active',   createdAt: daysAgo(3)   },
     // [D] 포트홀 — 캠퍼스 순환도로
-    { id: r[7],  clusterId: c[3], title: '협성대 캠퍼스 순환도로 포트홀 발생',      description: '순환도로 1차선에 작은 포트홀이 생겼습니다. 배달 오토바이 사고 위험이 있습니다.',                                               imageBase64: img('#44403c','🚧','포트홀 발견'), location: { lat: 37.21290, lng: 126.95420, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로'         }, danger: 'medium', category: 'road',     createdAt: daysAgo(4)   },
-    { id: r[8],  clusterId: c[3], title: '협성대 순환도로 포트홀 파손 심화',        description: '이전에 신고된 포트홀이 차량 통행으로 더 크게 파손됐습니다. 직경 약 40cm, 깊이 10cm 이상입니다.',                              imageBase64: img('#292524','🚧','포트홀 확대'), location: { lat: 37.21292, lng: 126.95422, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로'         }, danger: 'medium', category: 'road',     createdAt: daysAgo(1)   },
+    { id: r[7],  clusterId: c[3], title: '협성대 캠퍼스 순환도로 포트홀 발생',      description: '순환도로 1차선에 작은 포트홀이 생겼습니다. 배달 오토바이 사고 위험이 있습니다.',                                               imageBase64: img('#44403c','🚧','포트홀 발견'), location: { lat: 37.21290, lng: 126.95420, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로'         }, danger: 'medium', category: 'road',     status: 'active',   createdAt: daysAgo(4)   },
+    { id: r[8],  clusterId: c[3], title: '협성대 순환도로 포트홀 파손 심화',        description: '이전에 신고된 포트홀이 차량 통행으로 더 크게 파손됐습니다. 직경 약 40cm, 깊이 10cm 이상입니다.',                              imageBase64: img('#292524','🚧','포트홀 확대'), location: { lat: 37.21292, lng: 126.95422, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로'         }, danger: 'medium', category: 'road',     status: 'active',   createdAt: daysAgo(1)   },
     // [E] 어두운 골목 — 기숙사 뒷길
-    { id: r[9],  clusterId: c[4], title: '기숙사 뒷길 야간 조명 없음',              description: '기숙사 후면 골목에 가로등과 조명이 전혀 없어 야간에 매우 어둡습니다. 수상한 인물이 자주 출몰한다는 제보가 있습니다.',             imageBase64: img('#0f172a','🌑','어두운 골목'), location: { lat: 37.21380, lng: 126.95310, address: '경기 화성시 봉담읍 협성대학교 기숙사 후면'               }, danger: 'low',    category: 'safety',   createdAt: daysAgo(7)   },
+    { id: r[9],  clusterId: c[4], title: '기숙사 뒷길 야간 조명 없음',              description: '기숙사 후면 골목에 가로등과 조명이 전혀 없어 야간에 매우 어둡습니다. 수상한 인물이 자주 출몰한다는 제보가 있습니다.',             imageBase64: img('#0f172a','🌑','어두운 골목'), location: { lat: 37.21380, lng: 126.95310, address: '경기 화성시 봉담읍 협성대학교 기숙사 후면'               }, danger: 'low',    category: 'safety',   status: 'active',   createdAt: daysAgo(7)   },
     // [F] 보도블록 파손 — 정문~버스정류장
-    { id: r[10], clusterId: c[5], title: '협성대 정문~버스정류장 보도블록 파손',     description: '정문에서 버스정류장으로 이어지는 보행로에서 보도블록 여러 장이 깨지거나 뒤틀려 있습니다. 걸려 넘어질 위험이 있습니다.',          imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.21240, lng: 126.95060, address: '경기 화성시 봉담읍 협성로 버스정류장 앞'                 }, danger: 'low',    category: 'facility', createdAt: daysAgo(10)  },
-    { id: r[11], clusterId: c[5], title: '협성대 정류장 앞 보도블록 추가 파손',      description: '앞서 신고된 지점에서 10m 더 들어간 곳에도 보도블록 파손이 있습니다. 전체 구간 보수가 필요합니다.',                              imageBase64: img('#3f6212','🧱','추가 파손'),  location: { lat: 37.21242, lng: 126.95062, address: '경기 화성시 봉담읍 협성로 버스정류장 앞'                 }, danger: 'low',    category: 'facility', createdAt: daysAgo(6)   },
+    { id: r[10], clusterId: c[5], title: '협성대 정문~버스정류장 보도블록 파손',     description: '정문에서 버스정류장으로 이어지는 보행로에서 보도블록 여러 장이 깨지거나 뒤틀려 있습니다. 걸려 넘어질 위험이 있습니다.',          imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.21240, lng: 126.95060, address: '경기 화성시 봉담읍 협성로 버스정류장 앞'                 }, danger: 'low',    category: 'facility', status: 'active',   createdAt: daysAgo(10)  },
+    { id: r[11], clusterId: c[5], title: '협성대 정류장 앞 보도블록 추가 파손',      description: '앞서 신고된 지점에서 10m 더 들어간 곳에도 보도블록 파손이 있습니다. 전체 구간 보수가 필요합니다.',                              imageBase64: img('#3f6212','🧱','추가 파손'),  location: { lat: 37.21242, lng: 126.95062, address: '경기 화성시 봉담읍 협성로 버스정류장 앞'                 }, danger: 'low',    category: 'facility', status: 'active',   createdAt: daysAgo(6)   },
     // [G] 낙석 — 북측 언덕길
-    { id: r[12], clusterId: c[6], title: '협성대 북측 언덕길 낙석 위험',            description: '북측 언덕 비탈면에서 작은 돌이 굴러 내려오고 있습니다. 낙석 위험 구역이지만 표지판이 없습니다.',                               imageBase64: img('#78350f','🪨','낙석 위험'),  location: { lat: 37.21450, lng: 126.95220, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     createdAt: daysAgo(2)   },
-    { id: r[13], clusterId: c[6], title: '협성대 북측 언덕 낙석 추가 발생',         description: '오늘 오전에도 주먹만한 돌이 굴러 내려왔습니다. 통학하는 학생들이 많은 시간대라 매우 위험합니다.',                               imageBase64: img('#92400e','🪨','낙석 추가'),  location: { lat: 37.21452, lng: 126.95222, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     createdAt: hoursAgo(12) },
-    { id: r[14], clusterId: c[6], title: '협성대 북측 대형 낙석 — 통행 차단 필요', description: '농구공 크기의 대형 낙석이 굴러와 언덕길을 막고 있습니다. 추락 및 낙하 위험이 극심합니다. 즉각 출입 통제가 필요합니다.',           imageBase64: img('#a16207','🪨','대형 낙석'),  location: { lat: 37.21455, lng: 126.95218, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     createdAt: hoursAgo(4)  },
+    { id: r[12], clusterId: c[6], title: '협성대 북측 언덕길 낙석 위험',            description: '북측 언덕 비탈면에서 작은 돌이 굴러 내려오고 있습니다. 낙석 위험 구역이지만 표지판이 없습니다.',                               imageBase64: img('#78350f','🪨','낙석 위험'),  location: { lat: 37.21450, lng: 126.95220, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     status: 'active',   createdAt: daysAgo(2)   },
+    { id: r[13], clusterId: c[6], title: '협성대 북측 언덕 낙석 추가 발생',         description: '오늘 오전에도 주먹만한 돌이 굴러 내려왔습니다. 통학하는 학생들이 많은 시간대라 매우 위험합니다.',                               imageBase64: img('#92400e','🪨','낙석 추가'),  location: { lat: 37.21452, lng: 126.95222, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     status: 'active',   createdAt: hoursAgo(12) },
+    { id: r[14], clusterId: c[6], title: '협성대 북측 대형 낙석 — 통행 차단 필요', description: '농구공 크기의 대형 낙석이 굴러와 언덕길을 막고 있습니다. 추락 및 낙하 위험이 극심합니다. 즉각 출입 통제가 필요합니다.',           imageBase64: img('#a16207','🪨','대형 낙석'),  location: { lat: 37.21455, lng: 126.95218, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     status: 'active',   createdAt: hoursAgo(4)  },
+    // [H] 해결완료 — 서문 보도 적치물 철거 (완료)
+    { id: r[15], clusterId: c[7], title: '협성대 서문 보도 불법적치물 철거 완료',    description: '서문 보행로를 가로막던 폐자재 및 불법 적치물이 구청 정비 작업을 통해 모두 철거되었습니다.',                   imageBase64: img('#1e40af','✅','철거 완료'), location: { lat: 37.21090, lng: 126.95250, address: '경기 화성시 봉담읍 협성로 서문 보행로'               }, danger: 'low',    category: 'road',     status: 'resolved', createdAt: daysAgo(5)   },
+    { id: r[16], clusterId: c[7], title: '서문 보행로 잔여 폐기물 수거 조치',        description: '남아있던 잔여 쓰레기와 위험 자재까지 구청 환경과에서 수거 완료하여 통행이 원활합니다.',                         imageBase64: img('#1d4ed8','✅','수거 완료'), location: { lat: 37.21092, lng: 126.95252, address: '경기 화성시 봉담읍 협성로 서문 보행로'               }, danger: 'low',    category: 'road',     status: 'resolved', createdAt: daysAgo(3)   },
+    // [I] 해결완료 — 체육관 앞 볼라드 교체 (완료)
+    { id: r[17], clusterId: c[8], title: '협성대 체육관 앞 파손 볼라드 보수 완료',   description: '충돌로 휘어져 보행에 위험하던 스테인리스 볼라드 및 안전 펜스가 새 제품으로 교체 보수되었습니다.',             imageBase64: img('#0369a1','✅','보수 완료'), location: { lat: 37.21410, lng: 126.95480, address: '경기 화성시 봉담읍 협성대학교 체육관 앞'               }, danger: 'low',    category: 'facility', status: 'resolved', createdAt: daysAgo(8)   },
   ]
 
   const clusters = [
-    { id: c[0], representId: r[0],  reportIds: [r[0], r[1], r[2]],         location: { lat: 37.21320, lng: 126.95190 }, danger: 'high',   category: 'road',     embeddingVector: null, createdAt: daysAgo(3),  updatedAt: hoursAgo(8) },
-    { id: c[1], representId: r[3],  reportIds: [r[3], r[4]],               location: { lat: 37.21180, lng: 126.95350 }, danger: 'high',   category: 'weather',  embeddingVector: null, createdAt: hoursAgo(5), updatedAt: hoursAgo(3) },
-    { id: c[2], representId: r[5],  reportIds: [r[5], r[6]],               location: { lat: 37.21150, lng: 126.95130 }, danger: 'medium', category: 'facility', embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3)  },
-    { id: c[3], representId: r[7],  reportIds: [r[7], r[8]],               location: { lat: 37.21290, lng: 126.95420 }, danger: 'medium', category: 'road',     embeddingVector: null, createdAt: daysAgo(4),  updatedAt: daysAgo(1)  },
-    { id: c[4], representId: r[9],  reportIds: [r[9]],                     location: { lat: 37.21380, lng: 126.95310 }, danger: 'low',    category: 'safety',   embeddingVector: null, createdAt: daysAgo(7),  updatedAt: daysAgo(7)  },
-    { id: c[5], representId: r[10], reportIds: [r[10], r[11]],             location: { lat: 37.21240, lng: 126.95060 }, danger: 'low',    category: 'facility', embeddingVector: null, createdAt: daysAgo(10), updatedAt: daysAgo(6)  },
-    { id: c[6], representId: r[12], reportIds: [r[12], r[13], r[14]],      location: { lat: 37.21450, lng: 126.95220 }, danger: 'high',   category: 'road',     embeddingVector: null, createdAt: daysAgo(2),  updatedAt: hoursAgo(4) },
+    { id: c[0], representId: r[0],  reportIds: [r[0], r[1], r[2]],         location: { lat: 37.21320, lng: 126.95190 }, danger: 'high',   category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(3),  updatedAt: hoursAgo(8) },
+    { id: c[1], representId: r[3],  reportIds: [r[3], r[4]],               location: { lat: 37.21180, lng: 126.95350 }, danger: 'high',   category: 'weather',  status: 'active',   embeddingVector: null, createdAt: hoursAgo(5), updatedAt: hoursAgo(3) },
+    { id: c[2], representId: r[5],  reportIds: [r[5], r[6]],               location: { lat: 37.21150, lng: 126.95130 }, danger: 'medium', category: 'facility', status: 'active',   embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3)  },
+    { id: c[3], representId: r[7],  reportIds: [r[7], r[8]],               location: { lat: 37.21290, lng: 126.95420 }, danger: 'medium', category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(4),  updatedAt: daysAgo(1)  },
+    { id: c[4], representId: r[9],  reportIds: [r[9]],                     location: { lat: 37.21380, lng: 126.95310 }, danger: 'low',    category: 'safety',   status: 'active',   embeddingVector: null, createdAt: daysAgo(7),  updatedAt: daysAgo(7)  },
+    { id: c[5], representId: r[10], reportIds: [r[10], r[11]],             location: { lat: 37.21240, lng: 126.95060 }, danger: 'low',    category: 'facility', status: 'active',   embeddingVector: null, createdAt: daysAgo(10), updatedAt: daysAgo(6)  },
+    { id: c[6], representId: r[12], reportIds: [r[12], r[13], r[14]],      location: { lat: 37.21450, lng: 126.95220 }, danger: 'high',   category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(2),  updatedAt: hoursAgo(4) },
+    { id: c[7], representId: r[15], reportIds: [r[15], r[16]],             location: { lat: 37.21090, lng: 126.95250 }, danger: 'low',    category: 'road',     status: 'resolved', embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3)  },
+    { id: c[8], representId: r[17], reportIds: [r[17]],                     location: { lat: 37.21410, lng: 126.95480 }, danger: 'low',    category: 'facility', status: 'resolved', embeddingVector: null, createdAt: daysAgo(8),  updatedAt: daysAgo(8)  },
   ]
 
   localStorage.setItem('reports',  JSON.stringify(reports))
@@ -687,8 +986,8 @@ if (!isEmbedderReady()) {
 }
 
 // ── 초기화 ───────────────────────────────────────────────
-// DB가 비어있으면 자동 주입
-if (getClusters().length === 0) {
+// DB가 비어있거나 완료 데이터가 없으면 자동 주입
+if (getClusters().length === 0 || !getClusters().some(c => c.status === 'resolved')) {
   seedDemoData()
 }
 
@@ -697,22 +996,28 @@ if (navigator.geolocation) {
     pos => {
       userLat = pos.coords.latitude
       userLng = pos.coords.longitude
+      anchorLat = userLat
+      anchorLng = userLng
       initMap(userLat, userLng)
-      renderList(userLat, userLng)
+      renderList(anchorLat, anchorLng)
       updateActiveDot()
       if (isConfigured()) runAISummary()
     },
     () => {
+      anchorLat = userLat
+      anchorLng = userLng
       initMap(userLat, userLng)
-      renderList(userLat, userLng)
+      renderList(anchorLat, anchorLng)
       updateActiveDot()
       if (isConfigured()) runAISummary()
     },
     { timeout: 6000, enableHighAccuracy: true }
   )
 } else {
+  anchorLat = userLat
+  anchorLng = userLng
   initMap(userLat, userLng)
-  renderList(userLat, userLng)
+  renderList(anchorLat, anchorLng)
   updateActiveDot()
   if (isConfigured()) runAISummary()
 }
