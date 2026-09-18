@@ -528,11 +528,11 @@
       <!-- 우측/상단: 대화면 지도 영역 -->
       <div id="map-container-desktop" class="w-full relative min-h-[280px]">
         <div id="map-wrapper" class="relative w-full h-full">
-          <div id="map" class="w-full bg-surface"></div>
+          <div id="map" class="w-full h-full"></div>
           <!-- 히트맵 뷰 (Leaflet) — 토글 시 카카오맵 대체 -->
-          <div id="heatmap-container"></div>
+          <div id="heatmap-container" class="w-full h-full"></div>
           <!-- 지도 로딩 전 플레이스홀더 -->
-          <div id="map-placeholder" class="absolute inset-0 flex items-center justify-center bg-surface z-10">
+          <div id="map-placeholder" class="hidden absolute inset-0 items-center justify-center bg-surface z-10">
             <span class="text-muted-foreground text-sm">지도 불러오는 중...</span>
           </div>
 

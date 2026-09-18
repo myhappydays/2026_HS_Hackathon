@@ -117,7 +117,10 @@ function initMap(lat, lng) {
     zIndex: 1,
   }).setMap(kakaoMap)
 
-  mapPlaceholder.classList.add('hidden')
+  if (mapPlaceholder) {
+    mapPlaceholder.classList.add('hidden')
+    mapPlaceholder.style.display = 'none'
+  }
   renderMarkers()
   initPlaceSearch()
 
@@ -128,13 +131,14 @@ function initMap(lat, lng) {
       kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng))
     }
   }
+  relayoutMap()
   requestAnimationFrame(relayoutMap)
   setTimeout(relayoutMap, 50)
   setTimeout(relayoutMap, 200)
   setTimeout(relayoutMap, 600)
 
   // ResizeObserver로 지도 컨테이너 크기 변화 시 자동 relayout
-  if (window.ResizeObserver) {
+  if (window.ResizeObserver && mapEl) {
     const ro = new ResizeObserver(() => {
       if (kakaoMap) {
         kakaoMap.relayout()
@@ -1081,11 +1085,6 @@ if (!isEmbedderReady()) {
 }
 
 // ── 초기화 ───────────────────────────────────────────────
-// DB가 비어있거나 완료 데이터가 없으면 자동 주입
-if (getClusters().length === 0 || !getClusters().some(c => c.status === 'resolved')) {
-  seedDemoData()
-}
-
 // 1. 지도 및 목록 즉시 초기화 (기본 위치로 즉각 렌더링하여 지연/블랙아웃 방지)
 initMap(anchorLat, anchorLng)
 renderList(anchorLat, anchorLng)
