@@ -16,6 +16,9 @@ import { initTheme } from './theme.js'
 // 테마 초기화 (다크/라이트 모드)
 initTheme()
 
+// 화면 뷰 모드 (데스크탑 와이드 대시보드 ↔ 모바일 프레임) 초기화
+initViewMode()
+
 document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
 
 const reportList  = document.getElementById('report-list')
@@ -120,6 +123,14 @@ function initMap(lat, lng) {
   mapPlaceholder.classList.add('hidden')
   renderMarkers()
   initPlaceSearch()
+
+  // 뷰 모드에 맞춘 지도 캔버스 초기 레이아웃 동기화
+  setTimeout(() => {
+    if (kakaoMap) {
+      kakaoMap.relayout()
+      kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng))
+    }
+  }, 150)
 }
 
 function renderMarkers() {
@@ -340,6 +351,63 @@ document.getElementById('view-heat-btn').addEventListener('click', () => {
   showHeatmap()
   setToggleActive('heat')
 })
+
+// ── 뷰 모드 관리 (와이드 대시보드 ↔ 모바일 프레임) ───────────
+
+function initViewMode() {
+  const toggleBtn = document.getElementById('view-mode-toggle-btn')
+  const expandIcon = toggleBtn?.querySelector('.view-icon-expand')
+  const mobileIcon = toggleBtn?.querySelector('.view-icon-mobile')
+  const modeLabel  = document.getElementById('view-mode-label')
+
+  let savedMode = localStorage.getItem('fermata_view_mode')
+  if (!savedMode) {
+    savedMode = window.innerWidth >= 1024 ? 'wide' : 'mobile'
+  }
+
+  function applyMode(mode, triggerResize = true) {
+    if (mode === 'mobile') {
+      document.body.classList.add('mobile-frame-only')
+      if (expandIcon) expandIcon.classList.remove('hidden')
+      if (mobileIcon) mobileIcon.classList.add('hidden')
+      if (modeLabel)  modeLabel.textContent = '와이드 뷰'
+      if (toggleBtn)  toggleBtn.title = '데스크톱 와이드 대시보드로 확장'
+    } else {
+      document.body.classList.remove('mobile-frame-only')
+      if (expandIcon) expandIcon.classList.add('hidden')
+      if (mobileIcon) mobileIcon.classList.remove('hidden')
+      if (modeLabel)  modeLabel.textContent = '모바일 뷰'
+      if (toggleBtn)  toggleBtn.title = '모바일 스마트폰 프레임으로 축소'
+    }
+    localStorage.setItem('fermata_view_mode', mode)
+
+    if (triggerResize) {
+      setTimeout(() => {
+        if (kakaoMap) {
+          kakaoMap.relayout()
+          kakaoMap.setCenter(new kakao.maps.LatLng(anchorLat, anchorLng))
+        }
+        if (leafletMap) {
+          leafletMap.invalidateSize()
+        }
+      }, 100)
+    }
+  }
+
+  applyMode(savedMode, false)
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const isMobileNow = document.body.classList.contains('mobile-frame-only')
+      applyMode(isMobileNow ? 'wide' : 'mobile', true)
+    })
+  }
+
+  window.addEventListener('resize', () => {
+    if (kakaoMap) kakaoMap.relayout()
+    if (leafletMap) leafletMap.invalidateSize()
+  })
+}
 
 // ── 장소 검색 (카카오 Places API) & 지도 부드러운 이동 (panTo) ─────
 
