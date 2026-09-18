@@ -78,11 +78,26 @@
   <style>
     /* ─── 기본 ─────────────────────────── */
     /* ─── 반응형 지도 높이 & 레이아웃 ─────────────────── */
+    #main-dashboard-layout {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0%;
+      min-height: 0;
+      width: 100%;
+    }
+    #sidebar-desktop {
+      order: 2;
+      width: 100%;
+      height: auto;
+    }
     #map-container-desktop {
+      order: 1;
       width: 100%;
       height: 280px;
+      min-height: 280px;
       position: relative;
       flex-shrink: 0;
+      overflow: hidden;
     }
     #map-wrapper {
       position: relative;
@@ -101,24 +116,25 @@
       display: none;
     }
 
-    /* ─── 와이드 대시보드 뷰 스타일 (body.view-wide 이거나, 1024px 이상이고 .view-mobile이 아닐 때) ─── */
-    body.view-wide .app-wrapper,
+    /* ─── 데스크톱 와이드 뷰 (1024px 이상 기본 또는 .view-wide 강제) ─── */
     @media (min-width: 1024px) {
       body:not(.view-mobile) .app-wrapper {
         max-width: 100% !important;
-        border-left-width: 0 !important;
-        border-right-width: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
         box-shadow: none !important;
       }
       body:not(.view-mobile) #main-dashboard-layout {
-        display: flex !important;
         flex-direction: row !important;
         height: calc(100vh - 57px) !important;
+        min-height: calc(100vh - 57px) !important;
         overflow: hidden !important;
       }
       body:not(.view-mobile) #sidebar-desktop {
         order: 1 !important;
         width: 440px !important;
+        min-width: 440px !important;
+        max-width: 440px !important;
         flex-shrink: 0 !important;
         height: 100% !important;
         overflow-y: auto !important;
@@ -127,27 +143,27 @@
       body:not(.view-mobile) #map-container-desktop {
         order: 2 !important;
         flex: 1 1 0% !important;
+        min-width: 0 !important;
+        width: 100% !important;
         height: 100% !important;
         min-height: 100% !important;
         position: relative !important;
         overflow: hidden !important;
+        display: block !important;
       }
       body:not(.view-mobile) #map-wrapper {
-        position: absolute !important;
-        inset: 0 !important;
         width: 100% !important;
         height: 100% !important;
+        position: relative !important;
+        display: block !important;
       }
       body:not(.view-mobile) #map {
-        position: absolute !important;
-        inset: 0 !important;
         width: 100% !important;
         height: 100% !important;
         min-height: 100% !important;
+        display: block !important;
       }
       body:not(.view-mobile) #heatmap-container {
-        position: absolute !important;
-        inset: 0 !important;
         width: 100% !important;
         height: 100% !important;
         min-height: 100% !important;
@@ -163,19 +179,21 @@
 
     body.view-wide .app-wrapper {
       max-width: 100% !important;
-      border-left-width: 0 !important;
-      border-right-width: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
       box-shadow: none !important;
     }
     body.view-wide #main-dashboard-layout {
-      display: flex !important;
       flex-direction: row !important;
       height: calc(100vh - 57px) !important;
+      min-height: calc(100vh - 57px) !important;
       overflow: hidden !important;
     }
     body.view-wide #sidebar-desktop {
       order: 1 !important;
       width: 440px !important;
+      min-width: 440px !important;
+      max-width: 440px !important;
       flex-shrink: 0 !important;
       height: 100% !important;
       overflow-y: auto !important;
@@ -184,27 +202,27 @@
     body.view-wide #map-container-desktop {
       order: 2 !important;
       flex: 1 1 0% !important;
+      min-width: 0 !important;
+      width: 100% !important;
       height: 100% !important;
       min-height: 100% !important;
       position: relative !important;
       overflow: hidden !important;
+      display: block !important;
     }
     body.view-wide #map-wrapper {
-      position: absolute !important;
-      inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
+      position: relative !important;
+      display: block !important;
     }
     body.view-wide #map {
-      position: absolute !important;
-      inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
       min-height: 100% !important;
+      display: block !important;
     }
     body.view-wide #heatmap-container {
-      position: absolute !important;
-      inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
       min-height: 100% !important;
@@ -234,6 +252,8 @@
     body.view-mobile #sidebar-desktop {
       order: 2 !important;
       width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
       height: auto !important;
       border-right-width: 0 !important;
     }
@@ -241,6 +261,7 @@
       order: 1 !important;
       width: 100% !important;
       height: 280px !important;
+      min-height: 280px !important;
       position: relative !important;
       flex: none !important;
     }

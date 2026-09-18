@@ -132,6 +132,16 @@ function initMap(lat, lng) {
   setTimeout(relayoutMap, 50)
   setTimeout(relayoutMap, 200)
   setTimeout(relayoutMap, 600)
+
+  // ResizeObserver로 지도 컨테이너 크기 변화 시 자동 relayout
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => {
+      if (kakaoMap) {
+        kakaoMap.relayout()
+      }
+    })
+    ro.observe(mapEl)
+  }
 }
 
 function renderMarkers() {
