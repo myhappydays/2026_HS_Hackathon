@@ -13,6 +13,7 @@ import {
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 import { initTheme } from './theme.js'
 import { loginWithGoogle, logout, listenAuthState } from './auth.js'
+import { initShareCard, openShareModal, reverseGeocodeCoord } from './shareCard.js'
 
 // 테마 초기화 (다크/라이트 모드)
 initTheme()
@@ -146,6 +147,21 @@ let globalMarkers = []  // 히트맵 토글 시 show/hide용
 let placesService = null
 let searchTargetOverlay = null
 let userDotOverlay = null
+let currentRegionName = ''
+
+async function updateCurrentRegion() {
+  let lat = anchorLat
+  let lng = anchorLng
+  if (kakaoMap) {
+    const center = kakaoMap.getCenter()
+    lat = center.getLat()
+    lng = center.getLng()
+  }
+  const name = await reverseGeocodeCoord(lat, lng)
+  if (name) {
+    currentRegionName = name
+  }
+}
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, m => ({
@@ -237,10 +253,12 @@ function initMap(lat, lng) {
   renderMarkers()
   initPlaceSearch()
 
-  // 지도 드래그 및 줌 완료 시 상태 자동 저장
+  // 지도 드래그 및 줌 완료 시 상태 자동 저장 및 실시간 행정동 갱신
   kakao.maps.event.addListener(kakaoMap, 'idle', () => {
     saveMapState()
+    updateCurrentRegion()
   })
+  updateCurrentRegion()
 
   // 뷰 모드에 맞춘 지도 캔버스 초기 레이아웃 동기화
   const relayoutMap = () => {
@@ -680,6 +698,7 @@ function initPlaceSearch() {
     const lng = parseFloat(place.x)
 
     searchInput.value = place.place_name
+    currentRegionName = place.place_name
     searchDropdown.classList.add('hidden')
     if (searchClear) searchClear.classList.remove('hidden')
 
@@ -783,6 +802,8 @@ function initPlaceSearch() {
       }
       renderList(anchorLat, anchorLng)
       saveMapState({ searchQuery: '', hasSearched: false })
+      currentRegionName = ''
+      updateCurrentRegion()
       searchInput.focus()
     })
   }
@@ -831,6 +852,8 @@ function initPlaceSearch() {
         searchQuery: '',
         hasSearched: false,
       })
+      currentRegionName = ''
+      updateCurrentRegion()
     })
   }
 }
@@ -906,7 +929,14 @@ function renderList(userLat, userLng) {
           <div class="flex items-center gap-1.5 mb-1">
             ${statusBadge}
             <span class="text-[10px] text-muted-foreground">${cat}</span>
-            ${count > 1 ? `<span class="ml-auto text-[10px] text-primary font-medium">+${count}건</span>` : ''}
+            ${count > 1 ? `<span class="text-[10px] text-primary font-medium">+${count}건</span>` : ''}
+            <button type="button"
+              class="report-share-btn ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all active:scale-95"
+              data-cluster-id="${cluster.id}"
+              title="이 제보 SNS 안전 카드 공유">
+              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
+              <span>카드 공유</span>
+            </button>
           </div>
           <p class="text-sm font-semibold text-foreground truncate">${rep.title}</p>
           <p class="text-xs text-muted-foreground truncate mt-0.5">${rep.description || '상세 설명 없음'}</p>
@@ -922,6 +952,23 @@ function renderList(userLat, userLng) {
       </a>
     `
   }).join('')
+
+  if (reportList && !reportList._hasShareListener) {
+    reportList._hasShareListener = true
+    reportList.addEventListener('click', (e) => {
+      const shareBtn = e.target.closest('.report-share-btn')
+      if (shareBtn) {
+        e.preventDefault()
+        e.stopPropagation()
+        const clusterId = shareBtn.getAttribute('data-cluster-id')
+        const cluster = allClusters.find(c => c.id === clusterId)
+        if (cluster) {
+          const rep = allReportsMap.get(cluster.representId)
+          openShareModal({ type: 'report', report: rep, cluster })
+        }
+      }
+    })
+  }
 }
 
 // ── AI 요약 ──────────────────────────────────────────────
@@ -1129,49 +1176,82 @@ async function seedDemoData() {
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
   }
 
-  const r = Array.from({ length: 18 }, uuid)
-  const c = Array.from({ length: 9 },  uuid)
+  const r = Array.from({ length: 30 }, uuid)
+  const c = Array.from({ length: 17 },  uuid)
 
   const reports = [
-    // [A] 싱크홀 — 정문 앞 보도
-    { id: r[0],  clusterId: c[0], title: '협성대 정문 앞 보도 싱크홀 발견',        description: '정문 앞 보도 중앙에 직경 약 30cm 크기의 구멍이 생겼습니다. 등하교 학생들이 많아 즉각 조치가 필요합니다.',                            imageBase64: img('#7f1d1d','🕳️','싱크홀 발견'), location: { lat: 37.21320, lng: 126.95190, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     status: 'active',   createdAt: daysAgo(3)   },
-    { id: r[1],  clusterId: c[0], title: '협성대 정문 보도 싱크홀 균열 확대',       description: '어제보다 구멍이 직경 50cm 이상으로 커졌고 주변 아스팔트에도 균열이 생겼습니다. 함몰 위험이 높습니다.',                              imageBase64: img('#991b1b','🕳️','균열 확대'),  location: { lat: 37.21322, lng: 126.95192, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     status: 'active',   createdAt: daysAgo(2)   },
-    { id: r[2],  clusterId: c[0], title: '협성대 정문 인근 추가 균열 발생',         description: '기존 싱크홀 북쪽 2m 지점에 새로운 균열이 발생했습니다. 지반 침하가 넓은 범위에 걸쳐 진행 중인 것 같습니다.',                        imageBase64: img('#b91c1c','🕳️','추가 균열'),  location: { lat: 37.21325, lng: 126.95188, address: '경기 화성시 봉담읍 협성로 남문 앞'                     }, danger: 'high',   category: 'road',     status: 'active',   createdAt: hoursAgo(8)  },
-    // [B] 침수 — 진입로 저지대
-    { id: r[3],  clusterId: c[1], title: '협성대 진입로 저지대 침수 시작',          description: '강우로 진입로 가장 낮은 구간에 물이 차기 시작했습니다. 차량 통행에 주의가 필요합니다.',                                          imageBase64: img('#1e3a5f','🌊','침수 시작'),  location: { lat: 37.21180, lng: 126.95350, address: '경기 화성시 봉담읍 협성대 진입로'                       }, danger: 'high',   category: 'weather',  status: 'active',   createdAt: hoursAgo(5)  },
-    { id: r[4],  clusterId: c[1], title: '협성대 진입로 완전 침수 — 통행 불가',     description: '진입로 전 구간이 침수되어 차량과 사람 모두 통행이 불가합니다. 우수관 역류로 홍수 범람 상태입니다.',                               imageBase64: img('#1e40af','🌊','완전 침수'),  location: { lat: 37.21182, lng: 126.95353, address: '경기 화성시 봉담읍 협성대 진입로'                       }, danger: 'high',   category: 'weather',  status: 'active',   createdAt: hoursAgo(3)  },
-    // [C] 가로등 고장 — 후문 골목
-    { id: r[5],  clusterId: c[2], title: '협성대 후문 골목 가로등 고장',            description: '후문 골목 가로등 3개가 모두 꺼져 있습니다. 야간에 매우 어둡고 CCTV 사각지대입니다.',                                           imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.21150, lng: 126.95130, address: '경기 화성시 봉담읍 협성로 후문길'                       }, danger: 'medium', category: 'facility', status: 'active',   createdAt: daysAgo(5)   },
-    { id: r[6],  clusterId: c[2], title: '협성대 후문 가로등 이틀째 미수리',        description: '이틀 전 신고한 가로등이 아직도 수리되지 않았습니다. 늦은 밤 귀갓길 학생들이 많아 위험합니다.',                                  imageBase64: img('#1c1917','🔦','미수리'),     location: { lat: 37.21152, lng: 126.95132, address: '경기 화성시 봉담읍 협성로 후문길'                       }, danger: 'medium', category: 'safety',   status: 'active',   createdAt: daysAgo(3)   },
-    // [D] 포트홀 — 캠퍼스 순환도로
-    { id: r[7],  clusterId: c[3], title: '협성대 캠퍼스 순환도로 포트홀 발생',      description: '순환도로 1차선에 작은 포트홀이 생겼습니다. 배달 오토바이 사고 위험이 있습니다.',                                               imageBase64: img('#44403c','🚧','포트홀 발견'), location: { lat: 37.21290, lng: 126.95420, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로'         }, danger: 'medium', category: 'road',     status: 'active',   createdAt: daysAgo(4)   },
-    { id: r[8],  clusterId: c[3], title: '협성대 순환도로 포트홀 파손 심화',        description: '이전에 신고된 포트홀이 차량 통행으로 더 크게 파손됐습니다. 직경 약 40cm, 깊이 10cm 이상입니다.',                              imageBase64: img('#292524','🚧','포트홀 확대'), location: { lat: 37.21292, lng: 126.95422, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로'         }, danger: 'medium', category: 'road',     status: 'active',   createdAt: daysAgo(1)   },
-    // [E] 어두운 골목 — 기숙사 뒷길
-    { id: r[9],  clusterId: c[4], title: '기숙사 뒷길 야간 조명 없음',              description: '기숙사 후면 골목에 가로등과 조명이 전혀 없어 야간에 매우 어둡습니다. 수상한 인물이 자주 출몰한다는 제보가 있습니다.',             imageBase64: img('#0f172a','🌑','어두운 골목'), location: { lat: 37.21380, lng: 126.95310, address: '경기 화성시 봉담읍 협성대학교 기숙사 후면'               }, danger: 'low',    category: 'safety',   status: 'active',   createdAt: daysAgo(7)   },
-    // [F] 보도블록 파손 — 정문~버스정류장
-    { id: r[10], clusterId: c[5], title: '협성대 정문~버스정류장 보도블록 파손',     description: '정문에서 버스정류장으로 이어지는 보행로에서 보도블록 여러 장이 깨지거나 뒤틀려 있습니다. 걸려 넘어질 위험이 있습니다.',          imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.21240, lng: 126.95060, address: '경기 화성시 봉담읍 협성로 버스정류장 앞'                 }, danger: 'low',    category: 'facility', status: 'active',   createdAt: daysAgo(10)  },
-    { id: r[11], clusterId: c[5], title: '협성대 정류장 앞 보도블록 추가 파손',      description: '앞서 신고된 지점에서 10m 더 들어간 곳에도 보도블록 파손이 있습니다. 전체 구간 보수가 필요합니다.',                              imageBase64: img('#3f6212','🧱','추가 파손'),  location: { lat: 37.21242, lng: 126.95062, address: '경기 화성시 봉담읍 협성로 버스정류장 앞'                 }, danger: 'low',    category: 'facility', status: 'active',   createdAt: daysAgo(6)   },
-    // [G] 낙석 — 북측 언덕길
-    { id: r[12], clusterId: c[6], title: '협성대 북측 언덕길 낙석 위험',            description: '북측 언덕 비탈면에서 작은 돌이 굴러 내려오고 있습니다. 낙석 위험 구역이지만 표지판이 없습니다.',                               imageBase64: img('#78350f','🪨','낙석 위험'),  location: { lat: 37.21450, lng: 126.95220, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     status: 'active',   createdAt: daysAgo(2)   },
-    { id: r[13], clusterId: c[6], title: '협성대 북측 언덕 낙석 추가 발생',         description: '오늘 오전에도 주먹만한 돌이 굴러 내려왔습니다. 통학하는 학생들이 많은 시간대라 매우 위험합니다.',                               imageBase64: img('#92400e','🪨','낙석 추가'),  location: { lat: 37.21452, lng: 126.95222, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     status: 'active',   createdAt: hoursAgo(12) },
-    { id: r[14], clusterId: c[6], title: '협성대 북측 대형 낙석 — 통행 차단 필요', description: '농구공 크기의 대형 낙석이 굴러와 언덕길을 막고 있습니다. 추락 및 낙하 위험이 극심합니다. 즉각 출입 통제가 필요합니다.',           imageBase64: img('#a16207','🪨','대형 낙석'),  location: { lat: 37.21455, lng: 126.95218, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로'               }, danger: 'high',   category: 'road',     status: 'active',   createdAt: hoursAgo(4)  },
-    // [H] 해결완료 — 서문 보도 적치물 철거 (완료)
-    { id: r[15], clusterId: c[7], title: '협성대 서문 보도 불법적치물 철거 완료',    description: '서문 보행로를 가로막던 폐자재 및 불법 적치물이 구청 정비 작업을 통해 모두 철거되었습니다.',                   imageBase64: img('#1e40af','✅','철거 완료'), location: { lat: 37.21090, lng: 126.95250, address: '경기 화성시 봉담읍 협성로 서문 보행로'               }, danger: 'low',    category: 'road',     status: 'resolved', createdAt: daysAgo(5)   },
-    { id: r[16], clusterId: c[7], title: '서문 보행로 잔여 폐기물 수거 조치',        description: '남아있던 잔여 쓰레기와 위험 자재까지 구청 환경과에서 수거 완료하여 통행이 원활합니다.',                         imageBase64: img('#1d4ed8','✅','수거 완료'), location: { lat: 37.21092, lng: 126.95252, address: '경기 화성시 봉담읍 협성로 서문 보행로'               }, danger: 'low',    category: 'road',     status: 'resolved', createdAt: daysAgo(3)   },
-    // [I] 해결완료 — 체육관 앞 볼라드 교체 (완료)
-    { id: r[17], clusterId: c[8], title: '협성대 체육관 앞 파손 볼라드 보수 완료',   description: '충돌로 휘어져 보행에 위험하던 스테인리스 볼라드 및 안전 펜스가 새 제품으로 교체 보수되었습니다.',             imageBase64: img('#0369a1','✅','보수 완료'), location: { lat: 37.21410, lng: 126.95480, address: '경기 화성시 봉담읍 협성대학교 체육관 앞'               }, danger: 'low',    category: 'facility', status: 'resolved', createdAt: daysAgo(8)   },
+    // [1] 서울 시청역 - 싱크홀 / 지반 침하
+    { id: r[0], clusterId: c[0], title: '시청역 4번 출구 앞 보행로 지반 침하', description: '보도블록이 꺼지며 직경 약 40cm 지반 침하가 발생했습니다. 보행자 통행량이 많아 신속한 안전 조치가 필요합니다.', imageBase64: img('#7f1d1d','🕳️','지반 침하'), location: { lat: 37.56620, lng: 126.97780, address: '서울 중구 세종대로 110 시청역 4번 출구 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
+    { id: r[1], clusterId: c[0], title: '시청역 보행로 지반 균열 심화', description: '어제보다 지반 침하 반경이 넓어졌습니다. 발빠짐 및 낙상 사고에 각별히 유의하세요.', imageBase64: img('#991b1b','🕳️','균열 심화'), location: { lat: 37.56622, lng: 126.97782, address: '서울 중구 세종대로 110 시청역 4번 출구 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(5) },
+
+    // [2] 서울 을지로입구역 - 계단 결로 미끄럼
+    { id: r[2], clusterId: c[1], title: '을지로입구역 지하보도 결로 및 미끄럼 위험', description: '지하보도 진입 계단에 결로로 물기가 고여 있어 보행 시 넘어짐 위험이 매우 큽니다.', imageBase64: img('#44403c','⚠️','미끄럼 위험'), location: { lat: 37.56600, lng: 126.98250, address: '서울 중구 을지로 55 을지로입구역 출구 앞' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(3) },
+
+    // [3] 서울 청계광장 - 산책로 침수 위험
+    { id: r[3], clusterId: c[2], title: '청계광장 산책로 집중호우 시 하천 범람 주의', description: '강우 시 급격한 수위 상승으로 산책로 통제가 예상되는 취약 구간입니다. 우천 시 우회하세요.', imageBase64: img('#1e3a5f','🌊','범람 주의'), location: { lat: 37.56900, lng: 126.97750, address: '서울 종로구 서린동 14 청계광장 입구' }, danger: 'medium', category: 'weather', status: 'active', createdAt: hoursAgo(8) },
+
+    // [4] 서울 강남역 - 저지대 침수
+    { id: r[4], clusterId: c[3], title: '강남역 11번 출구 저지대 폭우 침수 취약 구간', description: '하수관 역류 취약 구간으로 집중호우 시 도로 및 보도 침수가 상습 발생하는 지역입니다.', imageBase64: img('#1e40af','🌊','침수 취약'), location: { lat: 37.49850, lng: 127.02800, address: '서울 강남구 테헤란로 101 강남역 11번 출구' }, danger: 'high', category: 'weather', status: 'active', createdAt: daysAgo(1) },
+    { id: r[5], clusterId: c[3], title: '강남역 이면도로 우수관 배수 불량 제보', description: '비가 올 때 배수가 지연되어 차량 물튐 및 보행 장애가 심각합니다.', imageBase64: img('#1e3a5f','🌊','배수 불량'), location: { lat: 37.49855, lng: 127.02805, address: '서울 강남구 테헤란로 101 강남역 11번 출구' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(4) },
+
+    // [5] 서울 강남 테헤란로 이면도로 - 배달 오토바이 과속
+    { id: r[6], clusterId: c[4], title: '테헤란로 먹자골목 배달 이륜차 과속 위험', description: '야간 시간대 보행자 사이로 배달 오토바이가 과속 질주하여 충돌 위험이 큽니다.', imageBase64: img('#78350f','🛵','오토바이 과속'), location: { lat: 37.49950, lng: 127.03100, address: '서울 강남구 강남대로94길 이면도로' }, danger: 'medium', category: 'safety', status: 'active', createdAt: daysAgo(2) },
+
+    // [6] 서울 강남 역삼동 - 가로등 조명 파손
+    { id: r[7], clusterId: c[5], title: '역삼동 원룸촌 골목 보안등 고장 암전 구간', description: '골목 안쪽 가로등 2개가 꺼져 있어 심야 귀갓길 시야 확보가 어렵습니다.', imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.50100, lng: 127.03400, address: '서울 강남구 테헤란로1길 이면도로' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(4) },
+
+    // [7] 서울 홍대 걷고싶은거리 - 보도블록 파손
+    { id: r[8], clusterId: c[6], title: '홍대 걷고싶은거리 보도블록 대규모 파손', description: '유동인구가 많은 구간인데 보도블록이 깨지고 튀어나와 발걸림 사고가 자주 일어납니다.', imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.55680, lng: 126.92380, address: '서울 마포구 어울마당로 걷고싶은거리' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(3) },
+
+    // [8] 서울 홍대 연남동 - 심야 사각지대
+    { id: r[9], clusterId: c[7], title: '연남동 미로골목길 심야 보행 시야 사각지대', description: '야간 조명이 부족하고 골목이 좁아 늦은 밤 귀가 시 주의가 요구됩니다.', imageBase64: img('#0f172a','🌑','시야 사각'), location: { lat: 37.56150, lng: 126.92480, address: '서울 마포구 동교로 262 연남동 골목길' }, danger: 'low', category: 'safety', status: 'active', createdAt: daysAgo(5) },
+
+    // [9] 경기 화성시 협성대 (기존 데이터)
+    { id: r[10], clusterId: c[8], title: '협성대 정문 앞 보도 싱크홀 발견', description: '정문 앞 보도 중앙에 직경 약 30cm 크기의 구멍이 생겼습니다. 등하교 학생들이 많아 즉각 조치가 필요합니다.', imageBase64: img('#7f1d1d','🕳️','싱크홀 발견'), location: { lat: 37.21320, lng: 126.95190, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(3) },
+    { id: r[11], clusterId: c[8], title: '협성대 정문 보도 싱크홀 균열 확대', description: '어제보다 구멍이 직경 50cm 이상으로 커졌고 주변 아스팔트에도 균열이 생겼습니다. 함몰 위험이 높습니다.', imageBase64: img('#991b1b','🕳️','균열 확대'), location: { lat: 37.21322, lng: 126.95192, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
+    { id: r[12], clusterId: c[8], title: '협성대 정문 인근 추가 균열 발생', description: '기존 싱크홀 북쪽 2m 지점에 새로운 균열이 발생했습니다. 지반 침하가 넓은 범위에 걸쳐 진행 중인 것 같습니다.', imageBase64: img('#b91c1c','🕳️','추가 균열'), location: { lat: 37.21325, lng: 126.95188, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(8) },
+    { id: r[13], clusterId: c[9], title: '협성대 진입로 저지대 침수 시작', description: '강우로 진입로 가장 낮은 구간에 물이 차기 시작했습니다. 차량 통행에 주의가 필요합니다.', imageBase64: img('#1e3a5f','🌊','침수 시작'), location: { lat: 37.21180, lng: 126.95350, address: '경기 화성시 봉담읍 협성대 진입로' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(5) },
+    { id: r[14], clusterId: c[9], title: '협성대 진입로 완전 침수 — 통행 불가', description: '진입로 전 구간이 침수되어 차량과 사람 모두 통행이 불가합니다. 우수관 역류로 홍수 범람 상태입니다.', imageBase64: img('#1e40af','🌊','완전 침수'), location: { lat: 37.21182, lng: 126.95353, address: '경기 화성시 봉담읍 협성대 진입로' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(3) },
+    { id: r[15], clusterId: c[10], title: '협성대 후문 골목 가로등 고장', description: '후문 골목 가로등 3개가 모두 꺼져 있습니다. 야간에 매우 어둡고 CCTV 사각지대입니다.', imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.21150, lng: 126.95130, address: '경기 화성시 봉담읍 협성로 후문길' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(5) },
+    { id: r[16], clusterId: c[10], title: '협성대 후문 가로등 이틀째 미수리', description: '이틀 전 신고한 가로등이 아직도 수리되지 않았습니다. 늦은 밤 귀갓길 학생들이 많아 위험합니다.', imageBase64: img('#1c1917','🔦','미수리'), location: { lat: 37.21152, lng: 126.95132, address: '경기 화성시 봉담읍 협성로 후문길' }, danger: 'medium', category: 'safety', status: 'active', createdAt: daysAgo(3) },
+    { id: r[17], clusterId: c[11], title: '협성대 캠퍼스 순환도로 포트홀 발생', description: '순환도로 1차선에 작은 포트홀이 생겼습니다. 배달 오토바이 사고 위험이 있습니다.', imageBase64: img('#44403c','🚧','포트홀 발견'), location: { lat: 37.21290, lng: 126.95420, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로' }, danger: 'medium', category: 'road', status: 'active', createdAt: daysAgo(4) },
+    { id: r[18], clusterId: c[11], title: '협성대 순환도로 포트홀 파손 심화', description: '이전에 신고된 포트홀이 차량 통행으로 더 크게 파손됐습니다. 직경 약 40cm, 깊이 10cm 이상입니다.', imageBase64: img('#292524','🚧','포트홀 확대'), location: { lat: 37.21292, lng: 126.95422, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로' }, danger: 'medium', category: 'road', status: 'active', createdAt: daysAgo(1) },
+    { id: r[19], clusterId: c[12], title: '기숙사 뒷길 야간 조명 없음', description: '기숙사 후면 골목에 가로등과 조명이 전혀 없어 야간에 매우 어둡습니다. 수상한 인물이 자주 출몰한다는 제보가 있습니다.', imageBase64: img('#0f172a','🌑','어두운 골목'), location: { lat: 37.21380, lng: 126.95310, address: '경기 화성시 봉담읍 협성대학교 기숙사 후면' }, danger: 'low', category: 'safety', status: 'active', createdAt: daysAgo(7) },
+    { id: r[20], clusterId: c[13], title: '협성대 정문~버스정류장 보도블록 파손', description: '정문에서 버스정류장으로 이어지는 보행로에서 보도블록 여러 장이 깨지거나 뒤틀려 있습니다. 걸려 넘어질 위험이 있습니다.', imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.21240, lng: 126.95060, address: '경기 화성시 봉담읍 협성로 버스정류장 앞' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(10) },
+    { id: r[21], clusterId: c[13], title: '협성대 정류장 앞 보도블록 추가 파손', description: '앞서 신고된 지점에서 10m 더 들어간 곳에도 보도블록 파손이 있습니다. 전체 구간 보수가 필요합니다.', imageBase64: img('#3f6212','🧱','추가 파손'), location: { lat: 37.21242, lng: 126.95062, address: '경기 화성시 봉담읍 협성로 버스정류장 앞' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(6) },
+    { id: r[22], clusterId: c[14], title: '협성대 북측 언덕길 낙석 위험', description: '북측 언덕 비탈면에서 작은 돌이 굴러 내려오고 있습니다. 낙석 위험 구역이지만 표지판이 없습니다.', imageBase64: img('#78350f','🪨','낙석 위험'), location: { lat: 37.21450, lng: 126.95220, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
+    { id: r[23], clusterId: c[14], title: '협성대 북측 언덕 낙석 추가 발생', description: '오늘 오전에도 주먹만한 돌이 굴러 내려왔습니다. 통학하는 학생들이 많은 시간대라 매우 위험합니다.', imageBase64: img('#92400e','🪨','낙석 추가'), location: { lat: 37.21452, lng: 126.95222, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(12) },
+    { id: r[24], clusterId: c[14], title: '협성대 북측 대형 낙석 — 통행 차단 필요', description: '농구공 크기의 대형 낙석이 굴러와 언덕길을 막고 있습니다. 추락 및 낙하 위험이 극심합니다. 즉각 출입 통제가 필요합니다.', imageBase64: img('#a16207','🪨','대형 낙석'), location: { lat: 37.21455, lng: 126.95218, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(4) },
+    { id: r[25], clusterId: c[15], title: '협성대 서문 보도 불법적치물 철거 완료', description: '서문 보행로를 가로막던 폐자재 및 불법 적치물이 구청 정비 작업을 통해 모두 철거되었습니다.', imageBase64: img('#1e40af','✅','철거 완료'), location: { lat: 37.21090, lng: 126.95250, address: '경기 화성시 봉담읍 협성로 서문 보행로' }, danger: 'low', category: 'road', status: 'resolved', createdAt: daysAgo(5) },
+    { id: r[26], clusterId: c[15], title: '서문 보행로 잔여 폐기물 수거 조치', description: '남아있던 잔여 쓰레기와 위험 자재까지 구청 환경과에서 수거 완료하여 통행이 원활합니다.', imageBase64: img('#1d4ed8','✅','수거 완료'), location: { lat: 37.21092, lng: 126.95252, address: '경기 화성시 봉담읍 협성로 서문 보행로' }, danger: 'low', category: 'road', status: 'resolved', createdAt: daysAgo(3) },
+    { id: r[27], clusterId: c[16], title: '협성대 체육관 앞 파손 볼라드 보수 완료', description: '충돌로 휘어져 보행에 위험하던 스테인리스 볼라드 및 안전 펜스가 새 제품으로 교체 보수되었습니다.', imageBase64: img('#0369a1','✅','보수 완료'), location: { lat: 37.21410, lng: 126.95480, address: '경기 화성시 봉담읍 협성대학교 체육관 앞' }, danger: 'low', category: 'facility', status: 'resolved', createdAt: daysAgo(8) },
   ]
 
   const clusters = [
-    { id: c[0], representId: r[0],  reportIds: [r[0], r[1], r[2]],         location: { lat: 37.21320, lng: 126.95190 }, danger: 'high',   category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(3),  updatedAt: hoursAgo(8) },
-    { id: c[1], representId: r[3],  reportIds: [r[3], r[4]],               location: { lat: 37.21180, lng: 126.95350 }, danger: 'high',   category: 'weather',  status: 'active',   embeddingVector: null, createdAt: hoursAgo(5), updatedAt: hoursAgo(3) },
-    { id: c[2], representId: r[5],  reportIds: [r[5], r[6]],               location: { lat: 37.21150, lng: 126.95130 }, danger: 'medium', category: 'facility', status: 'active',   embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3)  },
-    { id: c[3], representId: r[7],  reportIds: [r[7], r[8]],               location: { lat: 37.21290, lng: 126.95420 }, danger: 'medium', category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(4),  updatedAt: daysAgo(1)  },
-    { id: c[4], representId: r[9],  reportIds: [r[9]],                     location: { lat: 37.21380, lng: 126.95310 }, danger: 'low',    category: 'safety',   status: 'active',   embeddingVector: null, createdAt: daysAgo(7),  updatedAt: daysAgo(7)  },
-    { id: c[5], representId: r[10], reportIds: [r[10], r[11]],             location: { lat: 37.21240, lng: 126.95060 }, danger: 'low',    category: 'facility', status: 'active',   embeddingVector: null, createdAt: daysAgo(10), updatedAt: daysAgo(6)  },
-    { id: c[6], representId: r[12], reportIds: [r[12], r[13], r[14]],      location: { lat: 37.21450, lng: 126.95220 }, danger: 'high',   category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(2),  updatedAt: hoursAgo(4) },
-    { id: c[7], representId: r[15], reportIds: [r[15], r[16]],             location: { lat: 37.21090, lng: 126.95250 }, danger: 'low',    category: 'road',     status: 'resolved', embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3), resolvedAt: daysAgo(3) },
-    { id: c[8], representId: r[17], reportIds: [r[17]],                     location: { lat: 37.21410, lng: 126.95480 }, danger: 'low',    category: 'facility', status: 'resolved', embeddingVector: null, createdAt: daysAgo(8),  updatedAt: daysAgo(8), resolvedAt: daysAgo(6) },
+    // 서울 시청 / 종로
+    { id: c[0], representId: r[0], reportIds: [r[0], r[1]], location: { lat: 37.56620, lng: 126.97780 }, danger: 'high', category: 'road', status: 'active', embeddingVector: null, createdAt: daysAgo(2), updatedAt: hoursAgo(5) },
+    { id: c[1], representId: r[2], reportIds: [r[2]], location: { lat: 37.56600, lng: 126.98250 }, danger: 'medium', category: 'facility', status: 'active', embeddingVector: null, createdAt: daysAgo(3), updatedAt: daysAgo(3) },
+    { id: c[2], representId: r[3], reportIds: [r[3]], location: { lat: 37.56900, lng: 126.97750 }, danger: 'medium', category: 'weather', status: 'active', embeddingVector: null, createdAt: hoursAgo(8), updatedAt: hoursAgo(8) },
+
+    // 서울 강남역
+    { id: c[3], representId: r[4], reportIds: [r[4], r[5]], location: { lat: 37.49850, lng: 127.02800 }, danger: 'high', category: 'weather', status: 'active', embeddingVector: null, createdAt: daysAgo(1), updatedAt: hoursAgo(4) },
+    { id: c[4], representId: r[6], reportIds: [r[6]], location: { lat: 37.49950, lng: 127.03100 }, danger: 'medium', category: 'safety', status: 'active', embeddingVector: null, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+    { id: c[5], representId: r[7], reportIds: [r[7]], location: { lat: 37.50100, lng: 127.03400 }, danger: 'low', category: 'facility', status: 'active', embeddingVector: null, createdAt: daysAgo(4), updatedAt: daysAgo(4) },
+
+    // 서울 홍대
+    { id: c[6], representId: r[8], reportIds: [r[8]], location: { lat: 37.55680, lng: 126.92380 }, danger: 'medium', category: 'facility', status: 'active', embeddingVector: null, createdAt: daysAgo(3), updatedAt: daysAgo(3) },
+    { id: c[7], representId: r[9], reportIds: [r[9]], location: { lat: 37.56150, lng: 126.92480 }, danger: 'low', category: 'safety', status: 'active', embeddingVector: null, createdAt: daysAgo(5), updatedAt: daysAgo(5) },
+
+    // 경기 화성시 협성대
+    { id: c[8], representId: r[10], reportIds: [r[10], r[11], r[12]], location: { lat: 37.21320, lng: 126.95190 }, danger: 'high', category: 'road', status: 'active', embeddingVector: null, createdAt: daysAgo(3), updatedAt: hoursAgo(8) },
+    { id: c[9], representId: r[13], reportIds: [r[13], r[14]], location: { lat: 37.21180, lng: 126.95350 }, danger: 'high', category: 'weather', status: 'active', embeddingVector: null, createdAt: hoursAgo(5), updatedAt: hoursAgo(3) },
+    { id: c[10], representId: r[15], reportIds: [r[15], r[16]], location: { lat: 37.21150, lng: 126.95130 }, danger: 'medium', category: 'facility', status: 'active', embeddingVector: null, createdAt: daysAgo(5), updatedAt: daysAgo(3) },
+    { id: c[11], representId: r[17], reportIds: [r[17], r[18]], location: { lat: 37.21290, lng: 126.95420 }, danger: 'medium', category: 'road', status: 'active', embeddingVector: null, createdAt: daysAgo(4), updatedAt: daysAgo(1) },
+    { id: c[12], representId: r[19], reportIds: [r[19]], location: { lat: 37.21380, lng: 126.95310 }, danger: 'low', category: 'safety', status: 'active', embeddingVector: null, createdAt: daysAgo(7), updatedAt: daysAgo(7) },
+    { id: c[13], representId: r[20], reportIds: [r[20], r[21]], location: { lat: 37.21240, lng: 126.95060 }, danger: 'low', category: 'facility', status: 'active', embeddingVector: null, createdAt: daysAgo(10), updatedAt: daysAgo(6) },
+    { id: c[14], representId: r[22], reportIds: [r[22], r[23], r[24]], location: { lat: 37.21450, lng: 126.95220 }, danger: 'high', category: 'road', status: 'active', embeddingVector: null, createdAt: daysAgo(2), updatedAt: hoursAgo(4) },
+    { id: c[15], representId: r[25], reportIds: [r[25], r[26]], location: { lat: 37.21090, lng: 126.95250 }, danger: 'low', category: 'road', status: 'resolved', embeddingVector: null, createdAt: daysAgo(5), updatedAt: daysAgo(3), resolvedAt: daysAgo(3) },
+    { id: c[16], representId: r[27], reportIds: [r[27]], location: { lat: 37.21410, lng: 126.95480 }, danger: 'low', category: 'facility', status: 'resolved', embeddingVector: null, createdAt: daysAgo(8), updatedAt: daysAgo(8), resolvedAt: daysAgo(6) },
   ]
 
   const { saveReports, saveClusters } = await import('./storage.js')
@@ -1223,7 +1303,7 @@ if (brandLogoLink) {
 // ── 초기화 ───────────────────────────────────────────────
 async function startApp() {
   await syncDataFromStorage()
-  if (allClusters.length === 0) {
+  if (allClusters.length < 15) {
     await seedDemoData()
   }
 
@@ -1232,6 +1312,35 @@ async function startApp() {
   renderList(anchorLat, anchorLng)
   updateActiveDot()
   if (isConfigured()) runAISummary()
+
+  // 1-1. SNS 바이럴 안전 카드 공유 기능 초기화
+  initShareCard(() => {
+    const searchInput = document.getElementById('place-search-input')
+    const searchQuery = searchInput ? searchInput.value.trim() : ''
+    const aiSummary = document.getElementById('ai-summary-text')?.textContent?.trim() || ''
+
+    let targetLat = anchorLat
+    let targetLng = anchorLng
+    if (kakaoMap) {
+      const c = kakaoMap.getCenter()
+      targetLat = c.getLat()
+      targetLng = c.getLng()
+    }
+
+    return {
+      clusters: allClusters,
+      reportsMap: allReportsMap,
+      anchorLat: anchorLat,
+      anchorLng: anchorLng,
+      targetLat: targetLat,
+      targetLng: targetLng,
+      userLat: userLat,
+      userLng: userLng,
+      searchQuery: searchQuery,
+      currentRegionName: currentRegionName,
+      aiSummary: aiSummary,
+    }
+  })
 
   // 2. GPS 위치 확인 시 파란 점 갱신 및 (저장된 검색 상태가 없는 최초 접속일 때만) 지도 이동
   if (navigator.geolocation) {
@@ -1252,6 +1361,7 @@ async function startApp() {
           }
           renderList(anchorLat, anchorLng)
           saveMapState()
+          updateCurrentRegion()
         }
       },
       () => {
