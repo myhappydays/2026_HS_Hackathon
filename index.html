@@ -304,6 +304,30 @@
       z-index: 40 !important;
     }
 
+    /* ─── 관제 대시보드 버튼 & 배지: 와이드 뷰 전용 (모바일 뷰에서는 완전 숨김) ─── */
+    #admin-dashboard-link,
+    #brand-dashboard-badge {
+      display: none !important;
+    }
+    @media (min-width: 1024px) {
+      body:not(.view-mobile) #admin-dashboard-link {
+        display: inline-flex !important;
+      }
+      body:not(.view-mobile) #brand-dashboard-badge {
+        display: inline-flex !important;
+      }
+    }
+    body.view-wide #admin-dashboard-link {
+      display: inline-flex !important;
+    }
+    body.view-wide #brand-dashboard-badge {
+      display: inline-flex !important;
+    }
+    body.view-mobile #admin-dashboard-link,
+    body.view-mobile #brand-dashboard-badge {
+      display: none !important;
+    }
+
     /* ─── 헤더 glassmorphism ────────────── */
     header {
       backdrop-filter: blur(12px);
@@ -517,6 +541,8 @@
     /* ─── 스크롤바 숨김 ─────────────────── */
     #category-filter { scrollbar-width: none; }
     #category-filter::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
     #report-list { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
     /* ─── number input 스피너 제거 ─────── */
@@ -544,8 +570,236 @@
       height: 1px;
       background: linear-gradient(90deg, transparent, var(--border), transparent);
     }
+
+    /* ─── 반응형 버튼 그룹 & 그리드 유틸리티 ─── */
+    .responsive-btn-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    .responsive-btn-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 6px;
+    }
+
+    /* ─── 모바일 화면 반응형 최적화 (@media <= 768px) ─── */
+    @media (max-width: 768px) {
+      /* 상단 헤더 */
+      header {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+      }
+      .brand-title {
+        font-size: 1.25rem !important;
+      }
+      .header-actions {
+        gap: 6px !important;
+      }
+      .header-actions a,
+      .header-actions button {
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      .header-actions #theme-toggle-btn {
+        width: 30px !important;
+        height: 30px !important;
+        padding: 0 !important;
+      }
+
+      /* 지도 상단 오버레이 컨트롤 바 */
+      .map-top-controls {
+        top: 8px !important;
+        left: 8px !important;
+        right: 8px !important;
+        gap: 6px !important;
+        z-index: 20 !important;
+      }
+      #search-input-box {
+        border-radius: 10px !important;
+      }
+      #place-search-input {
+        font-size: 12px !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+        padding-left: 6px !important;
+      }
+      .view-toggle-group {
+        flex-shrink: 0 !important;
+        padding: 2px !important;
+      }
+      .view-toggle-group button {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+      }
+
+      /* 내 위치 (GPS) 버튼 - 터치 영역 방해 최소화 및 위치 최적화 */
+      #gps-recenter-btn {
+        bottom: 10px !important;
+        right: 10px !important;
+        width: 34px !important;
+        height: 34px !important;
+        z-index: 20 !important;
+      }
+
+      /* 우리 동네 안전 주의보 배너 버튼 */
+      #open-safety-card-btn {
+        padding: 8px 12px !important;
+      }
+      #open-safety-card-btn .banner-title-text {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+      #open-safety-card-btn .banner-badge {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+      }
+
+      /* 컨트롤 바 (카테고리 필터 스와이프 & 정렬) */
+      .controls-bar {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        padding-bottom: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+      }
+      #category-filter {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        overflow-x: auto !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        padding-bottom: 2px !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      .filter-chip {
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      #sort-filter {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+        padding-left: 8px !important;
+        padding-right: 22px !important;
+        font-size: 11px !important;
+        background-position: right 6px center !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* 하단 제보하기 플로팅 FAB 버튼 */
+      #nav-report-wrap {
+        bottom: 16px !important;
+        z-index: 30 !important;
+      }
+      #nav-report {
+        padding: 9px 18px !important;
+        font-size: 12.5px !important;
+        white-space: nowrap !important;
+      }
+      #report-list {
+        padding-bottom: 80px !important;
+      }
+    }
+
+    /* ─── 초소형 모바일 기기 반응형 최적화 (@media <= 480px) ─── */
+    @media (max-width: 480px) {
+      header {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+      }
+      .brand-title {
+        font-size: 1.15rem !important;
+      }
+      .header-actions {
+        gap: 4px !important;
+      }
+      .header-actions a,
+      .header-actions button {
+        padding: 4px 6px !important;
+        font-size: 10.5px !important;
+      }
+      .header-actions #theme-toggle-btn {
+        width: 28px !important;
+        height: 28px !important;
+      }
+
+      /* 지도 상단 컨트롤 */
+      .map-top-controls {
+        top: 6px !important;
+        left: 6px !important;
+        right: 6px !important;
+        gap: 4px !important;
+      }
+      #search-input-box {
+        height: 34px !important;
+      }
+      #place-search-input {
+        font-size: 11px !important;
+      }
+      .view-toggle-group button {
+        padding: 3px 6px !important;
+        font-size: 10px !important;
+      }
+
+      #gps-recenter-btn {
+        bottom: 8px !important;
+        right: 8px !important;
+        width: 32px !important;
+        height: 32px !important;
+      }
+
+      /* 안전 카드 버튼 */
+      #open-safety-card-btn {
+        padding: 7px 10px !important;
+      }
+      #open-safety-card-btn .banner-title-text {
+        font-size: 11px !important;
+      }
+      #open-safety-card-btn .banner-badge {
+        font-size: 9.5px !important;
+        padding: 2.5px 6px !important;
+      }
+
+      /* 필터 칩 & 정렬 */
+      .filter-chip {
+        padding: 3.5px 8px !important;
+        font-size: 10.5px !important;
+      }
+      #sort-filter {
+        padding: 3.5px 18px 3.5px 6px !important;
+        font-size: 10.5px !important;
+      }
+
+      /* 플로팅 FAB 버튼 */
+      #nav-report-wrap {
+        bottom: 12px !important;
+      }
+      #nav-report {
+        padding: 8px 15px !important;
+        font-size: 12px !important;
+      }
+      #report-list {
+        padding-bottom: 74px !important;
+      }
+    }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-DcoiBGm5.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-COsXDUq1.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-q2FoRUtQ.js">
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-DldonUZD.js">
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-CUvEXa6V.js">
@@ -560,19 +814,19 @@
 
     <!-- 헤더 (글로벌 탑바) -->
     <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border px-4 py-2.5 flex items-center justify-between">
-      <a id="brand-logo-link" href="#" class="flex items-center gap-2.5 cursor-pointer hover:opacity-85 transition-opacity" title="홈으로 이동 / 새로고침">
+      <a id="brand-logo-link" href="#" class="flex items-center gap-2 cursor-pointer hover:opacity-85 transition-opacity shrink-0" title="홈으로 이동 / 새로고침">
         <img src="/2026_HS_Hackathon/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
-        <span class="text-2xl font-semibold text-foreground" style="font-family: 'Playfair Display', serif;">Fermata</span>
-        <span class="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+        <span class="brand-title text-xl sm:text-2xl font-semibold text-foreground whitespace-nowrap" style="font-family: 'Playfair Display', serif;">Fermata</span>
+        <span id="brand-dashboard-badge" class="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
           <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
           안전 관제 대시보드
         </span>
       </a>
 
-      <div class="flex items-center gap-1.5">
-        <!-- 관리자 대시보드 링크 -->
-        <a href="admin.html" class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-all border border-primary/20">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h2.626c.885 0 1.636-.632 1.83-1.5l1.088-4.896a2 2 0 013.912 0l1.088 4.896c.194.868.945 1.5 1.83 1.5H21M9 21h6"></path></svg>
+      <div class="header-actions flex items-center gap-1.5 shrink-0">
+        <!-- 관리자 대시보드 링크 (와이드 뷰 전용) -->
+        <a id="admin-dashboard-link" href="admin.html" class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-all border border-primary/20 whitespace-nowrap shrink-0">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h2.626c.885 0 1.636-.632 1.83-1.5l1.088-4.896a2 2 0 013.912 0l1.088 4.896c.194.868.945 1.5 1.83 1.5H21M9 21h6"></path></svg>
           <span class="hidden sm:inline">관제 대시보드</span>
         </a>
         <!-- 화면 뷰 모드 토글 버튼 (와이드 ↔ 모바일 프레임) -->
@@ -580,13 +834,13 @@
           id="view-mode-toggle-btn"
           type="button"
           title="화면 보기 모드 전환 (와이드 ↔ 모바일)"
-          class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/50 text-xs font-medium transition-all shadow-sm">
+          class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/50 text-xs font-medium transition-all shadow-sm whitespace-nowrap shrink-0">
           <!-- 모바일 프레임일 때 표시되는 아이콘 (와이드로 확장) -->
-          <svg class="view-icon-expand w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg class="view-icon-expand w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/>
           </svg>
           <!-- 와이드 뷰일 때 표시되는 아이콘 (모바일로 축소) -->
-          <svg class="view-icon-mobile hidden w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg class="view-icon-mobile hidden w-3.5 h-3.5 text-primary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/>
             <path d="M12 18h.01"/>
           </svg>
@@ -609,7 +863,7 @@
           type="button"
           title="다크 모드로 전환"
           aria-label="다크 모드로 전환"
-          class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors">
+          class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors shrink-0">
           <!-- 해 아이콘 (다크모드일 때 표시 → 라이트로 전환) -->
           <svg class="theme-icon-sun hidden w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="4"/>
@@ -622,7 +876,7 @@
         </button>
 
         <!-- 소셜 로그인 / 마이페이지 컨테이너 -->
-        <div id="auth-container" class="flex items-center gap-2 ml-1">
+        <div id="auth-container" class="flex items-center gap-1.5 ml-0.5 shrink-0">
           <!-- JS로 로그인 버튼 또는 프로필 주입 -->
         </div>
       </div>
@@ -643,9 +897,9 @@
           </div>
 
           <!-- 지도 상단 오버레이 (검색창 + 뷰 토글) -->
-          <div class="absolute top-3 inset-x-3 z-[9999] flex items-center gap-2 pointer-events-none max-w-lg">
+          <div class="map-top-controls absolute top-3 inset-x-3 z-20 flex items-center gap-2 pointer-events-none max-w-lg">
             <!-- 검색창 컨테이너 -->
-            <div id="search-container" class="relative flex-1 pointer-events-auto">
+            <div id="search-container" class="relative flex-1 min-w-0 pointer-events-auto">
               <div id="search-input-box" class="relative flex items-center w-full rounded-xl transition-all">
                 <span class="search-icon pl-3 shrink-0">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -657,7 +911,7 @@
                   id="place-search-input"
                   placeholder="동네, 장소, 지하철역 검색..."
                   autocomplete="off"
-                  class="w-full py-2.5 px-2.5 bg-transparent outline-none"
+                  class="w-full py-2.5 px-2 bg-transparent outline-none truncate"
                 />
                 <!-- 로딩 인디케이터 (검색 중) -->
                 <div id="place-search-spinner" class="hidden pr-2.5 shrink-0">
@@ -685,16 +939,16 @@
             </div>
 
             <!-- 뷰 토글 -->
-            <div class="view-toggle-group inline-flex rounded-lg p-0.5 pointer-events-auto shrink-0" role="group">
+            <div class="view-toggle-group inline-flex rounded-lg p-0.5 pointer-events-auto shrink-0 whitespace-nowrap" role="group">
               <button type="button" id="view-pin-btn"
-                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors bg-primary text-white">
-                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                핀
+                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors bg-primary text-white whitespace-nowrap">
+                <svg class="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                <span>핀</span>
               </button>
               <button type="button" id="view-heat-btn"
-                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors text-muted-foreground">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-                히트맵
+                class="py-1.5 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md transition-colors text-muted-foreground whitespace-nowrap">
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+                <span>히트맵</span>
               </button>
             </div>
           </div>
@@ -702,9 +956,9 @@
           <!-- 내 위치 (GPS) 복귀 플로팅 버튼 -->
           <button type="button"
             id="gps-recenter-btn"
-            class="absolute bottom-3 right-3 z-[9990] w-9 h-9 rounded-lg bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 active:scale-95 transition-all"
+            class="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-lg bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 active:scale-95 transition-all"
             title="현재 위치로 이동">
-            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="3"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
             </svg>
@@ -768,33 +1022,33 @@
         <div class="px-4 pb-2.5">
           <button type="button"
             id="open-safety-card-btn"
-            class="w-full py-2.5 px-3.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 active:scale-[0.99] text-primary flex items-center justify-between text-xs font-semibold transition-all shadow-sm group"
+            class="w-full py-2.5 px-3.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 active:scale-[0.99] text-primary flex items-center justify-between text-xs font-semibold transition-all shadow-sm group min-w-0"
             title="인스타그램 스토리 / 모바일 SNS 안전 카드 공유">
-            <span class="flex items-center gap-2">
-              <span class="text-base animate-pulse">🚨</span>
-              <span class="tracking-tight">우리 동네 안전 주의보 카드 공유하기</span>
+            <span class="flex items-center gap-2 min-w-0 flex-1 pr-2 overflow-hidden">
+              <span class="text-base shrink-0 animate-pulse">🚨</span>
+              <span class="banner-title-text tracking-tight truncate text-left whitespace-nowrap">우리 동네 안전 주의보 카드 공유하기</span>
             </span>
-            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-white text-[11px] font-semibold shadow-sm group-hover:scale-105 transition-transform">
+            <span class="banner-badge inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-white text-[11px] font-semibold shadow-sm group-hover:scale-105 transition-transform shrink-0 whitespace-nowrap">
               SNS 카드
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
             </span>
           </button>
         </div>
 
-        <!-- 필터 및 정렬 UI -->
-        <div class="px-4 pb-3 flex flex-col gap-3">
-          <!-- 카테고리 칩 -->
-          <div class="flex gap-2 overflow-x-auto pb-1" id="category-filter" style="scrollbar-width: none;">
-            <button class="filter-chip active px-3 py-1.5 rounded-full text-xs font-semibold bg-foreground text-background whitespace-nowrap transition-colors" data-cat="all">전체</button>
-            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="road">도로/교통</button>
-            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="weather">기상/자연</button>
-            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="facility">시설물</button>
-            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap transition-colors" data-cat="safety">치안/안전</button>
+        <!-- 필터 및 정렬 UI (모바일 가로 스크롤 & 단정 배치) -->
+        <div class="controls-bar px-4 pb-3 flex items-center justify-between gap-2">
+          <!-- 카테고리 칩 (가로 스크롤 스와이프) -->
+          <div class="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar flex-1 min-w-0" id="category-filter" style="scrollbar-width: none;">
+            <button class="filter-chip active px-3 py-1.5 rounded-full text-xs font-semibold bg-foreground text-background whitespace-nowrap shrink-0 transition-colors" data-cat="all">전체</button>
+            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap shrink-0 transition-colors" data-cat="road">도로/교통</button>
+            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap shrink-0 transition-colors" data-cat="weather">기상/자연</button>
+            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap shrink-0 transition-colors" data-cat="facility">시설물</button>
+            <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap shrink-0 transition-colors" data-cat="safety">치안/안전</button>
           </div>
           
           <!-- 정렬 드롭다운 -->
-          <div class="flex justify-end">
-            <select id="sort-filter" class="py-1.5 px-3 block bg-surface border border-border rounded-lg text-xs text-foreground focus:border-primary focus:outline-none">
+          <div class="shrink-0">
+            <select id="sort-filter" class="py-1.5 px-3 block bg-surface border border-border rounded-lg text-xs text-foreground focus:border-primary focus:outline-none cursor-pointer whitespace-nowrap">
               <option value="recent">최신순</option>
               <option value="nearest">가까운순</option>
               <option value="danger">위험도순</option>
@@ -1047,7 +1301,7 @@
 
       <!-- ─── 캡처 대상: 세로형(9:16 / 4:5 비율 최적화) 안전 카드 ─── -->
       <div id="safety-share-card"
-        class="w-[360px] rounded-3xl p-6 text-white flex flex-col justify-between shadow-2xl relative overflow-hidden select-none"
+        class="w-full max-w-[360px] mx-auto rounded-3xl p-5 sm:p-6 text-white flex flex-col justify-between shadow-2xl relative overflow-hidden select-none"
         style="background: linear-gradient(165deg, #131722 0%, #0a0c13 100%); border: 1.5px solid rgba(244, 63, 94, 0.4); box-shadow: 0 25px 60px -15px rgba(0,0,0,0.85), 0 0 35px -5px rgba(225,29,72,0.3);">
         
         <!-- 배경 장식 글로우 조명 (html2canvas 호환용 인라인 그라데이션) -->
@@ -1149,20 +1403,20 @@
       <div class="w-full flex items-center gap-2 pt-1">
         <!-- 이미지 저장 버튼 -->
         <button type="button" id="download-share-card-btn"
-          class="flex-1 py-3 px-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition-all shadow-lg backdrop-blur-md">
-          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          class="flex-1 py-3 px-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition-all shadow-lg backdrop-blur-md whitespace-nowrap shrink-0">
+          <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
           </svg>
-          <span>이미지 저장</span>
+          <span class="whitespace-nowrap">이미지 저장</span>
         </button>
 
         <!-- 공유하기 버튼 -->
         <button type="button" id="share-card-btn"
-          class="flex-1 py-3 px-3 rounded-2xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-primary/30 transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          class="flex-1 py-3 px-3 rounded-2xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-primary/30 transition-all whitespace-nowrap shrink-0">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
           </svg>
-          <span>공유하기</span>
+          <span class="whitespace-nowrap">공유하기</span>
         </button>
       </div>
 
