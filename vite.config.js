@@ -17,6 +17,7 @@ export default defineConfig({
         report: resolve(__dirname, 'report.html'),
         detail: resolve(__dirname, 'detail.html'),
         mypage: resolve(__dirname, 'mypage.html'),
+        admin:  resolve(__dirname, 'admin.html'),
       }
     }
   }
