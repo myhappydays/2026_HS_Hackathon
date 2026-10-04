@@ -206,7 +206,8 @@ export function updateCardContent(targetOptions = null) {
   const areaName = resolveAreaName(targetOptions, ctx, nearbyClusters, reportsMap)
 
   // 3. 위험 점수 및 상태 계산 (0 ~ 100)
-  const { score, levelText, levelBadgeClass, levelBarWidth, levelColor } = calculateSafetyIndex(nearbyClusters, targetOptions)
+  const safetyInfo = calculateSafetyIndex(nearbyClusters, targetOptions)
+  const isNoHazards = safetyInfo.isNoHazards
 
   // 4. AI 요약 문구 생성/추출
   const summaryText = resolveSummaryText(aiSummaryText, nearbyClusters, reportsMap, areaName, targetOptions)
@@ -223,26 +224,59 @@ export function updateCardContent(targetOptions = null) {
   if (titleEl) {
     if (isSpecificReport) {
       titleEl.textContent = `⚠️ [${areaName}] ${cleanTitle(targetReport.title)}`
+    } else if (isNoHazards) {
+      titleEl.textContent = `🛡️ [${areaName}] 안전 안심 리포트`
     } else {
       titleEl.textContent = `⚠️ [${areaName}] 안전 주의보`
     }
   }
 
+  const subtitleEl = document.getElementById('card-subtitle')
+  if (subtitleEl) {
+    subtitleEl.textContent = isNoHazards
+      ? '실시간 주민 제보 및 AI 안전 진단 완료'
+      : '실시간 주민 제보 및 AI 군집 안전 진단 리포트'
+  }
+
+  const riskLabelEl = document.getElementById('card-risk-label')
+  if (riskLabelEl) {
+    riskLabelEl.textContent = isNoHazards ? '구역 안전 상태' : '종합 위험 지수'
+  }
+
   const scoreEl = document.getElementById('card-risk-score')
+  const scoreMaxEl = document.getElementById('card-risk-max')
   if (scoreEl) {
-    scoreEl.textContent = `${score}`
+    if (isNoHazards) {
+      scoreEl.textContent = '주변에 제보된 위험이 없음'
+      scoreEl.className = 'text-[17px] sm:text-[18px] font-black text-emerald-400 tracking-tight leading-tight py-1 break-keep'
+      if (scoreMaxEl) {
+        scoreMaxEl.classList.add('hidden')
+        scoreMaxEl.style.display = 'none'
+      }
+    } else {
+      scoreEl.textContent = `${safetyInfo.score}`
+      scoreEl.className = safetyInfo.score >= 70
+        ? 'text-4xl font-black text-rose-400 tracking-tight'
+        : safetyInfo.score >= 40
+          ? 'text-4xl font-black text-amber-400 tracking-tight'
+          : 'text-4xl font-black text-emerald-400 tracking-tight'
+      if (scoreMaxEl) {
+        scoreMaxEl.classList.remove('hidden')
+        scoreMaxEl.style.display = 'inline'
+      }
+    }
   }
 
   const levelBadgeEl = document.getElementById('card-risk-level-badge')
   if (levelBadgeEl) {
-    levelBadgeEl.textContent = levelText
-    levelBadgeEl.className = `inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${levelBadgeClass}`
+    levelBadgeEl.textContent = safetyInfo.levelText
+    levelBadgeEl.className = `shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${safetyInfo.levelBadgeClass}`
   }
 
   const meterBarEl = document.getElementById('card-risk-meter-bar')
   if (meterBarEl) {
-    meterBarEl.style.width = `${levelBarWidth}%`
-    meterBarEl.style.backgroundColor = levelColor
+    meterBarEl.style.width = `${safetyInfo.levelBarWidth}%`
+    meterBarEl.style.backgroundColor = safetyInfo.levelColor
   }
 
   const summaryEl = document.getElementById('card-ai-summary')
@@ -266,16 +300,53 @@ export function updateCardContent(targetOptions = null) {
 
   const highCountEl = document.getElementById('card-high-count')
   if (highCountEl) {
-    if (isSpecificReport) {
-      const dangerLabel = targetReport.danger === 'high' ? '고위험' : (targetReport.danger === 'medium' ? '주의' : '양호')
-      highCountEl.textContent = `🚨 [${dangerLabel}] 개별 사건 실시간 공유`
-    } else if (nearbyClusters.length === 0) {
-      highCountEl.textContent = `🛡️ 현재 구역 등록된 위험 제보 없음`
+    highCountEl.textContent = safetyInfo.highCountText
+  }
+
+  const subStatusEl = document.getElementById('card-status-subtext')
+  if (subStatusEl) {
+    subStatusEl.textContent = safetyInfo.subStatusText
+    subStatusEl.className = safetyInfo.subStatusClass || 'text-rose-300/80'
+  }
+
+  // 테두리 및 글로우 색상 동적 전환 (안전 구역은 에메랄드 그린, 위험 구역은 로즈 레드)
+  const cardElement = document.getElementById('safety-share-card')
+  if (cardElement) {
+    if (isNoHazards) {
+      cardElement.style.border = '1.5px solid rgba(16, 185, 129, 0.45)'
+      cardElement.style.boxShadow = '0 25px 60px -15px rgba(0,0,0,0.85), 0 0 35px -5px rgba(16,185,129,0.3)'
     } else {
-      const highCnt = nearbyClusters.filter(c => c.danger === 'high' && c.status !== 'resolved').length
-      const totalCnt = nearbyClusters.filter(c => c.status !== 'resolved').length
-      highCountEl.textContent = `🚨 고위험 ${highCnt}건 / 활성 제보 ${totalCnt}건`
+      cardElement.style.border = '1.5px solid rgba(244, 63, 94, 0.4)'
+      cardElement.style.boxShadow = '0 25px 60px -15px rgba(0,0,0,0.85), 0 0 35px -5px rgba(225,29,72,0.3)'
     }
+  }
+
+  // 상단 LIVE 뱃지 전환
+  const liveBadgeEl = document.getElementById('card-live-badge')
+  if (liveBadgeEl) {
+    if (isNoHazards) {
+      liveBadgeEl.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+      liveBadgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> LIVE 안전 확인'
+    } else {
+      liveBadgeEl.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30'
+      liveBadgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> LIVE AI 안전 분석'
+    }
+  }
+
+  // AI 브리핑 박스 테마 전환
+  const aiBoxEl = document.getElementById('card-ai-box')
+  const aiBadgeEl = document.getElementById('card-ai-badge')
+  if (aiBoxEl) {
+    if (isNoHazards) {
+      aiBoxEl.className = 'rounded-2xl p-3.5 bg-gradient-to-br from-emerald-950/25 to-transparent border border-emerald-500/30 flex flex-col gap-1.5'
+    } else {
+      aiBoxEl.className = 'rounded-2xl p-3.5 bg-gradient-to-br from-rose-950/25 to-transparent border border-rose-500/30 flex flex-col gap-1.5'
+    }
+  }
+  if (aiBadgeEl) {
+    aiBadgeEl.className = isNoHazards
+      ? 'text-[11px] font-bold text-emerald-300 tracking-wide uppercase'
+      : 'text-[11px] font-bold text-rose-300 tracking-wide uppercase'
   }
 }
 
@@ -331,36 +402,56 @@ function calculateSafetyIndex(clusters, targetOptions) {
     const r = targetOptions.report
     if (r.status === 'resolved') {
       return {
+        isNoHazards: false,
         score: 10,
+        scoreDisplay: '10',
         levelText: '조치 완료 (안전)',
         levelBadgeClass: 'bg-blue-500/25 text-blue-300 border border-blue-500/50',
         levelBarWidth: 10,
-        levelColor: '#3b82f6'
+        levelColor: '#3b82f6',
+        highCountText: '✅ 조치 완료된 안전 제보건',
+        subStatusText: '정상 통행 가능',
+        subStatusClass: 'text-blue-300/90'
       }
     }
     if (r.danger === 'high') {
       return {
+        isNoHazards: false,
         score: 88,
+        scoreDisplay: '88',
         levelText: '주의 요망 (고위험)',
         levelBadgeClass: 'bg-rose-500/25 text-rose-300 border border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]',
         levelBarWidth: 88,
-        levelColor: '#f43f5e'
+        levelColor: '#f43f5e',
+        highCountText: '🚨 고위험 제보 발생 구역',
+        subStatusText: '통행 안전 주의',
+        subStatusClass: 'text-rose-300/80'
       }
     } else if (r.danger === 'medium') {
       return {
+        isNoHazards: false,
         score: 58,
+        scoreDisplay: '58',
         levelText: '보행 주의 (경계)',
         levelBadgeClass: 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]',
         levelBarWidth: 58,
-        levelColor: '#f59e0b'
+        levelColor: '#f59e0b',
+        highCountText: '⚠️ 보행 주의 제보 발생',
+        subStatusText: '주변 서행 및 주의',
+        subStatusClass: 'text-amber-300/80'
       }
     } else {
       return {
+        isNoHazards: false,
         score: 28,
+        scoreDisplay: '28',
         levelText: '비교적 안전 (주의)',
         levelBadgeClass: 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50',
         levelBarWidth: 28,
-        levelColor: '#10b981'
+        levelColor: '#10b981',
+        highCountText: '💡 경미한 제보 발생 구역',
+        subStatusText: '일상 보행 가능',
+        subStatusClass: 'text-emerald-300/80'
       }
     }
   }
@@ -369,11 +460,16 @@ function calculateSafetyIndex(clusters, targetOptions) {
   const active = clusters.filter(c => c.status !== 'resolved')
   if (active.length === 0) {
     return {
-      score: 12,
-      levelText: '비교적 안전 (안전 구역)',
-      levelBadgeClass: 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50',
-      levelBarWidth: 12,
-      levelColor: '#10b981'
+      isNoHazards: true,
+      score: null,
+      scoreDisplay: '주변에 제보된 위험이 없음',
+      levelText: '안전 구역',
+      levelBadgeClass: 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]',
+      levelBarWidth: 0,
+      levelColor: '#10b981',
+      highCountText: '🛡️ 현재 반경 내 등록된 위험 없음',
+      subStatusText: '안심 통행 구역',
+      subStatusClass: 'text-emerald-400 font-semibold'
     }
   }
 
@@ -388,27 +484,42 @@ function calculateSafetyIndex(clusters, targetOptions) {
 
   if (score >= 70) {
     return {
+      isNoHazards: false,
       score,
+      scoreDisplay: `${score}`,
       levelText: '주의 요망 (위험 경보)',
       levelBadgeClass: 'bg-rose-500/25 text-rose-300 border border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]',
       levelBarWidth: score,
-      levelColor: '#f43f5e'
+      levelColor: '#f43f5e',
+      highCountText: `🚨 고위험 제보 ${highCount}건 발생`,
+      subStatusText: '통행 안전 주의',
+      subStatusClass: 'text-rose-300/80'
     }
   } else if (score >= 40) {
     return {
+      isNoHazards: false,
       score,
+      scoreDisplay: `${score}`,
       levelText: '보행 주의 (경계)',
       levelBadgeClass: 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]',
       levelBarWidth: score,
-      levelColor: '#f59e0b'
+      levelColor: '#f59e0b',
+      highCountText: `⚠️ 주의 제보 ${active.length}건 감지`,
+      subStatusText: '보행 유의 요망',
+      subStatusClass: 'text-amber-300/80'
     }
   } else {
     return {
+      isNoHazards: false,
       score,
+      scoreDisplay: `${score}`,
       levelText: '비교적 안전 (양호)',
       levelBadgeClass: 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50',
       levelBarWidth: score,
-      levelColor: '#10b981'
+      levelColor: '#10b981',
+      highCountText: `💡 경미한 제보 ${active.length}건 확인`,
+      subStatusText: '일상 보행 가능',
+      subStatusClass: 'text-emerald-300/80'
     }
   }
 }
@@ -491,7 +602,7 @@ function resolveKeywords(clusters, reportsMap, targetOptions) {
   // 2. 구역 내 위험 제보가 없는 경우
   const active = clusters.filter(c => c.status !== 'resolved')
   if (active.length === 0) {
-    return ['#안전구역', '#정상통행', '#보행양호']
+    return ['#안전구역', '#위험제보없음', '#안심보행']
   }
 
   const titles = []
