@@ -14,6 +14,7 @@ import { initEmbedder, isEmbedderReady } from './embedder.js'
 import { initTheme } from './theme.js'
 import { loginWithGoogle, logout, listenAuthState } from './auth.js'
 import { initShareCard, openShareModal, reverseGeocodeCoord } from './shareCard.js'
+import { computeUserTemperatures, getTemperatureColor } from './profile.js'
 
 // 테마 초기화 (다크/라이트 모드)
 initTheme()
@@ -1301,6 +1302,60 @@ if (brandLogoLink) {
 }
 
 // ── 초기화 ───────────────────────────────────────────────
+async function renderRankingModal() {
+  const ranking = await computeUserTemperatures()
+  
+  // 1. 내 프로필 렌더링 (로그인한 유저 기준, 없으면 시민A를 임시 내 프로필로 가정)
+  let me = null
+  listenAuthState((user) => {
+    const myName = user ? user.displayName : '시민A' // 데모용
+    me = ranking.find(u => u.name === myName) || { name: myName, temperature: 36.5 }
+    
+    document.getElementById('my-profile-name').textContent = me.name
+    if (user && user.photoURL) {
+      document.getElementById('my-profile-avatar').innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full object-cover">`
+    } else {
+      document.getElementById('my-profile-avatar').textContent = me.name.charAt(0)
+    }
+    document.getElementById('my-temperature').textContent = me.temperature.toFixed(1) + '°C'
+    document.getElementById('my-temperature-bar').style.width = Math.min(100, (me.temperature / 50) * 100) + '%'
+  })
+
+  // 2. 랭킹 리스트 렌더링
+  const listEl = document.getElementById('ranking-list')
+  if (!listEl) return
+  
+  if (ranking.length === 0) {
+    listEl.innerHTML = '<div class="text-center text-sm py-8 text-muted-foreground">아직 랭킹 데이터가 없습니다.</div>'
+    return
+  }
+
+  listEl.innerHTML = ranking.slice(0, 10).map((u, i) => {
+    let medal = ''
+    if (i === 0) medal = '🥇 '
+    else if (i === 1) medal = '🥈 '
+    else if (i === 2) medal = '🥉 '
+    else medal = `<span class="inline-block w-5 text-center">${i+1}</span>`
+
+    const colorClass = getTemperatureColor(u.temperature)
+
+    return `
+      <div class="flex items-center justify-between p-3 rounded-lg border border-border bg-surface hover:bg-surface-1 transition-colors">
+        <div class="flex items-center gap-3">
+          <div class="font-bold text-lg w-6 text-center text-muted-foreground">${medal}</div>
+          <div>
+            <div class="font-bold text-sm text-foreground">${u.name}</div>
+            <div class="text-[10px] text-muted-foreground">제보 ${u.reportsCount} · 해결 ${u.resolvedCount} · 공감 ${u.likesReceived}</div>
+          </div>
+        </div>
+        <div class="px-2.5 py-1 rounded-full text-xs font-bold border ${colorClass}">
+          ${u.temperature.toFixed(1)}°C
+        </div>
+      </div>
+    `
+  }).join('')
+}
+
 async function startApp() {
   await syncDataFromStorage()
   if (allClusters.length < 15) {
@@ -1312,6 +1367,8 @@ async function startApp() {
   renderList(anchorLat, anchorLng)
   updateActiveDot()
   if (isConfigured()) runAISummary()
+
+  renderRankingModal()
 
   // 1-1. SNS 바이럴 안전 카드 공유 기능 초기화
   initShareCard(() => {
