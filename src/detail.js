@@ -5,6 +5,7 @@
 
 import { getClusterById, getReportById, deleteReport, deleteCluster, updateCluster, updateReport } from './storage.js'
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
+import { initShareCard, openShareModal } from './shareCard.js'
 
 const BASE = import.meta.env.BASE_URL
 document.getElementById('nav-home').href = `${BASE}index.html`
@@ -28,12 +29,25 @@ async function init() {
 
   await renderDetail(cluster, repReport)
 
+  // SNS 바이럴 안전 카드 공유 기능 연동
+  initShareCard(() => ({
+    clusters: [cluster],
+    reportsMap: new Map([[repReport.id, repReport]]),
+    targetLat: cluster.location?.lat,
+    targetLng: cluster.location?.lng,
+    currentRegionName: repReport.location?.address || '',
+  }))
+
+  document.getElementById('btn-share-card')?.addEventListener('click', () => {
+    openShareModal({ type: 'report', report: repReport, cluster })
+  })
+
   // 내가 공감한 군집 ID 관리
   const getLikedList = () => JSON.parse(localStorage.getItem('my_likes') || '[]')
   const btnLike = document.getElementById('btn-like')
 
   // 초기 렌더링 시 이미 공감했다면 UI 변경
-  if (getLikedList().includes(cluster.id)) {
+  if (btnLike && getLikedList().includes(cluster.id)) {
     btnLike.classList.replace('bg-primary/10', 'bg-primary')
     btnLike.classList.replace('text-primary', 'text-white')
     btnLike.classList.add('opacity-80', 'cursor-not-allowed')
@@ -41,33 +55,39 @@ async function init() {
   }
 
   // 공감 버튼 이벤트
-  btnLike.addEventListener('click', async () => {
-    const likedList = getLikedList()
-    
-    // 이미 공감했는지 검사
-    if (likedList.includes(cluster.id)) {
-      alert('이미 공감(위험 확인)을 표시한 제보입니다.')
-      return
-    }
+  if (btnLike) {
+    btnLike.addEventListener('click', async () => {
+      const likedList = getLikedList()
+      
+      // 이미 공감했는지 검사
+      if (likedList.includes(cluster.id)) {
+        alert('이미 공감(위험 확인)을 표시한 제보입니다.')
+        return
+      }
 
-    cluster.likes = (cluster.likes || 0) + 1
-    await updateCluster(cluster)
-    
-    // 로컬스토리지에 저장 (1계정당 1회)
-    likedList.push(cluster.id)
-    localStorage.setItem('my_likes', JSON.stringify(likedList))
+      cluster.likes = (cluster.likes || 0) + 1
+      await updateCluster(cluster)
+      
+      // 로컬스토리지에 저장 (1계정당 1회)
+      likedList.push(cluster.id)
+      localStorage.setItem('my_likes', JSON.stringify(likedList))
 
-    // UI 즉시 업데이트
-    btnLike.classList.replace('bg-primary/10', 'bg-primary')
-    btnLike.classList.replace('text-primary', 'text-white')
-    btnLike.classList.add('opacity-80', 'cursor-not-allowed')
-    btnLike.innerHTML = `✔️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes}</span>`
-  })
+      // UI 즉시 업데이트
+      btnLike.classList.replace('bg-primary/10', 'bg-primary')
+      btnLike.classList.replace('text-primary', 'text-white')
+      btnLike.classList.add('opacity-80', 'cursor-not-allowed')
+      btnLike.innerHTML = `✔️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes}</span>`
+    })
+  }
 
-  // 댓글 등록 이벤트
-  document.getElementById('btn-comment-submit').addEventListener('click', async () => {
+  // 댓글 등록 이벤트 (폼 submit 지원)
+  const commentForm = document.getElementById('comment-form')
+  const commentSubmitBtn = document.getElementById('btn-comment-submit')
+
+  const handleCommentSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
     const input = document.getElementById('comment-input')
-    const text = input.value.trim()
+    const text = input ? input.value.trim() : ''
     if (!text) {
       alert('공유할 상황을 입력해주세요.')
       return
@@ -87,9 +107,15 @@ async function init() {
     })
     
     await updateCluster(cluster)
-    input.value = ''
+    if (input) input.value = ''
     await renderDetail(cluster, repReport) // 리렌더링
-  })
+  }
+
+  if (commentForm) {
+    commentForm.addEventListener('submit', handleCommentSubmit)
+  } else if (commentSubmitBtn) {
+    commentSubmitBtn.addEventListener('click', handleCommentSubmit)
+  }
 }
 
 function showError() {
