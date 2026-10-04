@@ -3,9 +3,9 @@
  * 메인 페이지 - 카카오 지도 뷰 + 제보 리스트
  */
 
-import { getClusters, getReports, getReportById } from './storage.js'
+import { getClusters, getReports, getReportById, addReport, updateReport } from './storage.js'
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
-import { haversineDistance } from './clustering.js'
+import { haversineDistance, assignCluster } from './clustering.js'
 import {
   isConfigured, getToken, saveToken, getModel, saveModel,
   getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
@@ -1258,6 +1258,7 @@ async function seedDemoData() {
   const { saveReports, saveClusters } = await import('./storage.js')
   await saveReports(reports)
   await saveClusters(clusters)
+  await syncOfflineReports();
   await syncDataFromStorage()
 }
 
@@ -1370,6 +1371,31 @@ async function renderRankingModal() {
     `
   }).join('')
 }
+
+
+// 오프라인 제보 동기화 로직
+async function syncOfflineReports() {
+  if (!navigator.onLine) return;
+  const offlineReports = JSON.parse(localStorage.getItem('offline_reports') || '[]');
+  if (offlineReports.length === 0) return;
+
+  try {
+    for (const report of offlineReports) {
+      await addReport(report);
+      const clusterId = await assignCluster(report);
+      report.clusterId = clusterId;
+      await updateReport(report);
+    }
+    alert(`연결이 복구되어 임시 저장된 오프라인 제보 ${offlineReports.length}건이 자동 전송되었습니다! 🚀`);
+    localStorage.removeItem('offline_reports');
+    // 새로고침하여 반영
+    location.reload();
+  } catch (err) {
+    console.error('오프라인 동기화 실패:', err);
+  }
+}
+
+window.addEventListener('online', syncOfflineReports);
 
 async function startApp() {
   await syncDataFromStorage()
