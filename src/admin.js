@@ -46,18 +46,40 @@ async function loadDashboard() {
   // 시급 조치 요망 (High & 미해결)
   const urgentClusters = []
 
+  // 보고서 매핑 (주소 가져오기 위함)
+  const allReportsMap = new Map()
+  reports.forEach(r => allReportsMap.set(r.id, r))
+
+  // 랭킹 보드용 데이터 수집
+  const districtStats = {} // { "경기 화성시": { totalMs: 0, count: 0 } }
+
   clusters.forEach(cluster => {
     const isResolved = cluster.status === 'resolved'
     
+    // 대표 주소 파싱 (예: "경기 화성시 봉담읍..." -> "경기 화성시")
+    const rep = allReportsMap.get(cluster.representId)
+    const fullAddress = rep?.location?.address || ''
+    const parts = fullAddress.split(' ')
+    const district = parts.length >= 2 ? `${parts[0]} ${parts[1]}` : '기타 지역'
+
     if (isResolved) {
       resolvedClusters++
+      if (cluster.resolvedAt && cluster.createdAt) {
+        const timeTaken = cluster.resolvedAt - cluster.createdAt
+        if (!districtStats[district]) {
+          districtStats[district] = { totalMs: 0, count: 0 }
+        }
+        districtStats[district].totalMs += timeTaken
+        districtStats[district].count++
+      }
     } else {
       activeClusters++
       
       // 위험도 통계
       if (cluster.danger === 'high') {
         highDangerClusters++
-        urgentClusters.push(cluster)
+        // urgentClusters에 넣을 때 address 저장
+        urgentClusters.push({ ...cluster, address: fullAddress })
       }
 
       // 분야별 통계
@@ -98,6 +120,51 @@ async function loadDashboard() {
     })
   }
 
+  // 지자체별 랭킹 보드 렌더링
+  const rankingBoard = document.getElementById('ranking-board')
+  if (rankingBoard) {
+    rankingBoard.innerHTML = ''
+    
+    // 평균 해결 시간 계산 및 정렬 (짧을수록 상위)
+    const ranking = Object.entries(districtStats)
+      .map(([name, stats]) => ({
+        name,
+        avgMs: stats.totalMs / stats.count,
+        count: stats.count
+      }))
+      .sort((a, b) => a.avgMs - b.avgMs)
+
+    if (ranking.length === 0) {
+      rankingBoard.innerHTML = '<div class="text-sm text-muted-foreground text-center mt-4">해결된 위험 데이터가 없습니다.</div>'
+    } else {
+      const medals = ['🥇', '🥈', '🥉']
+      ranking.forEach((r, i) => {
+        // 밀리초를 시간/일 단위로 변환
+        const hours = r.avgMs / (1000 * 60 * 60)
+        const timeStr = hours >= 24 
+          ? `${(hours / 24).toFixed(1)}일` 
+          : `${Math.max(1, Math.round(hours))}시간`
+
+        const el = document.createElement('div')
+        el.className = 'flex items-center justify-between p-3 rounded-lg bg-surface/50 border border-border'
+        el.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="text-xl">${i < 3 ? medals[i] : `<span class="text-sm font-bold text-muted-foreground w-6 text-center inline-block">${i+1}위</span>`}</span>
+            <div>
+              <p class="font-bold text-foreground text-sm">${r.name}</p>
+              <p class="text-[10px] text-muted-foreground">누적 해결: ${r.count}건</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold text-primary">${timeStr}</p>
+            <p class="text-[10px] text-muted-foreground">평균 소요</p>
+          </div>
+        `
+        rankingBoard.appendChild(el)
+      })
+    }
+  }
+
   // 시급 조치 리스트 렌더링
   urgentList.innerHTML = ''
   // 공감 수 내림차순 정렬
@@ -117,7 +184,7 @@ async function loadDashboard() {
           </span>
         </td>
         <td class="px-5 py-3 text-foreground truncate max-w-xs">
-          ${cluster.reports[0]?.address || '주소 정보 없음'}
+          ${cluster.address || '주소 정보 없음'}
         </td>
         <td class="px-5 py-3">
           <div class="flex items-center gap-1 text-red-500 font-medium">

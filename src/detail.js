@@ -5,6 +5,7 @@
 
 import { getClusterById, getReportById, deleteReport, deleteCluster, updateCluster, updateReport } from './storage.js'
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
+import { getCurrentUser } from './auth.js'
 
 const BASE = import.meta.env.BASE_URL
 document.getElementById('nav-home').href = `${BASE}index.html`
@@ -127,12 +128,26 @@ async function renderDetail(cluster, repReport) {
   // 상태 토글 버튼
   const btnToggleStatus = document.getElementById('btn-toggle-status')
   const btnToggleStatusText = document.getElementById('btn-toggle-status-text')
+  const currentUser = getCurrentUser()
+  const hasPermission = !repReport.userId || (currentUser && currentUser.uid === repReport.userId)
+
   if (btnToggleStatus && btnToggleStatusText) {
-    btnToggleStatusText.textContent = isResolved ? '진행 중으로 변경' : '해결 완료로 변경'
-    btnToggleStatus.onclick = async () => {
-      cluster.status = isResolved ? 'active' : 'resolved'
-      await updateCluster(cluster)
-      await renderDetail(cluster, repReport)
+    if (!hasPermission) {
+      btnToggleStatus.style.display = 'none'
+    } else {
+      btnToggleStatus.style.display = ''
+      btnToggleStatusText.textContent = isResolved ? '진행 중으로 변경' : '해결 완료로 변경'
+      btnToggleStatus.onclick = async () => {
+        const newStatus = isResolved ? 'active' : 'resolved'
+        cluster.status = newStatus
+        if (newStatus === 'resolved') {
+          cluster.resolvedAt = Date.now()
+        } else {
+          cluster.resolvedAt = null
+        }
+        await updateCluster(cluster)
+        await renderDetail(cluster, repReport)
+      }
     }
   }
 
@@ -205,12 +220,14 @@ async function renderDetail(cluster, repReport) {
                 </div>
               </div>
               <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
+                ${(!r.userId || (currentUser && currentUser.uid === r.userId)) ? `
                 <button type="button" class="btn-edit-report py-1.5 px-3 bg-surface border border-border text-foreground hover:bg-surface-1 rounded-lg text-xs font-semibold transition" data-id="${r.id}">
                   수정
                 </button>
                 <button type="button" class="btn-delete-report py-1.5 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-semibold transition" data-id="${r.id}">
                   삭제
                 </button>
+                ` : ''}
               </div>
             </div>
           </div>

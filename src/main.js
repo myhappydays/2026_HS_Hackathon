@@ -1170,8 +1170,8 @@ async function seedDemoData() {
     { id: c[4], representId: r[9],  reportIds: [r[9]],                     location: { lat: 37.21380, lng: 126.95310 }, danger: 'low',    category: 'safety',   status: 'active',   embeddingVector: null, createdAt: daysAgo(7),  updatedAt: daysAgo(7)  },
     { id: c[5], representId: r[10], reportIds: [r[10], r[11]],             location: { lat: 37.21240, lng: 126.95060 }, danger: 'low',    category: 'facility', status: 'active',   embeddingVector: null, createdAt: daysAgo(10), updatedAt: daysAgo(6)  },
     { id: c[6], representId: r[12], reportIds: [r[12], r[13], r[14]],      location: { lat: 37.21450, lng: 126.95220 }, danger: 'high',   category: 'road',     status: 'active',   embeddingVector: null, createdAt: daysAgo(2),  updatedAt: hoursAgo(4) },
-    { id: c[7], representId: r[15], reportIds: [r[15], r[16]],             location: { lat: 37.21090, lng: 126.95250 }, danger: 'low',    category: 'road',     status: 'resolved', embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3)  },
-    { id: c[8], representId: r[17], reportIds: [r[17]],                     location: { lat: 37.21410, lng: 126.95480 }, danger: 'low',    category: 'facility', status: 'resolved', embeddingVector: null, createdAt: daysAgo(8),  updatedAt: daysAgo(8)  },
+    { id: c[7], representId: r[15], reportIds: [r[15], r[16]],             location: { lat: 37.21090, lng: 126.95250 }, danger: 'low',    category: 'road',     status: 'resolved', embeddingVector: null, createdAt: daysAgo(5),  updatedAt: daysAgo(3), resolvedAt: daysAgo(3) },
+    { id: c[8], representId: r[17], reportIds: [r[17]],                     location: { lat: 37.21410, lng: 126.95480 }, danger: 'low',    category: 'facility', status: 'resolved', embeddingVector: null, createdAt: daysAgo(8),  updatedAt: daysAgo(8), resolvedAt: daysAgo(6) },
   ]
 
   const { saveReports, saveClusters } = await import('./storage.js')
