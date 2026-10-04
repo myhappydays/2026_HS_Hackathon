@@ -25,18 +25,14 @@ if (authContainer) {
   listenAuthState((user) => {
     if (user) {
       authContainer.innerHTML = `
-        <a href="${import.meta.env.BASE_URL}mypage.html" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface hover:bg-surface-1 transition-colors text-xs font-semibold text-foreground border border-border/60">
-          <img src="${user.photoURL || '/icon.svg'}" class="w-4 h-4 rounded-full object-cover">
-          <span class="hidden sm:inline">마이페이지</span>
+        <a href="${import.meta.env.BASE_URL}mypage.html" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-1 transition-colors text-xs font-semibold text-foreground border border-border/60 shrink-0 shadow-sm" title="마이페이지">
+          <img src="${user.photoURL || '/icon.svg'}" class="w-4 h-4 rounded-full object-cover shrink-0">
+          <span class="whitespace-nowrap">마이페이지</span>
         </a>
-        <button id="logout-btn" class="px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">로그아웃</button>
       `
-      document.getElementById('logout-btn')?.addEventListener('click', () => {
-        logout()
-      })
     } else {
       authContainer.innerHTML = `
-        <button id="login-btn" class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm">구글 로그인</button>
+        <button id="login-btn" class="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap shrink-0">구글 로그인</button>
       `
       document.getElementById('login-btn')?.addEventListener('click', () => {
         loginWithGoogle()
@@ -927,16 +923,16 @@ function renderList(userLat, userLng) {
           }
         </div>
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-1.5 mb-1">
+          <div class="flex items-center gap-1.5 mb-1 flex-wrap">
             ${statusBadge}
-            <span class="text-[10px] text-muted-foreground">${cat}</span>
-            ${count > 1 ? `<span class="text-[10px] text-primary font-medium">+${count}건</span>` : ''}
+            <span class="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">${cat}</span>
+            ${count > 1 ? `<span class="text-[10px] text-primary font-medium whitespace-nowrap shrink-0">+${count}건</span>` : ''}
             <button type="button"
-              class="report-share-btn ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all active:scale-95"
+              class="report-share-btn ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all active:scale-95 shrink-0 whitespace-nowrap"
               data-cluster-id="${cluster.id}"
               title="이 제보 SNS 안전 카드 공유">
-              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
-              <span>카드 공유</span>
+              <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
+              <span class="whitespace-nowrap">카드 공유</span>
             </button>
           </div>
           <p class="text-sm font-semibold text-foreground truncate">${rep.title}</p>

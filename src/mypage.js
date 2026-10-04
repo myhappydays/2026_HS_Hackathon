@@ -1,11 +1,21 @@
 import { initTheme } from './theme.js';
-import { listenAuthState } from './auth.js';
+import { listenAuthState, logout } from './auth.js';
 import { getReportsByUserId } from './storage.js';
 import { dangerStyle, categoryLabel, relativeTime } from './utils.js';
 
 initTheme();
 
 document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.html`;
+
+// 로그아웃 처리
+const handleLogout = async () => {
+  if (confirm('로그아웃 하시겠습니까?')) {
+    await logout();
+    location.href = `${import.meta.env.BASE_URL}index.html`;
+  }
+};
+document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+document.getElementById('profile-logout-btn')?.addEventListener('click', handleLogout);
 
 const profileName = document.getElementById('profile-name');
 const profileEmail = document.getElementById('profile-email');
