@@ -1303,6 +1303,21 @@ if (brandLogoLink) {
 
 // ── 초기화 ───────────────────────────────────────────────
 async function renderRankingModal() {
+  const btn = document.getElementById('ranking-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const el = document.querySelector('#ranking-modal');
+      if (el) el.classList.remove('hidden');
+    });
+  }
+  
+  const closeBtn = document.getElementById('close-ranking-modal');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      const el = document.querySelector('#ranking-modal');
+      if (el) el.classList.add('hidden');
+    });
+  }
   const ranking = await computeUserTemperatures()
   
   // 1. 내 프로필 렌더링 (로그인한 유저 기준, 없으면 시민A를 임시 내 프로필로 가정)
