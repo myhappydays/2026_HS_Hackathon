@@ -268,6 +268,21 @@ async function renderDetail(cluster, repReport) {
   // Preline Accordion ?ъ큹湲고솕 (?숈쟻 DOM 二쇱엯 ??
   if (window.HSAccordion) window.HSAccordion.autoInit()
 
+  document.querySelectorAll('.btn-report-report').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const rid = btn.getAttribute('data-id')
+      if (confirm('이 제보를 불량/허위 제보로 신고하시겠습니까?')) {
+        const r = allReports.find(x => x.id === rid)
+        if (r) {
+          r.reportCount = (r.reportCount || 0) + 1
+          await updateReport(r)
+          alert('신고가 접수되었습니다. (누적 신고: ' + r.reportCount + '회)')
+        }
+      }
+    })
+  })
+
   document.querySelectorAll('.btn-edit-report').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation()

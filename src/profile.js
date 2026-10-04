@@ -1,4 +1,4 @@
-﻿import { getReports, getClusters } from './storage.js'
+import { getReports, getClusters } from './storage.js'
 import { getCurrentUser } from './auth.js'
 
 export async function computeUserTemperatures() {
@@ -30,13 +30,15 @@ export async function computeUserTemperatures() {
     stat.reportsCount++
     stat.temperature += 0.2
 
-    // Check for fake reports/penalties (hackathon mock logic based on tags in description)
-    if (r.description && r.description.includes('#허위')) {
+    // Check for fake reports/penalties using DB fields
+    if (r.isFake) {
       stat.penalties++
       stat.temperature -= 5.0
-    } else if (r.description && r.description.includes('#신고누적')) {
-      stat.penalties++
-      stat.temperature -= 0.5
+    } 
+    
+    if (r.reportCount && r.reportCount > 0) {
+      stat.penalties += r.reportCount
+      stat.temperature -= (r.reportCount * 0.5)
     }
   })
 
