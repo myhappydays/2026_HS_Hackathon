@@ -27,6 +27,9 @@
     })();
   </script>
 
+  <!-- html2canvas CDN (SNS 안전 카드 이미지 생성) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -83,8 +86,9 @@
       background: white; width: 18px;
     }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/detail-C85DGOlN.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/detail-CZT0QrSx.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-q2FoRUtQ.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/shareCard-CYJZRnVL.js">
   <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/utils-7lpI1uXZ.css">
 </head>
 <body class="bg-background-1 text-foreground min-h-screen">
@@ -192,12 +196,24 @@
               ⚠️ 나도 겪었어요 <span id="like-count" class="ml-1 text-primary">0</span>
             </button>
 
-            <!-- 해결 상태 토글 버튼 -->
-            <button type="button" id="btn-toggle-status"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-border text-foreground hover:bg-surface-1 transition text-xs font-semibold shadow-sm">
-              <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-              <span id="btn-toggle-status-text">해결 완료로 변경</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <!-- 해결 상태 토글 버튼 -->
+              <button type="button" id="btn-toggle-status"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-border text-foreground hover:bg-surface-1 transition text-xs font-semibold shadow-sm">
+                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                <span id="btn-toggle-status-text">해결 완료로 변경</span>
+              </button>
+
+              <!-- 🚨 SNS 카드 공유 버튼 -->
+              <button type="button" id="btn-share-card"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition text-xs font-semibold shadow-sm active:scale-95"
+                title="이 위험 제보 SNS 안전 카드 공유">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
+                </svg>
+                <span>🚨 SNS 카드 공유</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -233,7 +249,7 @@
           <form id="comment-form" class="flex gap-2">
             <input type="text" id="comment-input" required placeholder="현장 상황을 공유해주세요..." 
               class="flex-1 py-2 px-3 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground">
-            <button type="submit" 
+            <button type="submit" id="btn-comment-submit"
               class="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg text-sm hover:bg-primary/90 transition shadow-sm whitespace-nowrap">
               등록
             </button>
@@ -255,6 +271,136 @@
 
     </main>
   </div><!-- /모바일 앱 래퍼 -->
+
+  <!-- ─── SNS 바이럴 공유 카드 모달 ─────────────────── -->
+  <div id="share-card-modal" class="hidden fixed inset-0 z-[100000] items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div id="share-card-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity"></div>
+    <div id="share-card-container" class="relative z-10 w-full max-w-[390px] flex flex-col items-center gap-3 transition-all duration-300 scale-95 opacity-0 my-auto">
+      <div class="w-full flex items-center justify-between px-1 text-white">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+          <span class="text-xs font-bold tracking-tight text-slate-200">인스타 스토리 / SNS 안전 카드</span>
+        </div>
+        <button id="close-share-card-modal" type="button"
+          class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+          title="닫기 (ESC)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="safety-share-card"
+        class="w-[360px] rounded-3xl p-6 text-white flex flex-col justify-between shadow-2xl relative overflow-hidden select-none"
+        style="background: linear-gradient(165deg, #131722 0%, #0a0c13 100%); border: 1.5px solid rgba(244, 63, 94, 0.4); box-shadow: 0 25px 60px -15px rgba(0,0,0,0.85), 0 0 35px -5px rgba(225,29,72,0.3);">
+        <div class="absolute -top-24 -right-24 w-60 h-60 rounded-full pointer-events-none"
+          style="background: radial-gradient(circle, rgba(225, 29, 72, 0.3) 0%, transparent 70%);"></div>
+        <div class="absolute -bottom-24 -left-24 w-60 h-60 rounded-full pointer-events-none"
+          style="background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, transparent 70%);"></div>
+
+        <div class="relative z-10 flex items-center justify-between pb-3.5 border-b border-white/10">
+          <div class="flex items-center gap-2">
+            <img src="/2026_HS_Hackathon/icon.svg" class="w-6 h-6 rounded-md shadow-sm" alt="Fermata">
+            <span class="text-xl font-bold tracking-wider text-white" style="font-family: 'Playfair Display', serif;">Fermata</span>
+          </div>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            LIVE AI 안전 분석
+          </span>
+        </div>
+
+        <div class="relative z-10 py-4 flex flex-col gap-3.5">
+          <div>
+            <h2 id="card-area-title" class="text-xl font-extrabold leading-snug tracking-tight text-white drop-shadow-sm">
+              ⚠️ [위험 제보] 안전 주의보
+            </h2>
+            <p class="text-[11px] text-slate-400 mt-0.5">
+              실시간 주민 제보 및 AI 군집 안전 진단 리포트
+            </p>
+          </div>
+
+          <div class="rounded-2xl p-4 bg-white/[0.04] border border-white/10 flex flex-col gap-2.5 relative overflow-hidden backdrop-blur-sm">
+            <div class="flex items-end justify-between">
+              <div>
+                <span class="text-[11px] font-medium text-slate-400">종합 위험 지수</span>
+                <div class="flex items-baseline gap-1 mt-0.5">
+                  <span id="card-risk-score" class="text-4xl font-black text-rose-400 tracking-tight">78</span>
+                  <span class="text-xs font-semibold text-slate-400">/ 100</span>
+                </div>
+              </div>
+              <span id="card-risk-level-badge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-500/25 text-rose-300 border border-rose-500/50">
+                주의 요망
+              </span>
+            </div>
+
+            <div class="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
+              <div id="card-risk-meter-bar" class="h-full rounded-full transition-all duration-500" style="width: 78%; background-color: #f43f5e;"></div>
+            </div>
+
+            <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+              <span id="card-high-count">🚨 실시간 위험 제보 구역</span>
+              <span class="text-rose-300/80">통행 안전 주의</span>
+            </div>
+          </div>
+
+          <div class="rounded-2xl p-3.5 bg-gradient-to-br from-rose-950/25 to-transparent border border-rose-500/30 flex flex-col gap-1.5">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs">✨</span>
+              <span class="text-[11px] font-bold text-rose-300 tracking-wide uppercase">AI 실시간 종합 진단</span>
+            </div>
+            <p id="card-ai-summary" class="text-[12px] leading-relaxed text-slate-200 font-medium break-keep">
+              보행 시 각별한 주의가 필요합니다. 안전한 경로를 이용하세요.
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-1.5 pt-0.5">
+            <span class="text-[10px] font-semibold text-slate-400 tracking-wider">주요 주의 키워드</span>
+            <div id="card-keywords-container" class="flex flex-wrap gap-1.5">
+              <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white border border-white/15">#안전주의</span>
+              <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white border border-white/15">#보행주의</span>
+              <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white border border-white/15">#실시간제보</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative z-10 pt-3.5 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+          <div class="flex flex-col">
+            <span class="font-bold text-slate-200 tracking-tight">Fermata 안전 나눔 커뮤니티</span>
+            <span class="text-[10px] text-slate-500">함께 발견하고 지키는 우리 동네</span>
+          </div>
+          <div class="text-right flex flex-col items-end">
+            <span id="card-date-text" class="font-semibold text-slate-300 tabular-nums">2026. 10. 04 기준</span>
+            <span class="text-[9px] text-emerald-400 flex items-center gap-0.5 mt-0.5">
+              <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              AI Verified
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full flex items-center gap-2 pt-1">
+        <button type="button" id="download-share-card-btn"
+          class="flex-1 py-3 px-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition-all shadow-lg backdrop-blur-md">
+          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+          </svg>
+          <span>이미지 저장</span>
+        </button>
+
+        <button type="button" id="share-card-btn"
+          class="flex-1 py-3 px-3 rounded-2xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-primary/30 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
+          </svg>
+          <span>공유하기</span>
+        </button>
+      </div>
+
+      <p class="text-[11px] text-white/60 text-center pb-1">
+        인스타그램 스토리나 카카오톡에 안전 카드를 공유해 이웃을 지켜주세요 🛡️
+      </p>
+    </div>
+  </div>
 
   <!-- Preline UI JS -->
   <script src="https://cdn.jsdelivr.net/npm/preline@2.7.0/dist/preline.min.js"></script>
