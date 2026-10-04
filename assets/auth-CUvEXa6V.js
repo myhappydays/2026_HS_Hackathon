@@ -1,0 +1,1 @@
+import{C as e,S as t,b as n,w as r,x as i}from"./utils-q2FoRUtQ.js";async function a(){try{return(await e(n,i)).user}catch(e){throw console.error(`로그인 에러:`,e),alert(`로그인 중 문제가 발생했습니다.`),e}}async function o(){try{await r(n)}catch(e){console.error(`로그아웃 에러:`,e)}}function s(e){return t(n,e)}function c(){return n.currentUser}export{o as i,s as n,a as r,c as t};

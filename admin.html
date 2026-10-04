@@ -30,7 +30,7 @@
     }
   </script>
   <style>body { font-family: var(--font-sans); }</style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/admin-DUjykgSX.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/admin-lBBFTYJ8.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-q2FoRUtQ.js">
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/theme-BGQI_Gbl.js">
   <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/utils-7lpI1uXZ.css">
@@ -113,12 +113,24 @@
     </div>
 
     <!-- 메인 대시보드 하단 영역 (차트 및 리스트) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1">
       
       <!-- 분야별 위험 현황 (비율) -->
       <div class="lg:col-span-1 bg-background border border-border rounded-xl p-5 shadow-sm flex flex-col">
         <h3 class="font-bold text-lg mb-4">분야별 미해결 현황</h3>
         <div id="category-stats" class="flex flex-col gap-4 flex-1 overflow-y-auto">
+          <!-- 동적 렌더링 -->
+          <div class="flex items-center justify-center h-full text-muted-foreground text-sm">데이터를 불러오는 중...</div>
+        </div>
+      </div>
+
+      <!-- 지자체별 안전 대응 속도 랭킹 -->
+      <div class="lg:col-span-1 bg-background border border-border rounded-xl p-5 shadow-sm flex flex-col">
+        <h3 class="font-bold text-lg mb-1 flex items-center gap-2">
+          🏆 지자체별 대응 랭킹
+        </h3>
+        <p class="text-xs text-muted-foreground mb-4">해결까지 걸린 평균 시간 (짧을수록 상위)</p>
+        <div id="ranking-board" class="flex flex-col gap-3 flex-1 overflow-y-auto">
           <!-- 동적 렌더링 -->
           <div class="flex items-center justify-center h-full text-muted-foreground text-sm">데이터를 불러오는 중...</div>
         </div>
