@@ -545,7 +545,7 @@
       background: linear-gradient(90deg, transparent, var(--border), transparent);
     }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-DkFTEyRL.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-C0it486B.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-q2FoRUtQ.js">
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-DldonUZD.js">
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-CUvEXa6V.js">
@@ -591,6 +591,16 @@
             <path d="M12 18h.01"/>
           </svg>
           <span id="view-mode-label" class="hidden sm:inline text-[11px] font-semibold">와이드 뷰</span>
+        </button>
+
+        <!-- 안전 온도 랭킹 버튼 -->
+        <button
+          id="ranking-btn"
+          type="button"
+          data-hs-overlay="#ranking-modal"
+          class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-xs font-medium transition-all shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>
+          <span class="hidden sm:inline font-bold">랭킹</span>
         </button>
 
         <!-- 다크/라이트 모드 토글 버튼 -->
@@ -1162,6 +1172,65 @@
 
     </div><!-- /share-card-container -->
   </div><!-- /share-card-modal -->
+
+  <!-- 🏆 시민 영웅 랭킹 & 온도 모달 -->
+  <div id="ranking-modal" class="hs-overlay hidden w-full h-full fixed top-0 left-0 z-[100] overflow-x-hidden overflow-y-auto" role="dialog" tabindex="-1" aria-labelledby="ranking-modal-label">
+    <div class="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 mt-0 opacity-0 ease-out transition-all sm:max-w-md sm:w-full m-3 sm:mx-auto min-h-[calc(100%-3.5rem)] flex items-center">
+      <div class="w-full max-h-[80vh] flex flex-col bg-background border border-border shadow-2xl rounded-2xl overflow-hidden">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center py-3 px-4 border-b border-border bg-surface">
+          <h3 id="ranking-modal-label" class="font-bold text-foreground text-lg flex items-center gap-2">
+            🔥 우리 동네 안전 온도
+          </h3>
+          <button type="button" class="w-8 h-8 flex justify-center items-center rounded-full hover:bg-surface-1 text-muted-foreground transition-colors" data-hs-overlay="#ranking-modal">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-4 overflow-y-auto flex-1">
+          <!-- 내 프로필 (내 온도) -->
+          <div class="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-full bg-primary/20 flex justify-center items-center font-bold text-primary" id="my-profile-avatar">나</div>
+                <div>
+                  <p class="font-bold text-foreground text-sm" id="my-profile-name">로그인 해주세요</p>
+                  <p class="text-xs text-muted-foreground" id="my-profile-desc">나의 안전 활동 현황</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-2xl font-bold text-orange-500" id="my-temperature">36.5°C</p>
+              </div>
+            </div>
+            
+            <!-- 온도 바 -->
+            <div class="w-full bg-surface-2 rounded-full h-2.5 relative mt-1">
+              <div class="h-2.5 rounded-full bg-gradient-to-r from-blue-500 via-green-500 to-red-500 transition-all duration-1000" id="my-temperature-bar" style="width: 36.5%"></div>
+            </div>
+            
+            <!-- 마일리지 전환 버튼 (PT용) -->
+            <button class="mt-2 w-full py-2 rounded-lg bg-surface border border-border text-xs font-bold text-foreground flex items-center justify-center gap-1.5 hover:bg-surface-1 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              안전 온도를 화성페이(지역화폐)로 전환하기
+            </button>
+            <p class="text-[10px] text-muted-foreground text-center">제보 및 공감 시 온도가 오르며, 허위 신고 시 차감됩니다.</p>
+          </div>
+
+          <!-- 랭킹 리스트 -->
+          <h4 class="font-bold text-sm mb-3 flex items-center gap-1.5">
+            🏆 시민 영웅 랭킹 TOP 10
+          </h4>
+          <div class="flex flex-col gap-2" id="ranking-list">
+            <!-- 동적 주입 -->
+            <div class="text-center text-sm py-8 text-muted-foreground">데이터를 불러오는 중...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- 카카오 지도 API (services: 역지오코딩, clusterer: 마커 클러스터링) -->
   <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=7f192d556aecbc3e63ee3ba3a151f1d0&libraries=services,clusterer,visualization"></script>
