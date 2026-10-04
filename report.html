@@ -86,6 +86,13 @@
 
     <!-- 제보 폼 -->
     <main class="flex-1 overflow-y-auto px-4 py-5 pb-10">
+      
+      <!-- 네트워크 단절 경고 배너 -->
+      <div id="offline-banner" class="hidden mb-4 bg-orange-100 border border-orange-200 text-orange-800 text-xs font-semibold px-3 py-2.5 rounded-lg flex items-start gap-2">
+        <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.9 4.15A8.99 8.99 0 0112 4c2.484 0 4.733.978 6.4 2.57M4.33 6.64A8.97 8.97 0 003 13c0 2.484.978 4.733 2.57 6.4M16 16.5a4.49 4.49 0 01-6.5-6.5m2-2l-2-2"/></svg>
+        <div>오프라인 상태입니다.<br>제보 시 임시 저장되며, 인터넷 연결 시 자동 전송됩니다.</div>
+      </div>
+
       <form id="report-form" class="space-y-5">
 
         <!-- 사진 첨부 -->
