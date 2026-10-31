@@ -1370,11 +1370,13 @@ async function renderRankingModal() {
 
 
 // 오프라인 제보 동기화 로직
+let isSyncingOffline = false;
 async function syncOfflineReports() {
-  if (!navigator.onLine) return;
+  if (!navigator.onLine || isSyncingOffline) return;
   const offlineReports = JSON.parse(localStorage.getItem('offline_reports') || '[]');
   if (offlineReports.length === 0) return;
 
+  isSyncingOffline = true;
   try {
     for (const report of offlineReports) {
       await addReport(report);
@@ -1382,12 +1384,13 @@ async function syncOfflineReports() {
       report.clusterId = clusterId;
       await updateReport(report);
     }
-    alert(`연결이 복구되어 임시 저장된 오프라인 제보 ${offlineReports.length}건이 자동 전송되었습니다! 🚀`);
     localStorage.removeItem('offline_reports');
-    // 새로고침하여 반영
+    alert(`연결이 복구되어 임시 저장된 오프라인 제보 ${offlineReports.length}건이 자동 전송되었습니다! 🚀`);
     location.reload();
   } catch (err) {
     console.error('오프라인 동기화 실패:', err);
+  } finally {
+    isSyncingOffline = false;
   }
 }
 
@@ -1396,10 +1399,15 @@ window.addEventListener('online', syncOfflineReports);
 async function startApp() {
   await syncDataFromStorage()
   if (allClusters.length < 15 || !localStorage.getItem('v3_seeded')) {
+    const savedOffline = localStorage.getItem('offline_reports')
+    const savedTheme = localStorage.getItem('fermata_theme')
     localStorage.clear()
+    if (savedOffline) localStorage.setItem('offline_reports', savedOffline)
+    if (savedTheme) localStorage.setItem('fermata_theme', savedTheme)
     localStorage.setItem('v3_seeded', 'true')
     await seedDemoData()
   }
+  await syncOfflineReports()
 
   // 1. 지도 및 목록 즉시 초기화 (저장된 상태 또는 기본 위치로 즉각 렌더링)
   initMap(initialMapLat, initialMapLng)
