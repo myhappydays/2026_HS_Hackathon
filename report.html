@@ -63,10 +63,11 @@
     /* 이미지 프리뷰 */
     #image-preview { object-fit: cover; }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/report-eY2EPFeH.js"></script>
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-q2FoRUtQ.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-DldonUZD.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-CUvEXa6V.js">
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/report-D5BuGefJ.js"></script>
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-CDjCN5wW.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-DTrkCimz.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-arIxeHBl.js">
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/theme-BGQI_Gbl.js">
   <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/utils-7lpI1uXZ.css">
 </head>
@@ -90,7 +91,7 @@
       <!-- 네트워크 단절 경고 배너 -->
       <div id="offline-banner" class="hidden mb-4 bg-orange-100 border border-orange-200 text-orange-800 text-xs font-semibold px-3 py-2.5 rounded-lg flex items-start gap-2">
         <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.9 4.15A8.99 8.99 0 0112 4c2.484 0 4.733.978 6.4 2.57M4.33 6.64A8.97 8.97 0 003 13c0 2.484.978 4.733 2.57 6.4M16 16.5a4.49 4.49 0 01-6.5-6.5m2-2l-2-2"/></svg>
-        <div>오프라인 상태입니다.<br>제보 시 임시 저장되며, 인터넷 연결 시 자동 전송됩니다.</div>
+        <div>오프라인 상태입니다.<br>AI 분류를 이용할 수 없으면 위험도와 분류를 직접 선택해 주세요.</div>
       </div>
 
       <form id="report-form" class="space-y-5">
@@ -180,7 +181,7 @@
         <!-- 위험도 (선택사항 - 자동 분류 가능) -->
         <div>
           <label class="block text-sm font-semibold text-foreground mb-1">위험도</label>
-          <p class="text-xs text-muted-foreground mb-2">선택하지 않으면 내용을 기반으로 자동 분류됩니다.</p>
+          <p class="text-xs text-muted-foreground mb-2">선택하지 않으면 AI가 제안하며, 확인 후 등록할 수 있습니다. 제안이 없으면 직접 선택해 주세요.</p>
           <div class="flex gap-2">
             <label class="flex-1 cursor-pointer">
               <input type="radio" name="danger" value="high" class="peer hidden">
@@ -206,7 +207,7 @@
         <!-- 분류 (선택사항 - 자동 분류 가능) -->
         <div>
           <label class="block text-sm font-semibold text-foreground mb-1">분류</label>
-          <p class="text-xs text-muted-foreground mb-2">선택하지 않으면 내용을 기반으로 자동 분류됩니다.</p>
+          <p class="text-xs text-muted-foreground mb-2">선택하지 않으면 AI가 제안하며, 확인 후 등록할 수 있습니다. 제안이 없으면 직접 선택해 주세요.</p>
           <div class="grid grid-cols-3 gap-2">
             <label class="cursor-pointer">
               <input type="radio" name="category" value="road" class="peer hidden">
