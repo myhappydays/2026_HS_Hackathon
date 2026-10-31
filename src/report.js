@@ -6,7 +6,7 @@
  * - 현재 위치 자동 취득 (Geolocation API)
  * - 카카오 지도에 기준 마커 표시 → 위치 세부 조정
  * - 역지오코딩 → 주소 표시
- * - 폼 제출 → 온라인 시 Firestore & 군집 배정 / 오프라인 시 offline_reports 큐 임시 저장
+ * - 폼 제출 → 온라인 시 Clef AI 분류 & Firestore/군집 배정 / 오프라인 시 offline_reports 큐 임시 저장
  */
 
 import { initTheme } from './theme.js'
@@ -16,7 +16,6 @@ initTheme()
 document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.html`
 
 import { generateId, compressImage } from './utils.js'
-import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
 import { addReport, updateReport, isStorageFull } from './storage.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
@@ -52,6 +51,33 @@ let imageBase64 = null
 let locationMap = null
 let currentLat = null
 let currentLng = null
+let submitting = false
+const manualRequired = new Set()
+const suggestions = new Map()
+const validChoices = {
+  danger: new Set(['high', 'medium', 'low']),
+  category: new Set(['road', 'facility', 'weather', 'safety', 'etc']),
+}
+const fieldLabels = { danger: '위험도', category: '분류' }
+const classifyUrl = (import.meta.env.VITE_CATEGORY_API_URL || 'https://fermata-report-clef-v4.hejoliv.workers.dev').replace(/\/+$/, '')
+
+form.addEventListener('change', e => {
+  const field = e.target.name
+  if (field in validChoices) {
+    suggestions.delete(field)
+    manualRequired.delete(field)
+  }
+})
+
+for (const id of ['title', 'description']) {
+  document.getElementById(id).addEventListener('input', () => {
+    for (const [field, choice] of suggestions) {
+      const selected = form.querySelector(`input[name="${field}"]:checked`)
+      if (selected?.value === choice) selected.checked = false
+    }
+    suggestions.clear()
+  })
+}
 
 // ── 오프라인 상태 감지 및 UI 동기화 ──────────────────────
 function updateOfflineStatusUI() {
@@ -198,6 +224,7 @@ function initMap(lat, lng) {
 
 form.addEventListener('submit', async e => {
   e.preventDefault()
+  if (submitting) return
 
   // 용량 체크
   if (isStorageFull()) {
@@ -207,8 +234,9 @@ form.addEventListener('submit', async e => {
 
   const title       = document.getElementById('title').value.trim()
   const description = document.getElementById('description').value.trim()
-  const dangerVal   = document.querySelector('input[name="danger"]:checked')?.value || null
-  const categoryVal = document.querySelector('input[name="category"]:checked')?.value || null
+  const choices = Object.fromEntries(Object.keys(validChoices).map(field => [
+    field, form.querySelector(`input[name="${field}"]:checked`)?.value || null,
+  ]))
 
   if (!title) {
     alert('제목을 입력해 주세요.')
@@ -223,58 +251,129 @@ form.addEventListener('submit', async e => {
     return
   }
 
-  const text     = `${title} ${description}`
-  const danger   = dangerVal   || classifyDanger(text)
-  const category = categoryVal || classifyCategory(text)
-
-  /** @type {Report} */
-  const report = {
-    id:          generateId(),
-    userId:      currentUser ? currentUser.uid : 'anonymous',
-    author:      currentUser?.displayName || '시민A',
-    clusterId:   '', // assignCluster 후 채움
-    title,
-    description,
-    imageBase64,
-    location: {
-      lat:     currentLat,
-      lng:     currentLng,
-      address: addressText.textContent || '',
-    },
-    danger,
-    category,
-    createdAt: Date.now(),
+  const invalid = Object.keys(validChoices).filter(field => choices[field] && !validChoices[field].has(choices[field]))
+  if (invalid.length) {
+    alert(`${invalid.map(field => fieldLabels[field]).join(', ')}을(를) 직접 선택해 주세요.`)
+    return
+  }
+  const required = [...manualRequired].filter(field => !choices[field])
+  if (required.length) {
+    alert(`${required.map(field => fieldLabels[field]).join(', ')}을(를) 직접 선택해 주세요.`)
+    return
   }
 
-  submitBtn.disabled = true
-  submitBtn.textContent = navigator.onLine ? '제보 등록 중...' : '임시 저장 중...'
-
+  // 오프라인일 때: 미선택 필드는 기본값(medium/etc)으로 보정 후 임시 저장 큐에 적재
   if (!navigator.onLine) {
-    saveReportToOfflineQueue(report)
+    const offlineReport = {
+      id:          generateId(),
+      userId:      currentUser ? currentUser.uid : 'anonymous',
+      author:      currentUser?.displayName || '시민A',
+      clusterId:   '',
+      title,
+      description,
+      imageBase64,
+      location: {
+        lat:     currentLat,
+        lng:     currentLng,
+        address: addressText.textContent || '',
+      },
+      danger:   choices.danger || 'medium',
+      category: choices.category || 'etc',
+      createdAt: Date.now(),
+    }
+    submitting = true
+    submitBtn.disabled = true
+    submitBtn.textContent = '임시 저장 중...'
+    saveReportToOfflineQueue(offlineReport)
     showToast('success', '오프라인 임시 저장 완료! 연결 시 자동 전송됩니다.')
     setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1400)
     return
   }
 
+  submitting = true
+  submitBtn.disabled = true
+  form.inert = true
+  let saved = false
   try {
-    // Firestore & local 저장
+    const needs = Object.keys(validChoices).filter(field => !choices[field])
+    if (needs.length) {
+      submitBtn.textContent = 'AI 분류 중...'
+      let decisions = {}
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      try {
+        const response = await fetch(`${classifyUrl}/classify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, needs }),
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`Classification failed: ${response.status}`)
+        decisions = (await response.json()).decisions || {}
+      } catch (err) {
+        console.warn('AI 분류 실패:', err)
+      } finally {
+        clearTimeout(timeout)
+      }
+
+      const suggested = []
+      const unresolved = []
+      for (const field of needs) {
+        const choice = decisions[field]?.choice
+        if (validChoices[field].has(choice)) {
+          const input = form.querySelector(`input[name="${field}"][value="${choice}"]`)
+          input.checked = true
+          suggestions.set(field, choice)
+          suggested.push(fieldLabels[field])
+        } else {
+          manualRequired.add(field)
+          unresolved.push(fieldLabels[field])
+        }
+      }
+      const messages = []
+      if (suggested.length) messages.push(`AI가 제안한 ${suggested.join(', ')}을(를) 확인해 주세요.`)
+      if (unresolved.length) messages.push(`${unresolved.join(', ')}을(를) 직접 선택해 주세요.`)
+      alert(`${messages.join('\n')}\n확인 후 다시 등록해 주세요.`)
+      return
+    }
+
+    /** @type {Report} */
+    const report = {
+      id:          generateId(),
+      userId:      currentUser ? currentUser.uid : 'anonymous',
+      author:      currentUser?.displayName || '시민A',
+      clusterId:   '',
+      title,
+      description,
+      imageBase64,
+      location: {
+        lat:     currentLat,
+        lng:     currentLng,
+        address: addressText.textContent || '',
+      },
+      danger: choices.danger,
+      category: choices.category,
+      createdAt: Date.now(),
+    }
+
+    submitBtn.textContent = '제보 등록 중...'
     await addReport(report)
-
-    // 군집 배정 (report 저장 후, async)
+    saved = true
     const clusterId = await assignCluster(report)
-
-    // report의 clusterId 업데이트
     report.clusterId = clusterId
     await updateReport(report)
-
-    // 성공 토스트 표시 후 메인으로 이동
     showToast('success', '제보가 등록되었습니다!')
     setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1200)
   } catch (err) {
-    console.warn('[report] 온라인 전송 실패, 오프라인 큐로 전환:', err)
-    saveReportToOfflineQueue(report)
-    showToast('success', '네트워크 지연으로 임시 저장되었습니다. 연결 시 자동 전송됩니다.')
-    setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1400)
+    console.error('제보 등록 실패:', err)
+    alert(saved ? '제보는 저장되었지만 군집 배정에 실패했습니다. 메인 화면에서 확인해 주세요.' : '제보 등록에 실패했습니다. 다시 시도해 주세요.')
+  } finally {
+    if (!saved) {
+      submitting = false
+      submitBtn.disabled = false
+      updateOfflineStatusUI()
+      form.inert = false
+    }
   }
 })
 

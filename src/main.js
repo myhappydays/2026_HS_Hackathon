@@ -1421,7 +1421,6 @@ async function startApp() {
   initShareCard(() => {
     const searchInput = document.getElementById('place-search-input')
     const searchQuery = searchInput ? searchInput.value.trim() : ''
-    const aiSummary = document.getElementById('ai-summary-text')?.textContent?.trim() || ''
 
     let targetLat = anchorLat
     let targetLng = anchorLng
@@ -1442,7 +1441,6 @@ async function startApp() {
       userLng: userLng,
       searchQuery: searchQuery,
       currentRegionName: currentRegionName,
-      aiSummary: aiSummary,
     }
   })
 

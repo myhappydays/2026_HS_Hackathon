@@ -1,0 +1,42 @@
+/* Shared preview and exported card: Fermata's light surface and crimson accents. */
+#safety-share-card {
+  background: #ffffff;
+  color: #202124;
+  border: 1px solid #e9e3e4;
+  box-shadow: 0 24px 60px -20px rgba(35, 15, 20, .3);
+  font-family: 'Pretendard', sans-serif;
+}
+#safety-share-card .card-header,
+#safety-share-card .card-footer { border-color: #f0e9ea; }
+#safety-share-card .card-brand { color: #212124; font-family: 'Playfair Display', serif; }
+#safety-share-card #card-area-title,
+#safety-share-card #card-risk-score { color: #222126; text-shadow: none; }
+#safety-share-card #card-subtitle,
+#safety-share-card #card-risk-label,
+#safety-share-card #card-high-count,
+#safety-share-card #card-status-subtext,
+#safety-share-card #card-date-text { color: #777176; }
+#safety-share-card #card-risk-level-badge {
+  background: #fff2f3;
+  border: 1px solid #f4dadd;
+  color: #bb2638;
+}
+#safety-share-card #card-dashboard-box,
+#safety-share-card .card-evidence-box {
+  background: #faf8f8;
+  border: 1px solid #f0e9ea;
+}
+#safety-share-card .card-section-label { color: #776d71; }
+#safety-share-card #card-evidence { color: #343035; }
+#safety-share-card #card-ai-box {
+  background: #fff6f7;
+  border: 1px solid #f6dfe2;
+}
+#safety-share-card #card-ai-badge { color: #b42638; }
+#safety-share-card #card-ai-summary { color: #4b3f43; }
+#safety-share-card #card-keywords-container span {
+  background: #fff2f3;
+  color: #b42638;
+  border: 1px solid #f4dadd;
+  box-shadow: none;
+}

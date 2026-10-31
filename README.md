@@ -47,7 +47,7 @@
 
 - 사진 첨부 (Canvas 자동 압축 — 최대 800×800px WebP, 150KB 초과 시 재압축)
 - 지도 중앙 고정 핀으로 위치 지정 → 카카오 역지오코딩으로 주소 자동 입력
-- 위험도·분야 **키워드 자동 분류** (직접 수정도 가능)
+- Clef-flash가 위험도·분야를 제안하며, 사용자가 확인 후 등록 (분류 불가 또는 서비스 오류 시 직접 선택 필요)
 
 ### 동일 민원 군집화
 
@@ -56,7 +56,7 @@
 | 단계 | 방법 |
 |---|---|
 | 1차 필터 | Haversine 거리 200m 이내 후보 추림 |
-| 2차 판단 | 다국어 문장 임베딩 코사인 유사도 ≥ 0.4 |
+| 2차 판단 | 다국어 문장 임베딩 코사인 유사도 ≥ 0.45 |
 | 벡터 갱신 | 배정 시 (기존 + 신규) / 2 평균 갱신 |
 
 - 임베딩 모델: `Xenova/paraphrase-multilingual-MiniLM-L12-v2` (~117MB, WASM, 브라우저 캐시)
@@ -70,6 +70,13 @@
 - 요약 결과 30분 캐시 (불필요한 API 호출 방지)
 - 토큰 미설정 시 기능 전체 숨김 (graceful degradation)
 - 지원 모델: Claude Haiku 4.5 / Sonnet 4.6 / Opus 4.6
+
+### 안전 카드 공유
+
+- 지도 중심 반경 3.5km의 진행 중인 제보 또는 개별 제보를 카드로 표시합니다. 숫자 위험 지수 대신 제보 건수와 등록된 위험도를 보여 줍니다.
+- 지역 카드와 개별 제보 카드에 동일한 화이트·크림슨 디자인을 사용하며, 카드 폭을 공유 버튼 영역에 맞춥니다. 생성 시각과 디자인은 PNG에도 적용됩니다.
+- 카드의 AI 요약은 현재 카드의 제보로 별도 생성합니다. Bedrock 토큰이 없거나 요청이 실패하면 그 상태를 명시하며, 확인되지 않은 고정 요약을 표시하지 않습니다. AI 요약에는 별도 호출 비용이 발생할 수 있습니다.
+- PNG 저장과 파일 공유를 지원합니다. 파일 공유가 불가능하면 페이지 링크만 공유하거나 복사하며, 이 경우 이미지가 포함되지 않았음을 알립니다.
 
 ---
 
@@ -105,6 +112,20 @@ npm run dev
 ```
 
 기본 주소: `http://localhost:5173/2026_HS_Hackathon/`
+
+### Clef-flash 분류 Worker 설정 및 배포
+
+`worker/`에는 위험도와 분야를 한 번의 Workers AI 호출로 분류하는 v4 프롬프트 및 Cloudflare Worker 설정이 있습니다. 앱의 기본 분류 URL은 `https://fermata-report-clef-v4.hejoliv.workers.dev`이며, 배포 전에는 해당 Worker를 사용할 수 없습니다. 기존 `fermata-category-clef` Worker와는 별도입니다. 필요하면 앱 빌드 시 `VITE_CATEGORY_API_URL`로 다른 `/classify` 엔드포인트를 지정할 수 있습니다.
+
+Cloudflare 계정에 Wrangler를 로그인하고 Workers AI 사용 권한을 준비한 뒤 프로젝트 루트에서 실행합니다. `worker/wrangler.jsonc`의 AI 바인딩과 분당 60회(Cloudflare 위치별) 제한이 함께 배포됩니다.
+
+```bash
+cd worker
+npm ci
+npm run deploy
+```
+
+`POST /classify`는 `title`, `description`, 선택적인 `needs` 배열(`danger`, `category`)을 받습니다. `needs`를 생략하면 기존 클라이언트처럼 분야만 분류하고 `category`, `confidence`, `probabilities`를 반환합니다. 요청한 필드의 결과는 `decisions`에도 포함되며 `unknown`이거나 서비스 오류인 경우 직접 선택해야 합니다. `POST /classify-relief`도 기존 형식으로 유지됩니다. 허용 Origin만 CORS를 지원하지만 CORS는 인증이 아니므로 공개 엔드포인트 사용량을 모니터링해야 합니다.
 
 #### 카카오 지도 API 키 교체 (로컬에서 지도가 안 뜰 경우)
 
@@ -152,7 +173,7 @@ src/
 ├── detail.js         # 상세 페이지 — 군집 정보, 관련 제보 리스트
 ├── storage.js        # localStorage 읽기/쓰기
 ├── clustering.js     # Haversine 거리, 코사인 유사도, 군집 배정
-├── classification.js # 위험도/분야 키워드 자동 분류
+├── report.js         # 제보 등록 및 Clef-flash 위험도/분야 제안
 ├── embedder.js       # 문장 임베딩 모델 싱글톤
 ├── bedrock.js        # AWS Bedrock Claude 호출, 설정값 관리
 └── utils.js          # 시간 포맷, 거리 포맷, 이미지 압축
