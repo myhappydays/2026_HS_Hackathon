@@ -300,32 +300,6 @@ async function renderDetail(cluster, repReport) {
   const timeEl = document.getElementById('cluster-time')
   if (timeEl) timeEl.textContent = `${relativeTime(cluster.createdAt || repReport.createdAt || Date.now())} 제보`
 
-  // 상태 토글 버튼 & 작성자/관리자 권한 체크
-  const btnToggleStatus = document.getElementById('btn-toggle-status')
-  const btnToggleStatusText = document.getElementById('btn-toggle-status-text')
-  const currentUser = getCurrentUser()
-  const hasPermission = !repReport.userId || repReport.userId === 'anonymous' || (currentUser && currentUser.uid === repReport.userId)
-
-  if (btnToggleStatus && btnToggleStatusText) {
-    if (!hasPermission) {
-      btnToggleStatus.style.display = 'none'
-    } else {
-      btnToggleStatus.style.display = ''
-      btnToggleStatusText.textContent = isResolved ? '진행 중으로 변경' : '해결 완료로 변경'
-      btnToggleStatus.onclick = async () => {
-        const newStatus = isResolved ? 'active' : 'resolved'
-        cluster.status = newStatus
-        if (newStatus === 'resolved') {
-          cluster.resolvedAt = Date.now()
-        } else {
-          cluster.resolvedAt = null
-        }
-        await updateCluster(cluster)
-        await renderDetail(cluster, repReport)
-      }
-    }
-  }
-
   // 관련 제보 아코디언 (Preline)
   const relatedCount = document.getElementById('related-count')
   const relatedList  = document.getElementById('related-list')

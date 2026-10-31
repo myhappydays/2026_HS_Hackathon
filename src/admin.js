@@ -86,25 +86,63 @@ function startAutoRefresh() {
 }
 
 // ── 2. 관제 지도 (Kakao Maps) 초기화 ────────────────────
+let isMapInitialized = false
+
 function initAdminMap() {
   const mapContainer = document.getElementById('admin-map')
   const mapLoading   = document.getElementById('admin-map-loading')
-  if (!mapContainer || typeof kakao === 'undefined' || !kakao.maps) return
+  if (!mapContainer) return
 
-  const mapOption = {
-    center: new kakao.maps.LatLng(37.38, 126.96), // 수도권 중심
-    level: 8
+  let attempts = 0
+  const checkKakao = () => {
+    attempts++
+    if (typeof kakao !== 'undefined' && kakao.maps) {
+      kakao.maps.load(() => {
+        try {
+          const mapOption = {
+            center: new kakao.maps.LatLng(37.35, 126.98), // 수도권 중심
+            level: 8
+          }
+          kakaoMap = new kakao.maps.Map(mapContainer, mapOption)
+          isMapInitialized = true
+          if (mapLoading) mapLoading.style.display = 'none'
+
+          // 줌 컨트롤 추가
+          const zoomControl = new kakao.maps.ZoomControl()
+          kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT)
+
+          // 캔버스 크기 맞춤 및 마커 렌더링
+          setTimeout(() => {
+            if (kakaoMap) {
+              kakaoMap.relayout()
+              renderMapMarkers()
+            }
+          }, 150)
+        } catch (err) {
+          console.error('[admin] Kakao Map init error:', err)
+          if (mapLoading) mapLoading.innerHTML = '<span class="text-xs text-red-400">지도를 생성하지 못했습니다.</span>'
+        }
+      })
+    } else if (attempts < 50) {
+      setTimeout(checkKakao, 100)
+    } else {
+      console.warn('[admin] Kakao Maps SDK load timeout')
+      if (mapLoading) {
+        mapLoading.innerHTML = '<span class="text-xs text-amber-400">카카오 지도 로드 실패 (네트워크 또는 키 확인 필요)</span>'
+      }
+    }
   }
-  kakaoMap = new kakao.maps.Map(mapContainer, mapOption)
-  if (mapLoading) mapLoading.style.display = 'none'
 
-  // 줌 컨트롤 추가
-  const zoomControl = new kakao.maps.ZoomControl()
-  kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT)
+  checkKakao()
 }
 
+// 윈도우 크기 변경 시 지도 리레이아웃
+window.addEventListener('resize', () => {
+  if (kakaoMap) kakaoMap.relayout()
+})
+
 function renderMapMarkers() {
-  if (!kakaoMap) return
+  if (!kakaoMap || !isMapInitialized) return
 
   // 기존 마커 제거
   mapMarkers.forEach(m => m.setMap(null))
@@ -114,9 +152,11 @@ function renderMapMarkers() {
   let hasValidCoords = false
 
   allClusters.forEach(cluster => {
-    if (!cluster.location || !cluster.location.lat || !cluster.location.lng) return
+    const lat = Number(cluster.location?.lat)
+    const lng = Number(cluster.location?.lng)
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return
 
-    const pos = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
+    const pos = new kakao.maps.LatLng(lat, lng)
     bounds.extend(pos)
     hasValidCoords = true
 
@@ -147,16 +187,16 @@ function renderMapMarkers() {
     // 클릭 시 인포윈도우 표시
     const rep = allReportsMap.get(cluster.representId)
     const title = rep?.title || '위험 제보 구역'
-    const address = rep?.location?.address || '위치 정보 없음'
+    const address = rep?.location?.address || cluster.location?.address || '위치 정보 없음'
 
     const infoContent = `
-      <div style="padding:10px; min-width:200px; font-family:sans-serif; font-size:12px; color:#1e293b; line-height:1.4;">
+      <div style="padding:10px 12px; min-width:210px; font-family:sans-serif; font-size:12px; color:#1e293b; line-height:1.4;">
         <div style="font-weight:700; margin-bottom:4px; font-size:13px; color:${color};">
           ${isResolved ? '✅ 조치 완료' : (cluster.danger === 'high' ? '🚨 초고위험' : '⚠️ 주의')} [${categoryLabel(cluster.category)}]
         </div>
         <div style="font-weight:600; margin-bottom:2px; word-break:break-all;">${title}</div>
         <div style="font-size:11px; color:#64748b; margin-bottom:8px;">${address}</div>
-        <a href="detail.html?id=${cluster.id}" target="_blank" style="display:inline-block; padding:4px 8px; border-radius:6px; background:#e11d48; color:#ffffff; text-decoration:none; font-weight:600; font-size:11px;">
+        <a href="detail.html?id=${cluster.id}" target="_blank" style="display:inline-block; padding:4px 10px; border-radius:6px; background:#e11d48; color:#ffffff; text-decoration:none; font-weight:700; font-size:11px;">
           상세 조치 보고서 ↗
         </a>
       </div>
@@ -175,6 +215,7 @@ function renderMapMarkers() {
 
   if (hasValidCoords && mapMarkers.length > 0) {
     kakaoMap.setBounds(bounds)
+    kakaoMap.relayout()
   }
 }
 
