@@ -1,1 +1,0 @@
-import{C as e,S as t,b as n,x as r,y as i}from"./utils-CDjCN5wW.js";async function a(){try{return(await t(i,n)).user}catch(e){throw console.error(`로그인 에러:`,e),alert(`로그인 중 문제가 발생했습니다.`),e}}async function o(){try{await e(i)}catch(e){console.error(`로그아웃 에러:`,e)}}function s(e){return r(i,e)}function c(){return i.currentUser}export{o as i,s as n,a as r,c as t};

@@ -2,8 +2,14 @@
 <html lang="ko" data-theme="theme-crimson" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fermata">
   <title>Fermata - 내 주변 위험 제보</title>
+  <link rel="manifest" href="/2026_HS_Hackathon/manifest.webmanifest">
   <link rel="icon" href="/2026_HS_Hackathon/favicon.ico" sizes="any">
   <link rel="icon" href="/2026_HS_Hackathon/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/2026_HS_Hackathon/apple-touch-icon.png">
@@ -300,30 +306,6 @@
       left: 50% !important;
       transform: translateX(-50%) !important;
       z-index: 40 !important;
-    }
-
-    /* ─── 관제 대시보드 버튼 & 배지: 와이드 뷰 전용 (모바일 뷰에서는 완전 숨김) ─── */
-    #admin-dashboard-link,
-    #brand-dashboard-badge {
-      display: none !important;
-    }
-    @media (min-width: 1024px) {
-      body:not(.view-mobile) #admin-dashboard-link {
-        display: inline-flex !important;
-      }
-      body:not(.view-mobile) #brand-dashboard-badge {
-        display: inline-flex !important;
-      }
-    }
-    body.view-wide #admin-dashboard-link {
-      display: inline-flex !important;
-    }
-    body.view-wide #brand-dashboard-badge {
-      display: inline-flex !important;
-    }
-    body.view-mobile #admin-dashboard-link,
-    body.view-mobile #brand-dashboard-badge {
-      display: none !important;
     }
 
     /* ─── 헤더 glassmorphism ────────────── */
@@ -797,14 +779,13 @@
       }
     }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-jpM9iem_.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-BavKA1Dl.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/utils-CDjCN5wW.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/shareCard-CzsMiNGq.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-DTrkCimz.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-arIxeHBl.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/theme-BGQI_Gbl.js">
-  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/utils-7lpI1uXZ.css">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/theme-DokeXIS2.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/shareCard-CzhhPJKP.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-CBotZexY.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-CNK7nXcO.js">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/theme-7lpI1uXZ.css">
   <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/shareCard-DTF0mjiA.css">
 </head>
 <body class="bg-background text-foreground min-h-screen">
@@ -817,18 +798,9 @@
       <a id="brand-logo-link" href="#" class="flex items-center gap-2 cursor-pointer hover:opacity-85 transition-opacity shrink-0" title="홈으로 이동 / 새로고침">
         <img src="/2026_HS_Hackathon/icon.svg" alt="Fermata" class="w-6 h-6 rounded-md">
         <span class="brand-title text-xl sm:text-2xl font-semibold text-foreground whitespace-nowrap" style="font-family: 'Playfair Display', serif;">Fermata</span>
-        <span id="brand-dashboard-badge" class="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
-          <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-          안전 관제 대시보드
-        </span>
       </a>
 
       <div class="header-actions flex items-center gap-1.5 shrink-0">
-        <!-- 관리자 대시보드 링크 (와이드 뷰 전용) -->
-        <a id="admin-dashboard-link" href="admin.html" class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-all border border-primary/20 whitespace-nowrap shrink-0">
-          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h2.626c.885 0 1.636-.632 1.83-1.5l1.088-4.896a2 2 0 013.912 0l1.088 4.896c.194.868.945 1.5 1.83 1.5H21M9 21h6"></path></svg>
-          <span class="hidden sm:inline">관제 대시보드</span>
-        </a>
         <!-- 화면 뷰 모드 토글 버튼 (와이드 ↔ 모바일 프레임) -->
         <button
           id="view-mode-toggle-btn"
