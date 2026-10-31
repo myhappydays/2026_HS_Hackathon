@@ -3,6 +3,8 @@
  * 라이트 모드 / 다크 모드 관리 모듈
  */
 
+import { registerPWA } from './pwa.js'
+
 const STORAGE_KEY = 'fermata_theme'
 
 /**
@@ -12,10 +14,6 @@ export function getTheme() {
   const saved = localStorage.getItem(STORAGE_KEY)
   if (saved === 'light' || saved === 'dark') {
     return saved
-  }
-  // 기본값: 시스템 선호도 (없으면 dark 기본)
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-    return 'light'
   }
   return 'dark'
 }
@@ -33,6 +31,11 @@ export function setTheme(theme) {
   }
   localStorage.setItem(STORAGE_KEY, theme)
   updateToggleButtons(theme)
+
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+  if (themeColorMeta) {
+    themeColorMeta.setAttribute('content', isDark ? '#09090b' : '#fafafa')
+  }
 
   // 테마 변경 이벤트 전송 (필요한 컴포넌트 반응용)
   window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }))
@@ -75,6 +78,7 @@ function updateToggleButtons(theme) {
  * 페이지 초기화 시 테마 설정 및 이벤트 바인딩
  */
 export function initTheme() {
+  registerPWA()
   const currentTheme = getTheme()
   setTheme(currentTheme)
 
