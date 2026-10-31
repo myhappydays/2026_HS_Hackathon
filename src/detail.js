@@ -33,12 +33,20 @@ function showError() {
 
 async function init() {
   try {
-    if (!clusterId) {
-      showError()
-      return
-    }
+    let cluster = null
 
-    let cluster = await getClusterById(clusterId)
+    if (clusterId) {
+      cluster = await getClusterById(clusterId)
+    } else {
+      // URL 파라미터가 없는 경우 첫 번째 등록된 클러스터 자동 프리뷰
+      const allClusters = await getClusters()
+      if (allClusters && allClusters.length > 0) {
+        cluster = allClusters[0]
+      } else {
+        showError()
+        return
+      }
+    }
 
     // 1. clusterId가 아닌 reportId로 접근했을 경우 fallback 탐색
     if (!cluster) {
@@ -214,7 +222,7 @@ function setupComments(cluster, repReport) {
 }
 
 async function renderDetail(cluster, repReport) {
-  // 캐러셀: 군집 내 모든 제보의 사진
+  // 군집 내 모든 제보 로드
   let allReports = []
   try {
     if (Array.isArray(cluster.reportIds) && cluster.reportIds.length > 0) {
@@ -228,8 +236,8 @@ async function renderDetail(cluster, repReport) {
     allReports = [repReport]
   }
 
-  const photoReports = allReports.filter(r => r.imageBase64)
-  renderCarousel(photoReports.length > 0 ? photoReports : (repReport.imageBase64 ? [repReport] : []))
+  // 군집 및 모든 제보의 사진 추출 & 갤러리 렌더링
+  renderImageGallery(cluster, repReport, allReports)
 
   // 대표 제보 정보
   const isResolved = cluster.status === 'resolved'
@@ -337,7 +345,21 @@ async function renderDetail(cluster, repReport) {
                   <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${rds.bg} ${rds.text}">${rds.label}</span>
                   <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${rcat}</span>
                 </div>
-                ${r.imageBase64 ? `<img src="${r.imageBase64}" alt="제보 사진" class="w-full rounded-lg object-cover" style="max-height:220px;">` : ''}
+                ${(() => {
+                  const rImg = r.imageBase64 || r.imageUrl || r.image || r.photo || r.photoURL || null
+                  if (!rImg) return ''
+                  return `
+                  <div class="relative group cursor-pointer overflow-hidden rounded-xl border border-border bg-black/10"
+                    onclick="window.__openDetailLightbox && window.__openDetailLightbox('${encodeURIComponent(rImg)}', '${encodeURIComponent(r.title || '현장 사진')}')">
+                    <img src="${rImg}" alt="제보 사진" class="w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-105" style="max-height:220px;" onerror="this.parentElement.style.display='none'">
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <span class="px-3 py-1.5 rounded-full text-xs font-semibold bg-black/80 text-white backdrop-blur-sm border border-white/20 flex items-center gap-1.5 shadow-lg">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"/></svg>
+                        사진 원본 확대
+                      </span>
+                    </div>
+                  </div>`
+                })()}
                 <div>
                   <p class="text-sm font-semibold text-foreground">${r.title}</p>
                   ${r.description ? `<p class="text-xs text-muted-foreground mt-1 leading-relaxed">${r.description}</p>` : ''}
@@ -454,56 +476,284 @@ async function renderDetail(cluster, repReport) {
   if (detailContent) detailContent.classList.remove('hidden')
 }
 
-// ── 캐러셀 (Preline data-hs-carousel) ────────────────────
+// ── 이미지 갤러리 및 슬라이더 (Native Responsive Gallery & Lightbox) ──
 
-function renderCarousel(reports) {
+let currentGallerySlides = []
+let currentSlideIndex = 0
+
+function extractImageFromReport(r) {
+  if (!r) return null
+  return r.imageBase64 || r.imageUrl || r.image || r.photo || r.photoURL || null
+}
+
+function renderImageGallery(cluster, repReport, allReports) {
   const wrap = document.getElementById('carousel-wrap')
-  if (!wrap) return
+  const track = document.getElementById('carousel-track')
+  const counterBadge = document.getElementById('carousel-counter-badge')
+  const captionTitle = document.getElementById('carousel-caption-title')
+  const captionSub = document.getElementById('carousel-caption-sub')
+  const prevBtn = document.getElementById('btn-carousel-prev')
+  const nextBtn = document.getElementById('btn-carousel-next')
+  const dotsContainer = document.getElementById('carousel-dots')
+  const zoomBtn = document.getElementById('btn-zoom-image')
+  const noPhotoBanner = document.getElementById('no-photo-banner')
 
-  if (reports.length === 0) {
-    wrap.classList.add('hidden')
+  // 모든 제보에서 유효한 사진 리스트 추출 (중복 제거)
+  const slides = []
+  const seenUrls = new Set()
+
+  function addSlide(img, title, author, danger, createdAt) {
+    if (!img || typeof img !== 'string' || img.trim() === '' || seenUrls.has(img)) return
+    seenUrls.add(img)
+    slides.push({
+      src: img,
+      title: title || '위험 현장 사진',
+      author: author || '시민 제보',
+      danger: danger || 'medium',
+      createdAt: createdAt || Date.now()
+    })
+  }
+
+  // 1. 군집 내 모든 제보 순회
+  if (Array.isArray(allReports)) {
+    allReports.forEach(r => {
+      const img = extractImageFromReport(r)
+      if (img) addSlide(img, r.title, r.author, r.danger, r.createdAt)
+    })
+  }
+
+  // 2. 대표 제보 사진 fallback
+  if (repReport) {
+    const repImg = extractImageFromReport(repReport)
+    if (repImg) addSlide(repImg, repReport.title, repReport.author, repReport.danger, repReport.createdAt)
+  }
+
+  // 3. 군집 자체 사진 fallback
+  if (cluster) {
+    const clusterImg = extractImageFromReport(cluster)
+    if (clusterImg) addSlide(clusterImg, cluster.title || '위험 현장', '관제 시스템', cluster.danger, cluster.createdAt)
+  }
+
+  currentGallerySlides = slides
+  currentSlideIndex = 0
+
+  // 사진이 전혀 없는 경우 세련된 대체 배너 표시
+  if (slides.length === 0) {
+    if (wrap) wrap.classList.add('hidden')
+    if (noPhotoBanner) {
+      noPhotoBanner.classList.remove('hidden')
+      const catIconEl = document.getElementById('no-photo-icon')
+      const catNameEl = document.getElementById('no-photo-category')
+      const catIcons = { road: '🕳️', weather: '🌊', facility: '⚠️', safety: '🛡️' }
+      if (catIconEl) catIconEl.textContent = catIcons[cluster?.category] || '⚠️'
+      if (catNameEl) catNameEl.textContent = categoryLabel(cluster?.category || 'road')
+    }
     return
   }
-  wrap.classList.remove('hidden')
 
-  // 슬라이드 주입
-  const body = document.getElementById('carousel-body')
-  if (!body) return
-  body.innerHTML = reports.map(r => `
-    <div class="hs-carousel-slide flex-shrink-0 w-full">
-      <img src="${r.imageBase64}" alt="제보 사진"
-        class="w-full object-cover" style="height:260px;">
+  // 사진이 있는 경우 갤러리 활성화
+  if (noPhotoBanner) noPhotoBanner.classList.add('hidden')
+  if (wrap) wrap.classList.remove('hidden')
+  if (!track) return
+
+  // 슬라이드 DOM 생성
+  track.innerHTML = slides.map((s, idx) => `
+    <div class="carousel-slide-item w-full h-full flex-shrink-0 relative overflow-hidden flex items-center justify-center bg-black/40 cursor-zoom-in" data-index="${idx}">
+      <img src="${s.src}" alt="${s.title}" class="w-full h-full object-cover select-none transition-transform duration-300" onerror="this.parentElement.style.opacity='0.4'">
     </div>
   `).join('')
 
-  // pagination dots 주입
-  const pagination = wrap.querySelector('.hs-carousel-pagination')
-  if (pagination) {
-    pagination.innerHTML = reports.map((_, i) => `
-      <span class="hs-carousel-pagination-item${i === 0 ? ' active' : ''}">
-        <span></span>
-      </span>
-    `).join('')
+  // 도트 인디케이터 생성
+  if (dotsContainer) {
+    if (slides.length <= 1) {
+      dotsContainer.innerHTML = ''
+      dotsContainer.classList.add('hidden')
+    } else {
+      dotsContainer.classList.remove('hidden')
+      dotsContainer.innerHTML = slides.map((_, idx) => `
+        <span class="carousel-dot ${idx === 0 ? 'active' : ''}" data-index="${idx}"></span>
+      `).join('')
+    }
   }
 
-  // 슬라이드 1장이면 버튼 숨기기
-  const prevBtn = wrap.querySelector('.hs-carousel-prev')
-  const nextBtn = wrap.querySelector('.hs-carousel-next')
-  if (reports.length <= 1) {
+  // 화살표 버튼 표시 여부
+  if (slides.length <= 1) {
     prevBtn?.classList.add('hidden')
     nextBtn?.classList.add('hidden')
-    if (pagination) pagination.classList.add('hidden')
   } else {
     prevBtn?.classList.remove('hidden')
     nextBtn?.classList.remove('hidden')
-    if (pagination) pagination.classList.remove('hidden')
   }
 
-  // Preline 캐러셀 초기화
-  if (window.HSCarousel) {
-    try { window.HSCarousel.autoInit() } catch (e) {}
+  function updateSlide(index) {
+    if (slides.length === 0) return
+    currentSlideIndex = (index + slides.length) % slides.length
+    track.style.transform = `translateX(-${currentSlideIndex * 100}%)`
+
+    if (counterBadge) {
+      counterBadge.textContent = `${currentSlideIndex + 1} / ${slides.length}`
+    }
+
+    const currentSlide = slides[currentSlideIndex]
+    if (captionTitle) {
+      captionTitle.textContent = currentSlide.title
+    }
+    if (captionSub) {
+      captionSub.textContent = `제보자: ${currentSlide.author} · ${relativeTime(currentSlide.createdAt)}`
+    }
+
+    // 도트 활성화 상태 동기화
+    if (dotsContainer) {
+      const dots = dotsContainer.querySelectorAll('.carousel-dot')
+      dots.forEach((d, i) => {
+        if (i === currentSlideIndex) d.classList.add('active')
+        else d.classList.remove('active')
+      })
+    }
+  }
+
+  updateSlide(0)
+
+  // 화살표 클릭 이벤트 바인딩
+  if (prevBtn && !prevBtn._hasListener) {
+    prevBtn._hasListener = true
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      updateSlide(currentSlideIndex - 1)
+    })
+  }
+
+  if (nextBtn && !nextBtn._hasListener) {
+    nextBtn._hasListener = true
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      updateSlide(currentSlideIndex + 1)
+    })
+  }
+
+  // 도트 클릭 이벤트 바인딩
+  if (dotsContainer && !dotsContainer._hasListener) {
+    dotsContainer._hasListener = true
+    dotsContainer.addEventListener('click', (e) => {
+      const dot = e.target.closest('.carousel-dot')
+      if (dot) {
+        e.stopPropagation()
+        const idx = parseInt(dot.getAttribute('data-index'), 10)
+        if (!isNaN(idx)) updateSlide(idx)
+      }
+    })
+  }
+
+  // 슬라이드 클릭 시 확대 모달
+  track.querySelectorAll('.carousel-slide-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const idx = parseInt(item.getAttribute('data-index'), 10) || currentSlideIndex
+      const target = slides[idx]
+      if (target) openLightbox(target.src, target.title)
+    })
+  })
+
+  // 확대 버튼 클릭
+  if (zoomBtn && !zoomBtn._hasListener) {
+    zoomBtn._hasListener = true
+    zoomBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const target = slides[currentSlideIndex]
+      if (target) openLightbox(target.src, target.title)
+    })
+  }
+
+  // 터치 스와이프 제스처 바인딩
+  const viewport = document.getElementById('carousel-viewport')
+  if (viewport && !viewport._hasTouch) {
+    viewport._hasTouch = true
+    let startX = 0
+    let startY = 0
+    let isSwiping = false
+
+    viewport.addEventListener('touchstart', (e) => {
+      if (slides.length <= 1) return
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+      isSwiping = true
+    }, { passive: true })
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (!isSwiping || slides.length <= 1) return
+      const diffX = e.touches[0].clientX - startX
+      const diffY = e.touches[0].clientY - startY
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+        if (e.cancelable) e.preventDefault()
+      }
+    }, { passive: false })
+
+    viewport.addEventListener('touchend', (e) => {
+      if (!isSwiping || slides.length <= 1) return
+      isSwiping = false
+      const endX = e.changedTouches[0].clientX
+      const diffX = endX - startX
+      if (diffX > 40) {
+        updateSlide(currentSlideIndex - 1)
+      } else if (diffX < -40) {
+        updateSlide(currentSlideIndex + 1)
+      }
+    }, { passive: true })
   }
 }
+
+// ── 이미지 라이트박스 확대 모달 ──────────────────────────────
+
+export function openLightbox(src, caption) {
+  const modal = document.getElementById('image-lightbox-modal')
+  const img = document.getElementById('lightbox-image')
+  const cap = document.getElementById('lightbox-caption')
+  if (!modal || !img) return
+
+  img.src = src
+  if (cap) cap.textContent = caption || '현장 사진 확대 보기'
+  modal.classList.remove('hidden')
+  document.body.style.overflow = 'hidden'
+}
+
+export function closeLightbox() {
+  const modal = document.getElementById('image-lightbox-modal')
+  const img = document.getElementById('lightbox-image')
+  if (!modal) return
+
+  modal.classList.add('hidden')
+  if (img) img.src = ''
+  document.body.style.overflow = ''
+}
+
+// 전역 바인딩 (아코디언 인라인 onclick 지원)
+window.__openDetailLightbox = (encodedSrc, encodedCaption) => {
+  try {
+    const src = decodeURIComponent(encodedSrc)
+    const cap = decodeURIComponent(encodedCaption)
+    openLightbox(src, cap)
+  } catch (e) {
+    openLightbox(encodedSrc, encodedCaption)
+  }
+}
+
+// 라이트박스 닫기 이벤트 초기 바인딩
+const btnCloseLightbox = document.getElementById('btn-close-lightbox')
+if (btnCloseLightbox && !btnCloseLightbox._hasListener) {
+  btnCloseLightbox._hasListener = true
+  btnCloseLightbox.addEventListener('click', closeLightbox)
+}
+const lightboxModal = document.getElementById('image-lightbox-modal')
+if (lightboxModal && !lightboxModal._hasListener) {
+  lightboxModal._hasListener = true
+  lightboxModal.addEventListener('click', (e) => {
+    if (e.target === lightboxModal || e.target.id === 'lightbox-container') {
+      closeLightbox()
+    }
+  })
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLightbox()
+})
 
 init()
 

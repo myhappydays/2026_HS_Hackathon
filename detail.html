@@ -78,13 +78,22 @@
 
   <style>
     body { font-family: var(--font-sans); }
-    /* Preline 캐러셀 pagination dots 스타일 */
-    #hs-carousel .hs-carousel-pagination-item span {
-      display: block; width: 6px; height: 6px; border-radius: 9999px;
-      background: rgba(255,255,255,0.4); transition: background 0.2s, width 0.2s;
+    .carousel-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.45);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
     }
-    #hs-carousel .hs-carousel-pagination-item.active span {
-      background: white; width: 18px;
+    .carousel-dot.active {
+      background: #ffffff;
+      width: 20px;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+    }
+    .carousel-slide-item img {
+      user-select: none;
+      -webkit-user-drag: none;
     }
   </style>
 </head>
@@ -126,36 +135,68 @@
       <!-- 상세 콘텐츠 (JS로 렌더링) -->
       <div id="detail-content" class="hidden">
 
-        <!-- 사진 캐러셀 (Preline data-hs-carousel, JS로 슬라이드 주입 후 초기화) -->
-        <div id="carousel-wrap" class="bg-surface">
-          <div id="hs-carousel"
-            class="hs-carousel relative overflow-hidden w-full"
-            data-hs-carousel='{
-              "isInfiniteLoop": true,
-              "isDraggable": true
-            }'>
-            <!-- 슬라이드 목록 (detail.js가 동적으로 채움) -->
-            <div class="hs-carousel-body flex transition-transform duration-300" id="carousel-body">
+        <!-- 사진 캐러셀 & 히어로 이미지 뷰어 -->
+        <div id="carousel-wrap" class="relative w-full bg-surface-2 border-b border-border overflow-hidden select-none">
+          <!-- 슬라이더 뷰포트 컨테이너 (고정/반응형 높이 보장) -->
+          <div id="carousel-viewport" class="relative w-full h-[280px] sm:h-[320px] overflow-hidden bg-black/40">
+            <!-- 슬라이드 트랙 -->
+            <div id="carousel-track" class="flex h-full w-full transition-transform duration-300 ease-out" style="transform: translateX(0%);">
+              <!-- detail.js가 동적으로 주입 -->
             </div>
 
-            <!-- 이전/다음 버튼 -->
-            <button type="button"
-              class="hs-carousel-prev hs-carousel:disabled:opacity-20 absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-background/70 border border-border text-foreground hover:bg-background transition">
+            <!-- 상단 정보 오버레이 (사진 번호 & 원본 확대 버튼) -->
+            <div class="absolute top-3 inset-x-3 flex items-center justify-between z-20 pointer-events-none">
+              <span id="carousel-counter-badge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/60 text-white backdrop-blur-md border border-white/15 pointer-events-auto shadow-sm">
+                1 / 1
+              </span>
+              <button type="button" id="btn-zoom-image" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/15 pointer-events-auto transition shadow-sm active:scale-95" title="사진 원본 크게 보기">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"/>
+                </svg>
+                <span>확대</span>
+              </button>
+            </div>
+
+            <!-- 하단 캡션 오버레이 (현재 사진의 제보자 및 타이틀) -->
+            <div id="carousel-caption-overlay" class="absolute bottom-0 inset-x-0 p-3 pt-8 bg-gradient-to-t from-black/85 via-black/40 to-transparent z-10 pointer-events-none transition-opacity">
+              <p id="carousel-caption-title" class="text-xs font-bold text-white truncate drop-shadow-sm"></p>
+              <p id="carousel-caption-sub" class="text-[10px] text-white/80 drop-shadow-sm mt-0.5"></p>
+            </div>
+
+            <!-- 이전/다음 화살표 버튼 -->
+            <button type="button" id="btn-carousel-prev"
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md border border-white/15 transition shadow-lg active:scale-90"
+              aria-label="이전 사진">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
-              <span class="sr-only">이전</span>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+              </svg>
             </button>
-            <button type="button"
-              class="hs-carousel-next hs-carousel:disabled:opacity-20 absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-background/70 border border-border text-foreground hover:bg-background transition">
+            <button type="button" id="btn-carousel-next"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md border border-white/15 transition shadow-lg active:scale-90"
+              aria-label="다음 사진">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-              <span class="sr-only">다음</span>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+              </svg>
             </button>
 
-            <!-- 페이지네이션 dots -->
-            <div class="hs-carousel-pagination absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-              <!-- Preline이 자동으로 dot 생성: active dot은 hs-carousel-active 클래스 수신 -->
+            <!-- 페이지네이션 도트 -->
+            <div id="carousel-dots" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-auto">
             </div>
+          </div>
+        </div>
+
+        <!-- 사진이 등록되지 않은 경우 표시할 세련된 대체 비주얼 배너 -->
+        <div id="no-photo-banner" class="hidden relative w-full p-5 bg-gradient-to-br from-surface to-surface-1 border-b border-border flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl flex-shrink-0 shadow-inner" id="no-photo-icon">
+            ⚠️
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/25">현장 위험 구역</span>
+              <span class="text-[11px] text-muted-foreground" id="no-photo-category">위험 제보</span>
+            </div>
+            <p class="text-xs font-semibold text-foreground">등록된 현장 사진이 없습니다</p>
+            <p class="text-[11px] text-muted-foreground mt-0.5">상세 설명 및 제보 위치를 참고해 안전에 유의해 주세요.</p>
           </div>
         </div>
 
@@ -389,6 +430,24 @@
       <p class="text-[11px] text-white/60 text-center pb-1">
         인스타그램 스토리나 카카오톡에 안전 카드를 공유해 이웃을 지켜주세요 🛡️
       </p>
+    </div>
+  </div>
+
+  <!-- ─── 이미지 전체화면 확대 모달 (Lightbox) ─────────────────── -->
+  <div id="image-lightbox-modal" class="hidden fixed inset-0 z-[100001] flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-md transition-opacity duration-200">
+    <!-- 닫기 버튼 -->
+    <button type="button" id="btn-close-lightbox"
+      class="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition shadow-lg border border-white/15"
+      title="닫기 (ESC)">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <div class="relative max-w-full max-h-full flex flex-col items-center select-none" id="lightbox-container">
+      <img id="lightbox-image" src="" alt="현장 사진 원본" class="max-w-[94vw] max-h-[82vh] object-contain rounded-xl shadow-2xl border border-white/10">
+      <div class="mt-3 px-4 py-1.5 rounded-full bg-black/70 border border-white/15 backdrop-blur-md text-center max-w-[90vw]">
+        <p id="lightbox-caption" class="text-xs text-slate-200 font-semibold truncate"></p>
+      </div>
     </div>
   </div>
 
