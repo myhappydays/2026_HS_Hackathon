@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fermata-report-clef-v4",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-04",
+  "workers_dev": true,
+  "ai": { "binding": "AI" },
+  "ratelimits": [
+    {
+      "name": "CATEGORY_LIMIT",
+      "namespace_id": "784310",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ]
+}

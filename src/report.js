@@ -16,7 +16,6 @@ initTheme()
 document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.html`
 
 import { generateId, compressImage, relativeTime } from './utils.js'
-import { classifyDanger, classifyCategory } from './classification.js'
 import { assignCluster } from './clustering.js'
 import { addReport, updateReport, isStorageFull, getReports, saveReports } from './storage.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
@@ -52,6 +51,33 @@ let locationMap = null
 let locationMarker = null
 let currentLat = null
 let currentLng = null
+let submitting = false
+const manualRequired = new Set()
+const suggestions = new Map()
+const validChoices = {
+  danger: new Set(['high', 'medium', 'low']),
+  category: new Set(['road', 'facility', 'weather', 'safety', 'etc']),
+}
+const fieldLabels = { danger: '위험도', category: '분류' }
+const classifyUrl = (import.meta.env.VITE_CATEGORY_API_URL || 'https://fermata-report-clef-v4.hejoliv.workers.dev').replace(/\/+$/, '')
+
+form.addEventListener('change', e => {
+  const field = e.target.name
+  if (field in validChoices) {
+    suggestions.delete(field)
+    manualRequired.delete(field)
+  }
+})
+
+for (const id of ['title', 'description']) {
+  document.getElementById(id).addEventListener('input', () => {
+    for (const [field, choice] of suggestions) {
+      const selected = form.querySelector(`input[name="${field}"]:checked`)
+      if (selected?.value === choice) selected.checked = false
+    }
+    suggestions.clear()
+  })
+}
 
 // ── 이미지 처리 ──────────────────────────────────────────
 
@@ -176,6 +202,7 @@ function initMap(lat, lng) {
 
 form.addEventListener('submit', async e => {
   e.preventDefault()
+  if (submitting) return
 
   // 용량 체크
   if (isStorageFull()) {
@@ -185,8 +212,9 @@ form.addEventListener('submit', async e => {
 
   const title       = document.getElementById('title').value.trim()
   const description = document.getElementById('description').value.trim()
-  const dangerVal   = document.querySelector('input[name="danger"]:checked')?.value || null
-  const categoryVal = document.querySelector('input[name="category"]:checked')?.value || null
+  const choices = Object.fromEntries(Object.keys(validChoices).map(field => [
+    field, form.querySelector(`input[name="${field}"]:checked`)?.value || null,
+  ]))
 
   if (!title) {
     alert('제목을 입력해 주세요.')
@@ -201,41 +229,100 @@ form.addEventListener('submit', async e => {
     return
   }
 
-  const text     = `${title} ${description}`
-  const danger   = dangerVal   || classifyDanger(text)
-  const category = categoryVal || classifyCategory(text)
-
-  /** @type {Report} */
-  const report = {
-    id:          generateId(),
-    userId:      currentUser ? currentUser.uid : 'anonymous',
-    clusterId:   '', // assignCluster 후 채움
-    title,
-    description,
-    imageBase64,
-    location: {
-      lat:     currentLat,
-      lng:     currentLng,
-      address: addressText.textContent || '',
-    },
-    danger,
-    category,
-    createdAt: Date.now(),
+  const invalid = Object.keys(validChoices).filter(field => choices[field] && !validChoices[field].has(choices[field]))
+  if (invalid.length) {
+    alert(`${invalid.map(field => fieldLabels[field]).join(', ')}을(를) 직접 선택해 주세요.`)
+    return
+  }
+  const required = [...manualRequired].filter(field => !choices[field])
+  if (required.length) {
+    alert(`${required.map(field => fieldLabels[field]).join(', ')}을(를) 직접 선택해 주세요.`)
+    return
   }
 
-  // Firestore & local 저장
-  await addReport(report)
+  submitting = true
+  submitBtn.disabled = true
+  form.inert = true
+  let saved = false
+  try {
+    const needs = Object.keys(validChoices).filter(field => !choices[field])
+    if (needs.length) {
+      submitBtn.textContent = 'AI 분류 중...'
+      let decisions = {}
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      try {
+        const response = await fetch(`${classifyUrl}/classify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, needs }),
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`Classification failed: ${response.status}`)
+        decisions = (await response.json()).decisions || {}
+      } catch (err) {
+        console.warn('AI 분류 실패:', err)
+      } finally {
+        clearTimeout(timeout)
+      }
 
-  // 군집 배정 (report 저장 후, async)
-  const clusterId = await assignCluster(report)
+      const suggested = []
+      const unresolved = []
+      for (const field of needs) {
+        const choice = decisions[field]?.choice
+        if (validChoices[field].has(choice)) {
+          const input = form.querySelector(`input[name="${field}"][value="${choice}"]`)
+          input.checked = true
+          suggestions.set(field, choice)
+          suggested.push(fieldLabels[field])
+        } else {
+          manualRequired.add(field)
+          unresolved.push(fieldLabels[field])
+        }
+      }
+      const messages = []
+      if (suggested.length) messages.push(`AI가 제안한 ${suggested.join(', ')}을(를) 확인해 주세요.`)
+      if (unresolved.length) messages.push(`${unresolved.join(', ')}을(를) 직접 선택해 주세요.`)
+      alert(`${messages.join('\n')}\n확인 후 다시 등록해 주세요.`)
+      return
+    }
 
-  // report의 clusterId 업데이트
-  report.clusterId = clusterId
-  await updateReport(report)
+    /** @type {Report} */
+    const report = {
+      id:          generateId(),
+      userId:      currentUser ? currentUser.uid : 'anonymous',
+      clusterId:   '',
+      title,
+      description,
+      imageBase64,
+      location: {
+        lat:     currentLat,
+        lng:     currentLng,
+        address: addressText.textContent || '',
+      },
+      danger: choices.danger,
+      category: choices.category,
+      createdAt: Date.now(),
+    }
 
-  // 성공 토스트 표시 후 메인으로 이동
-  showToast('success')
-  setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1200)
+    await addReport(report)
+    saved = true
+    const clusterId = await assignCluster(report)
+    report.clusterId = clusterId
+    await updateReport(report)
+    showToast('success')
+    setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1200)
+  } catch (err) {
+    console.error('제보 등록 실패:', err)
+    alert(saved ? '제보는 저장되었지만 군집 배정에 실패했습니다. 메인 화면에서 확인해 주세요.' : '제보 등록에 실패했습니다. 다시 시도해 주세요.')
+  } finally {
+    if (!saved) {
+      submitting = false
+      submitBtn.disabled = false
+      submitBtn.textContent = '제보 등록하기'
+      form.inert = false
+    }
+  }
 })
 
 // ── Toast 헬퍼 ───────────────────────────────────────────
