@@ -56,7 +56,7 @@ function renderInstallBanner({ isIOS = false } = {}) {
   const banner = document.createElement('div');
   banner.id = 'pwa-install-banner';
   banner.className =
-    'mx-3 mt-2 px-3 py-2.5 rounded-xl border border-primary/30 bg-surface/95 backdrop-blur-md shadow-lg flex items-center justify-between gap-2.5 text-xs transition-all duration-200';
+    'mx-3 my-2 px-3 py-2.5 rounded-xl border border-border bg-card shadow-sm flex items-center justify-between gap-2.5 text-xs transition-all duration-200';
 
   const base = import.meta.env.BASE_URL || './';
   banner.innerHTML = `
