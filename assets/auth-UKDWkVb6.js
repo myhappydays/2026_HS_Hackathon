@@ -43,7 +43,7 @@ Total Duration: ${c-l}ms`),H.resolve({didRun:!0,sequenceNumbersCollected:r,targe
         display: none !important;
       }
     }
-  `,document.head.appendChild(e)}function sb({isIOS:e=!1}={}){if(ib()||sessionStorage.getItem(rb)===`1`||document.getElementById(`pwa-install-banner`))return;let t=document.querySelector(`header`);if(!t||!t.parentElement)return;let n=document.createElement(`div`);n.id=`pwa-install-banner`,n.className=`mx-3 mt-2 px-3 py-2.5 rounded-xl border border-primary/30 bg-surface/95 backdrop-blur-md shadow-lg flex items-center justify-between gap-2.5 text-xs transition-all duration-200`,n.innerHTML=`
+  `,document.head.appendChild(e)}function sb({isIOS:e=!1}={}){if(ib()||sessionStorage.getItem(rb)===`1`||document.getElementById(`pwa-install-banner`))return;let t=document.querySelector(`header`);if(!t||!t.parentElement)return;let n=document.createElement(`div`);n.id=`pwa-install-banner`,n.className=`mx-3 my-2 px-3 py-2.5 rounded-xl border border-border bg-card shadow-sm flex items-center justify-between gap-2.5 text-xs transition-all duration-200`,n.innerHTML=`
     <div class="flex items-center gap-2.5 min-w-0">
       <img src="/2026_HS_Hackathon/icon-192.png" alt="Fermata" class="w-8 h-8 rounded-lg flex-shrink-0 shadow-sm border border-border/60">
       <div class="min-w-0">
