@@ -1,0 +1,99 @@
+import{A as e,C as t,N as n,O as r,S as i,T as a,_ as o,b as s,c,d as l,i as u,j as d,k as f,m as p,o as m,p as h,r as g,s as _,u as v,x as y,y as b}from"./auth-D3lhBgXI.js";import{n as x,t as S}from"./shareCard-QBvLpYrX.js";_();var C=`/2026_HS_Hackathon/`,w=document.getElementById(`nav-home`);w&&(w.href=`${C}index.html`);var T=document.getElementById(`nav-home-fallback`);T&&(T.href=`${C}index.html`);var E=document.getElementById(`loading-state`),D=document.getElementById(`detail-content`),O=document.getElementById(`error-state`),k=new URLSearchParams(location.search).get(`id`),A=null;function j(e){try{let t=JSON.parse(localStorage.getItem(e)||`[]`);return Array.isArray(t)?t:[]}catch{return[]}}function M(e,t){try{localStorage.setItem(e,JSON.stringify([...new Set([...j(e),t])]))}catch{}}function N(){if(E&&E.classList.add(`hidden`),D&&D.classList.add(`hidden`),O&&O.classList.remove(`hidden`),O&&!A&&!document.getElementById(`detail-login-btn`)){let e=O.querySelector(`p`);e&&(e.textContent=`제보 내용은 로그인 후 볼 수 있습니다.`);let t=document.createElement(`button`);t.id=`detail-login-btn`,t.type=`button`,t.className=`px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold`,t.textContent=`구글 로그인`,t.addEventListener(`click`,()=>u()),e?e.insertAdjacentElement(`afterend`,t):O.appendChild(t),g(e=>{e&&location.reload()})}}async function P(){try{A=await m();let e=null;if(k)e=await y(k);else{let t=await i();if(t&&t.length>0)e=t[0];else{N();return}}if(!e){let n=await t(k);n&&(n.clusterId&&(e=await y(n.clusterId)),e||={id:n.clusterId||n.id,representId:n.id,reportIds:[n.id],location:n.location,danger:n.danger,category:n.category,status:n.status||`active`,createdAt:n.createdAt})}if(e||=(await i()).find(e=>e.id===k||e.reportIds&&e.reportIds.includes(k)),!e){N();return}let n=e.representId?await t(e.representId):null;if(!n&&Array.isArray(e.reportIds)&&e.reportIds.length>0)for(let r of e.reportIds){let i=await t(r);if(i){n=i,e.representId=i.id;break}}n||={id:e.representId||e.id,title:e.title||`위험 제보 상세`,description:e.description||``,location:e.location||{address:`위치 정보 없음`},danger:e.danger||`medium`,category:e.category||`road`,createdAt:e.createdAt||Date.now()},await L(e,n);try{S(()=>({clusters:[e],reportsMap:new Map([[n.id,n]]),targetLat:e.location?.lat,targetLng:e.location?.lng,currentRegionName:n.location?.address||``}))}catch(e){console.warn(`[detail] initShareCard error:`,e)}document.getElementById(`btn-share-card`)?.addEventListener(`click`,()=>{x({type:`report`,report:n,cluster:e})}),F(e),I(e,n)}catch(e){console.error(`[detail] Init failed:`,e),N()}}function F(e){let t=()=>j(`my_likes`),n=document.getElementById(`btn-like`);if(!n)return;let i=()=>{n.classList.replace(`bg-primary/10`,`bg-primary`),n.classList.replace(`text-primary`,`text-white`),n.classList.add(`opacity-80`,`cursor-not-allowed`),n.innerHTML=`⚠️ 공감 완료 <span id="like-count" class="ml-1 text-white">${Number(e.likes)||0}</span>`};t().includes(e.id)&&i(),n._hasListener||(n._hasListener=!0,n.addEventListener(`click`,async()=>{if(t().includes(e.id)){alert(`이미 공감(위험 확인)을 표시한 제보입니다.`);return}if(!n.disabled){n.disabled=!0;try{e.likes=(await r(e.id))?.likes??(Number(e.likes)||0)+1,M(`my_likes`,e.id),i()}catch(e){console.error(`[detail] like failed:`,e),alert(d(e,`공감을 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.`))}finally{n.disabled=!1}}}))}function I(e,t){let n=document.getElementById(`comment-form`),r=document.getElementById(`btn-comment-submit`),i=!1,a=async n=>{if(n&&n.preventDefault&&n.preventDefault(),i)return;let a=document.getElementById(`comment-input`),s=a?a.value.trim().slice(0,500):``;if(!s){alert(`공유할 상황을 입력해주세요.`);return}let c=[`익명의 주민`,`동네 보안관`,`지나가는 행인`,`안전 요원`,`목격자`],l=c[Math.floor(Math.random()*c.length)],u={id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,text:s,author:l,createdAt:Date.now()};i=!0,r&&(r.disabled=!0);try{let n=await o(e.id,u);e.comments=n?.comments||[...e.comments||[],u],n?.likes!==void 0&&(e.likes=n.likes),a&&(a.value=``),await L(e,t)}catch(e){console.error(`[detail] comment failed:`,e),alert(d(e,`댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.`))}finally{i=!1,r&&(r.disabled=!1)}};n&&!n._hasListener?(n._hasListener=!0,n.addEventListener(`submit`,a)):r&&!r._hasListener&&(r._hasListener=!0,r.addEventListener(`click`,a))}async function L(e,t){let n=[];try{Array.isArray(e.reportIds)&&e.reportIds.length>0&&(n=await a(e.reportIds))}catch(e){console.warn(`[detail] Fetching cluster reports failed:`,e)}n.length===0&&t&&(n=[t]),B(e,t,n);let r=e.status===`resolved`,i=v(e.danger),o=document.getElementById(`badge-area`),u=document.getElementById(`cluster-danger-badge`),f=document.getElementById(`cluster-cat-badge`),m=document.getElementById(`cluster-count-badge`);!u&&o&&(u=document.createElement(`span`),u.id=`cluster-danger-badge`,o.appendChild(u)),!f&&o&&(f=document.createElement(`span`),f.id=`cluster-cat-badge`,o.appendChild(f)),!m&&o&&(m=document.createElement(`span`),m.id=`cluster-count-badge`,o.appendChild(m)),u&&(r?(u.className=`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400`,u.innerHTML=`
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+        </svg>
+        해결 완료
+      `):(u.className=`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${i.bg} ${i.text}`,u.textContent=i.label)),f&&(f.className=`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground border border-border`,f.textContent=c(e.category)),m&&(e.reportIds&&e.reportIds.length>1?(m.className=`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20`,m.textContent=`${e.reportIds.length}건 묶임`,m.classList.remove(`hidden`)):m.classList.add(`hidden`));let g=document.getElementById(`cluster-title`);g&&(g.textContent=t.title||`위험 제보`);let _=document.getElementById(`cluster-description`);_&&(_.textContent=t.description||``);let y=document.getElementById(`cluster-address`);y&&(y.textContent=t.location?.address||e.location?.address||`위치 정보 없음`);let b=document.getElementById(`cluster-time`);b&&(b.textContent=`${h(e.createdAt||t.createdAt||Date.now())} 제보`);let x=document.getElementById(`related-count`),S=document.getElementById(`related-list`);if(x&&(x.textContent=`총 ${n.length}건`),S){if(S.innerHTML=`
+      <div class="hs-accordion-group space-y-2">
+        ${n.map((e,t)=>{let n=v(e.danger),r=c(e.category),i=!!A&&!!e.userId&&e.userId!==`anonymous`&&A.uid===e.userId,a=l(e.id);return`
+          <div class="hs-accordion bg-surface border border-border rounded-xl overflow-hidden" id="acc-${a}">
+            <button class="hs-accordion-toggle hs-accordion-active:text-primary w-full py-3 px-4 flex items-center justify-between text-left text-sm font-medium text-foreground hover:bg-surface-1 transition gap-3"
+              aria-controls="acc-body-${a}">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${n.bg} ${n.text}">${n.label}</span>
+                  <span class="text-[10px] text-muted-foreground">${r}</span>
+                  <span class="text-[10px] text-muted-foreground ml-auto">${h(e.createdAt)}</span>
+                </div>
+                <p class="text-sm font-medium text-foreground truncate">${l(e.title)}</p>
+                <p class="text-xs text-muted-foreground truncate mt-0.5">${l(e.description||``)}</p>
+              </div>
+              <svg class="hs-accordion-active:rotate-180 w-4 h-4 flex-shrink-0 self-center text-muted-foreground transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+              </svg>
+            </button>
+
+            <div id="acc-body-${a}" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="region" aria-labelledby="acc-${a}">
+              <div class="border-t border-border px-4 py-3 space-y-3">
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${n.bg} ${n.text}">${n.label}</span>
+                  <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${r}</span>
+                </div>
+                ${(()=>{let t=p(z(e));return t?`
+                  <div class="js-report-photo relative group cursor-pointer overflow-hidden rounded-xl border border-border bg-black/10" data-id="${a}">
+                    <img src="${t}" alt="제보 사진" class="w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-105" style="max-height:220px;" onerror="this.parentElement.style.display='none'">
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <span class="px-3 py-1.5 rounded-full text-xs font-semibold bg-black/80 text-white backdrop-blur-sm border border-white/20 flex items-center gap-1.5 shadow-lg">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"/></svg>
+                        사진 원본 확대
+                      </span>
+                    </div>
+                  </div>`:``})()}
+                <div>
+                  <p class="text-sm font-semibold text-foreground">${l(e.title)}</p>
+                  ${e.description?`<p class="text-xs text-muted-foreground mt-1 leading-relaxed">${l(e.description)}</p>`:``}
+                </div>
+                <div class="flex flex-col gap-1 text-xs text-muted-foreground">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                    </svg>
+                    <span>${l(e.location?.address||`위치 정보 없음`)}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>${h(e.createdAt)}</span>
+                  </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
+                  ${i?`
+                  <button type="button" class="btn-edit-report py-1.5 px-3 bg-surface border border-border text-foreground hover:bg-surface-1 rounded-lg text-xs font-semibold transition" data-id="${a}">
+                    수정
+                  </button>
+                  <button type="button" class="btn-delete-report py-1.5 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-semibold transition" data-id="${a}">
+                    삭제
+                  </button>
+                  `:`
+                  <button type="button" class="btn-report-report py-1.5 px-3 bg-surface border border-border text-muted-foreground hover:text-red-500 rounded-lg text-xs font-medium transition" data-id="${a}">
+                    🚨 신고
+                  </button>
+                  `}
+                </div>
+              </div>
+            </div>
+          </div>
+          `}).join(``)}
+      </div>
+    `,window.HSAccordion)try{window.HSAccordion.autoInit()}catch{}S.querySelectorAll(`.js-report-photo`).forEach(e=>{e.addEventListener(`click`,()=>{let t=n.find(t=>t.id===e.getAttribute(`data-id`)),r=z(t);r&&p(r)&&V(r,t.title||`현장 사진`)})}),document.querySelectorAll(`.btn-report-report`).forEach(e=>{e.addEventListener(`click`,async t=>{t.stopPropagation();let n=e.getAttribute(`data-id`);if(j(`my_flags`).includes(n)){alert(`이미 신고한 제보입니다.`);return}if(confirm(`이 제보를 불량/허위 제보로 신고하시겠습니까?`))try{await s(n),M(`my_flags`,n),alert(`신고가 접수되었습니다.`)}catch(e){console.error(`[detail] flag failed:`,e),alert(d(e,`신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.`))}})}),document.querySelectorAll(`.btn-edit-report`).forEach(t=>{t.addEventListener(`click`,n=>{n.stopPropagation(),K(e,t.getAttribute(`data-id`))})}),document.querySelectorAll(`.btn-delete-report`).forEach(t=>{t.addEventListener(`click`,n=>{n.stopPropagation();let r=t.getAttribute(`data-id`);confirm(`이 제보를 삭제하시겠습니까?`)&&G(e,r)})})}let C=document.getElementById(`like-count`);C&&(C.textContent=Number(e.likes)||0);let w=e.comments||[],T=document.getElementById(`comment-count`);T&&(T.textContent=`${w.length}개`);let k=document.getElementById(`comment-list`);k&&(w.length===0?k.innerHTML=`<p class="text-sm text-muted-foreground text-center py-4">아직 공유된 상황이 없습니다. 첫 번째로 상황을 공유해주세요!</p>`:k.innerHTML=w.map(e=>`
+        <div class="flex gap-2">
+          <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 font-bold text-xs">
+            ${l((e.author||`익`).charAt(0))}
+          </div>
+          <div class="flex-1 bg-surface border border-border rounded-lg rounded-tl-none p-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-xs font-semibold text-foreground">${l(e.author||`익명`)}</span>
+              <span class="text-[10px] text-muted-foreground">${h(e.createdAt)}</span>
+            </div>
+            <p class="text-sm text-foreground whitespace-pre-wrap break-words">${l(e.text)}</p>
+          </div>
+        </div>
+      `).join(``)),E&&E.classList.add(`hidden`),O&&O.classList.add(`hidden`),D&&D.classList.remove(`hidden`)}var R=0;function z(e){return e&&(e.imageBase64||e.imageUrl||e.image||e.photo||e.photoURL)||null}function B(e,t,n){let r=document.getElementById(`carousel-wrap`),i=document.getElementById(`carousel-track`),a=document.getElementById(`carousel-counter-badge`),o=document.getElementById(`carousel-caption-title`),s=document.getElementById(`carousel-caption-sub`),u=document.getElementById(`btn-carousel-prev`),d=document.getElementById(`btn-carousel-next`),f=document.getElementById(`carousel-dots`),m=document.getElementById(`btn-zoom-image`),g=document.getElementById(`no-photo-banner`),_=[],v=new Set;function y(e,t,n,r,i){!e||typeof e!=`string`||!p(e)||v.has(e)||(v.add(e),_.push({src:e,title:t||`위험 현장 사진`,author:n||`시민 제보`,danger:r||`medium`,createdAt:i||Date.now()}))}if(Array.isArray(n)&&n.forEach(e=>{let t=z(e);t&&y(t,e.title,e.author,e.danger,e.createdAt)}),t){let e=z(t);e&&y(e,t.title,t.author,t.danger,t.createdAt)}if(e){let t=z(e);t&&y(t,e.title||`위험 현장`,`관제 시스템`,e.danger,e.createdAt)}if(R=0,_.length===0){if(r&&r.classList.add(`hidden`),g){g.classList.remove(`hidden`);let t=document.getElementById(`no-photo-icon`),n=document.getElementById(`no-photo-category`);t&&(t.textContent={road:`🕳️`,weather:`🌊`,facility:`⚠️`,safety:`🛡️`}[e?.category]||`⚠️`),n&&(n.textContent=c(e?.category||`road`))}return}if(g&&g.classList.add(`hidden`),r&&r.classList.remove(`hidden`),!i)return;i.innerHTML=_.map((e,t)=>`
+    <div class="carousel-slide-item w-full h-full flex-shrink-0 relative overflow-hidden flex items-center justify-center bg-black/40 cursor-zoom-in" data-index="${t}">
+      <img src="${p(e.src)}" alt="${l(e.title)}" class="w-full h-full object-cover select-none transition-transform duration-300" onerror="this.parentElement.style.opacity='0.4'">
+    </div>
+  `).join(``),f&&(_.length<=1?(f.innerHTML=``,f.classList.add(`hidden`)):(f.classList.remove(`hidden`),f.innerHTML=_.map((e,t)=>`
+        <span class="carousel-dot ${t===0?`active`:``}" data-index="${t}"></span>
+      `).join(``))),_.length<=1?(u?.classList.add(`hidden`),d?.classList.add(`hidden`)):(u?.classList.remove(`hidden`),d?.classList.remove(`hidden`));function b(e){if(_.length===0)return;R=(e+_.length)%_.length,i.style.transform=`translateX(-${R*100}%)`,a&&(a.textContent=`${R+1} / ${_.length}`);let t=_[R];o&&(o.textContent=t.title),s&&(s.textContent=`제보자: ${t.author} · ${h(t.createdAt)}`),f&&f.querySelectorAll(`.carousel-dot`).forEach((e,t)=>{t===R?e.classList.add(`active`):e.classList.remove(`active`)})}b(0),u&&!u._hasListener&&(u._hasListener=!0,u.addEventListener(`click`,e=>{e.stopPropagation(),b(R-1)})),d&&!d._hasListener&&(d._hasListener=!0,d.addEventListener(`click`,e=>{e.stopPropagation(),b(R+1)})),f&&!f._hasListener&&(f._hasListener=!0,f.addEventListener(`click`,e=>{let t=e.target.closest(`.carousel-dot`);if(t){e.stopPropagation();let n=parseInt(t.getAttribute(`data-index`),10);isNaN(n)||b(n)}})),i.querySelectorAll(`.carousel-slide-item`).forEach(e=>{e.addEventListener(`click`,()=>{let t=_[parseInt(e.getAttribute(`data-index`),10)||R];t&&V(t.src,t.title)})}),m&&!m._hasListener&&(m._hasListener=!0,m.addEventListener(`click`,e=>{e.stopPropagation();let t=_[R];t&&V(t.src,t.title)}));let x=document.getElementById(`carousel-viewport`);if(x&&!x._hasTouch){x._hasTouch=!0;let e=0,t=0,n=!1;x.addEventListener(`touchstart`,r=>{_.length<=1||(e=r.touches[0].clientX,t=r.touches[0].clientY,n=!0)},{passive:!0}),x.addEventListener(`touchmove`,r=>{if(!n||_.length<=1)return;let i=r.touches[0].clientX-e,a=r.touches[0].clientY-t;Math.abs(i)>Math.abs(a)&&Math.abs(i)>10&&r.cancelable&&r.preventDefault()},{passive:!1}),x.addEventListener(`touchend`,t=>{if(!n||_.length<=1)return;n=!1;let r=t.changedTouches[0].clientX-e;r>40?b(R-1):r<-40&&b(R+1)},{passive:!0})}}function V(e,t){let n=document.getElementById(`image-lightbox-modal`),r=document.getElementById(`lightbox-image`),i=document.getElementById(`lightbox-caption`);!n||!r||(r.src=e,i&&(i.textContent=t||`현장 사진 확대 보기`),n.classList.remove(`hidden`),document.body.style.overflow=`hidden`)}function H(){let e=document.getElementById(`image-lightbox-modal`),t=document.getElementById(`lightbox-image`);e&&(e.classList.add(`hidden`),t&&(t.src=``),document.body.style.overflow=``)}var U=document.getElementById(`btn-close-lightbox`);U&&!U._hasListener&&(U._hasListener=!0,U.addEventListener(`click`,H));var W=document.getElementById(`image-lightbox-modal`);W&&!W._hasListener&&(W._hasListener=!0,W.addEventListener(`click`,e=>{(e.target===W||e.target.id===`lightbox-container`)&&H()})),document.addEventListener(`keydown`,e=>{e.key===`Escape`&&H()}),P();async function G(e,t){try{let r=await n(e.id,e=>{let n=(e.reportIds||[]).filter(e=>e!==t);return n.length===0?null:{...e,reportIds:n,representId:e.representId===t?n[0]:e.representId,updatedAt:Date.now()}});await b(t),r?(alert(`제보가 삭제되었습니다.`),location.reload()):(alert(`모든 제보가 삭제되어 군집이 사라졌습니다.`),location.href=`${C}index.html`)}catch(e){console.error(`[detail] delete failed:`,e),alert(d(e,`제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.`))}}async function K(n,r){let i=await t(r);if(!i){alert(`제보를 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.`);return}let a=prompt(`수정할 내용을 입력하세요 (상세 설명):`,i.description||``);if(!(a===null||a.trim()===``))try{let t=Date.now();await e(r,{description:a.trim(),updatedAt:t});try{await f(n.id,{updatedAt:t})}catch(e){console.warn(`[detail] cluster touch failed:`,e)}alert(`제보 내용이 수정되었습니다.`),location.reload()}catch(e){console.error(`[detail] edit failed:`,e),alert(d(e,`제보를 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.`))}}

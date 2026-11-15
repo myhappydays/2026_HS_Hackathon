@@ -5,7 +5,8 @@
  * - Dynamic APIs (Firestore, Kakao Maps, AWS Bedrock, Vite HMR): Network-Only (Bypass)
  */
 
-const CACHE_VERSION = 'v1';
+// 캐시 정책이나 프리캐시 목록을 바꾸면 이 값을 올린다 (이전 캐시는 activate 때 삭제됨)
+const CACHE_VERSION = 'v2';
 const APP_SHELL_CACHE = `fermata-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `fermata-runtime-${CACHE_VERSION}`;
 
@@ -15,6 +16,7 @@ const PRECACHE_PATHS = [
   './report.html',
   './detail.html',
   './mypage.html',
+  './admin.html',
   './manifest.webmanifest',
   './favicon.ico',
   './icon.svg',
@@ -41,6 +43,7 @@ const STATIC_CDN_HOSTS = [
   'fonts.gstatic.com',
   'cdnjs.cloudflare.com',
   'cdn.tailwindcss.com',
+  'unpkg.com',
 ];
 
 self.addEventListener('install', (event) => {
@@ -88,13 +91,13 @@ function shouldBypass(url) {
     url.pathname.includes('/@fs') ||
     url.pathname.includes('/@id') ||
     url.pathname.includes('/node_modules/') ||
-    url.search.includes('t=') ||
+    url.searchParams.has('t') ||
     url.pathname.endsWith('.hot-update.json')
   ) {
     return true;
   }
 
-  return BYPASS_HOST_PATTERNS.some((host) => url.hostname.includes(host));
+  return BYPASS_HOST_PATTERNS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
 }
 
 self.addEventListener('fetch', (event) => {
@@ -105,7 +108,7 @@ self.addEventListener('fetch', (event) => {
   if (shouldBypass(url)) return;
 
   const isSameOrigin = url.origin === self.location.origin;
-  const isStaticCdn = STATIC_CDN_HOSTS.some((host) => url.hostname.includes(host));
+  const isStaticCdn = STATIC_CDN_HOSTS.includes(url.hostname);
 
   // 1. 페이지 네비게이션 (MPA HTML: index, report, detail?id=..., mypage 등) -> Network-First
   if (request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html')) {
