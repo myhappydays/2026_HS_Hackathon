@@ -13,51 +13,73 @@
   <link rel="icon" href="/2026_HS_Hackathon/favicon.ico" sizes="any">
   <link rel="icon" href="/2026_HS_Hackathon/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/2026_HS_Hackathon/apple-touch-icon.png">
-  
+
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // 테마 CSS 변수를 Tailwind 색으로 등록한다. <alpha-value> 를 넣어야 bg-primary/10, border-border/60 같은
+    // 투명도 표기가 동작한다. (빠지면 해당 클래스가 무시되어 테두리가 기본 회색(#e5e7eb)으로 보인다)
+    const themeColor = (name) => `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
           colors: {
-            background: 'var(--background)',
-            'background-1': 'var(--background-1)',
-            foreground: 'var(--foreground)',
-            primary: { DEFAULT: 'var(--primary)', 500: 'var(--primary-500)', 600: 'var(--primary-600)' },
-            muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
-            border: 'var(--border)',
-            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)' },
-            card: { DEFAULT: 'var(--card)' }
+            background: themeColor('--background'),
+            'background-1': themeColor('--background-1'),
+            foreground: themeColor('--foreground'),
+            primary: { DEFAULT: themeColor('--primary'), 500: themeColor('--primary-500'), 600: themeColor('--primary-600') },
+            muted: { DEFAULT: themeColor('--muted'), foreground: themeColor('--muted-foreground') },
+            border: themeColor('--border'),
+            surface: { DEFAULT: themeColor('--surface'), 1: themeColor('--surface-1') },
+            card: { DEFAULT: themeColor('--card') }
           }
         }
       }
     }
   </script>
-  <style>body { font-family: var(--font-sans); }</style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/mypage-1ZjHxA8Z.js"></script>
+  <style>
+    body { font-family: var(--font-sans); }
+    /* 메인 화면과 같은 헤더(글래스)·앱 래퍼 그림자·스크롤바 */
+    header {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background: color-mix(in oklch, var(--background) 85%, transparent) !important;
+      border-bottom-color: color-mix(in oklch, var(--border) 60%, transparent) !important;
+    }
+    .app-wrapper {
+      box-shadow:
+        0 0 0 1px color-mix(in oklch, var(--border) 50%, transparent),
+        0 20px 60px -10px rgba(0,0,0,0.18),
+        0 4px 16px -4px rgba(0,0,0,0.08);
+    }
+    * { scrollbar-width: thin; scrollbar-color: var(--surface-2) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 9999px; }
+  </style>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/mypage-CaxZ0T7T.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-D3lhBgXI.js">
-  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-7lpI1uXZ.css">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-bSb-dbTN.js">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-EF1mbSxF.css">
 </head>
 <body class="bg-background text-foreground min-h-screen">
 
-  <div class="w-full max-w-[430px] mx-auto min-h-screen border-x border-border shadow-2xl bg-background flex flex-col">
+  <div class="app-wrapper w-full max-w-[430px] mx-auto min-h-screen border-x border-border bg-background flex flex-col">
 
     <!-- 헤더 -->
     <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <a id="nav-home" href="#" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-surface-1 transition" title="홈으로">
-          <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <a id="nav-home" href="#" class="w-8 h-8 rounded-lg border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all shadow-sm" title="홈으로" aria-label="홈으로">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
           </svg>
         </a>
         <h1 class="font-bold text-base text-foreground">마이페이지</h1>
       </div>
       <button id="logout-btn" type="button"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-red-500/10 hover:border-red-500/30 text-xs font-semibold text-muted-foreground hover:text-red-500 transition-colors"
+        class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/50 text-xs font-medium transition-all shadow-sm whitespace-nowrap shrink-0"
         title="로그아웃">
         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
@@ -67,9 +89,9 @@
     </header>
 
     <main class="flex-1 overflow-y-auto pb-10">
-      
+
       <!-- 프로필 영역 -->
-      <div class="px-5 py-5 border-b border-border flex items-center justify-between gap-4">
+      <div class="mx-4 mt-4 p-4 rounded-xl border border-border bg-card flex items-center justify-between gap-4">
         <div class="flex items-center gap-3.5 min-w-0">
           <img id="profile-img" src="/2026_HS_Hackathon/icon.svg" class="w-14 h-14 rounded-full object-cover border border-border bg-surface shrink-0" alt="프로필">
           <div class="min-w-0">
@@ -77,15 +99,11 @@
             <p id="profile-email" class="text-xs text-muted-foreground truncate"></p>
           </div>
         </div>
-        <button id="profile-logout-btn" type="button"
-          class="shrink-0 px-3 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20 active:scale-95 text-xs font-semibold transition-all">
-          로그아웃
-        </button>
       </div>
 
       <!-- 리스트 헤더 -->
-      <div class="px-5 pt-6 pb-2 flex items-center justify-between">
-        <h3 class="font-semibold text-base text-foreground">내가 쓴 제보 목록</h3>
+      <div class="px-4 pt-5 pb-1 flex items-center justify-between">
+        <h3 class="font-semibold text-base text-foreground">내가 쓴 제보</h3>
         <span id="my-report-count" class="text-xs text-muted-foreground">총 0건</span>
       </div>
 

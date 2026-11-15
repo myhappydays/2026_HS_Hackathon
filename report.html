@@ -21,34 +21,37 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // 테마 CSS 변수를 Tailwind 색으로 등록한다. <alpha-value> 를 넣어야 bg-primary/10, border-border/60 같은
+    // 투명도 표기가 동작한다. (빠지면 해당 클래스가 무시되어 테두리가 기본 회색(#e5e7eb)으로 보인다)
+    const themeColor = (name) => `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
           colors: {
-            background:   'var(--background)',
-            'background-1': 'var(--background-1)',
-            'background-2': 'var(--background-2)',
-            foreground:   'var(--foreground)',
+            background:   themeColor('--background'),
+            'background-1': themeColor('--background-1'),
+            'background-2': themeColor('--background-2'),
+            foreground:   themeColor('--foreground'),
             primary: {
-              DEFAULT: 'var(--primary)',
-              50:  'var(--primary-50)',  100: 'var(--primary-100)',
-              200: 'var(--primary-200)', 300: 'var(--primary-300)',
-              400: 'var(--primary-400)', 500: 'var(--primary-500)',
-              600: 'var(--primary-600)', 700: 'var(--primary-700)',
-              800: 'var(--primary-800)', 900: 'var(--primary-900)',
-              950: 'var(--primary-950)',
+              DEFAULT: themeColor('--primary'),
+              50:  themeColor('--primary-50'),  100: themeColor('--primary-100'),
+              200: themeColor('--primary-200'), 300: themeColor('--primary-300'),
+              400: themeColor('--primary-400'), 500: themeColor('--primary-500'),
+              600: themeColor('--primary-600'), 700: themeColor('--primary-700'),
+              800: themeColor('--primary-800'), 900: themeColor('--primary-900'),
+              950: themeColor('--primary-950'),
             },
             muted: {
-              DEFAULT: 'var(--muted)',
-              foreground:   'var(--muted-foreground)',
-              'foreground-1': 'var(--muted-foreground-1)',
-              'foreground-2': 'var(--muted-foreground-2)',
+              DEFAULT: themeColor('--muted'),
+              foreground:   themeColor('--muted-foreground'),
+              'foreground-1': themeColor('--muted-foreground-1'),
+              'foreground-2': themeColor('--muted-foreground-2'),
             },
-            border:  'var(--border)',
-            card:    { DEFAULT: 'var(--card)', header: 'var(--card-header)', footer: 'var(--card-footer)' },
-            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
+            border:  themeColor('--border'),
+            card:    { DEFAULT: themeColor('--card'), header: themeColor('--card-header'), footer: themeColor('--card-footer') },
+            surface: { DEFAULT: themeColor('--surface'), 1: themeColor('--surface-1'), 2: themeColor('--surface-2'), 3: themeColor('--surface-3') },
           }
         }
       },
@@ -69,11 +72,11 @@
     /* 이미지 프리뷰 */
     #image-preview { object-fit: cover; }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/report-Bz2FJs_S.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/report-BSmO1vIY.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-D3lhBgXI.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-BB_0viYO.js">
-  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-7lpI1uXZ.css">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-bSb-dbTN.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-wq7pjcpY.js">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-EF1mbSxF.css">
 </head>
 <body class="bg-background text-foreground min-h-screen">
 

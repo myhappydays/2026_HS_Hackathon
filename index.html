@@ -35,34 +35,37 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // 테마 CSS 변수를 Tailwind 색으로 등록한다. <alpha-value> 를 넣어야 bg-primary/10, border-border/60 같은
+    // 투명도 표기가 동작한다. (빠지면 해당 클래스가 무시되어 테두리가 기본 회색(#e5e7eb)으로 보인다)
+    const themeColor = (name) => `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           fontFamily: { sans: ['var(--font-sans)', 'sans-serif'] },
           colors: {
-            background:   'var(--background)',
-            'background-1': 'var(--background-1)',
-            'background-2': 'var(--background-2)',
-            foreground:   'var(--foreground)',
+            background:   themeColor('--background'),
+            'background-1': themeColor('--background-1'),
+            'background-2': themeColor('--background-2'),
+            foreground:   themeColor('--foreground'),
             primary: {
-              DEFAULT: 'var(--primary)',
-              50:  'var(--primary-50)',  100: 'var(--primary-100)',
-              200: 'var(--primary-200)', 300: 'var(--primary-300)',
-              400: 'var(--primary-400)', 500: 'var(--primary-500)',
-              600: 'var(--primary-600)', 700: 'var(--primary-700)',
-              800: 'var(--primary-800)', 900: 'var(--primary-900)',
-              950: 'var(--primary-950)',
+              DEFAULT: themeColor('--primary'),
+              50:  themeColor('--primary-50'),  100: themeColor('--primary-100'),
+              200: themeColor('--primary-200'), 300: themeColor('--primary-300'),
+              400: themeColor('--primary-400'), 500: themeColor('--primary-500'),
+              600: themeColor('--primary-600'), 700: themeColor('--primary-700'),
+              800: themeColor('--primary-800'), 900: themeColor('--primary-900'),
+              950: themeColor('--primary-950'),
             },
             muted: {
-              DEFAULT: 'var(--muted)',
-              foreground:   'var(--muted-foreground)',
-              'foreground-1': 'var(--muted-foreground-1)',
-              'foreground-2': 'var(--muted-foreground-2)',
+              DEFAULT: themeColor('--muted'),
+              foreground:   themeColor('--muted-foreground'),
+              'foreground-1': themeColor('--muted-foreground-1'),
+              'foreground-2': themeColor('--muted-foreground-2'),
             },
-            border:  'var(--border)',
-            card:    { DEFAULT: 'var(--card)', header: 'var(--card-header)', footer: 'var(--card-footer)' },
-            surface: { DEFAULT: 'var(--surface)', 1: 'var(--surface-1)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
+            border:  themeColor('--border'),
+            card:    { DEFAULT: themeColor('--card'), header: themeColor('--card-header'), footer: themeColor('--card-footer') },
+            surface: { DEFAULT: themeColor('--surface'), 1: themeColor('--surface-1'), 2: themeColor('--surface-2'), 3: themeColor('--surface-3') },
           }
         }
       },
@@ -337,6 +340,40 @@
       border: 1px solid #2b3040 !important;
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
     }
+
+    /* ─── 지도 위 단독 버튼 (현위치 등) — 검색창·뷰 토글과 같은 면/테두리/그림자 ─── */
+    .map-control-btn {
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.18), 0 2px 6px -1px rgba(0, 0, 0, 0.08);
+    }
+    .map-control-btn:hover {
+      color: var(--primary);
+      border-color: color-mix(in srgb, var(--primary) 55%, #cbd5e1);
+    }
+    .map-control-btn:focus-visible {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+    .dark .map-control-btn {
+      background-color: #181b26;
+      border-color: #2b3040;
+      color: #e2e8f0;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 2px 8px -1px rgba(0, 0, 0, 0.4);
+    }
+    .dark .map-control-btn:hover {
+      color: var(--primary);
+      border-color: color-mix(in srgb, var(--primary) 55%, #2b3040);
+    }
+
+    /* ─── 스크롤바 (모달·목록 공통) ─── */
+    * { scrollbar-width: thin; scrollbar-color: var(--surface-2) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
     /* ─── 지도 위 검색창 스타일 (가시성 및 배경 불투명화) ─── */
     #search-input-box {
@@ -623,8 +660,8 @@
       #gps-recenter-btn {
         bottom: 10px !important;
         right: 10px !important;
-        width: 34px !important;
-        height: 34px !important;
+        width: 38px !important;
+        height: 38px !important;
         z-index: 20 !important;
       }
 
@@ -779,13 +816,13 @@
       }
     }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-KWyGpvCs.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/main-CLilOp9H.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-D3lhBgXI.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/shareCard-QBvLpYrX.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-BB_0viYO.js">
-  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-7lpI1uXZ.css">
-  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/shareCard-DTF0mjiA.css">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-bSb-dbTN.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/shareCard-D6zwbhD9.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/clustering-wq7pjcpY.js">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-EF1mbSxF.css">
+  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/shareCard-BuxGuvsI.css">
 </head>
 <body class="bg-background text-foreground min-h-screen">
 
@@ -822,10 +859,11 @@
         <button
           id="ranking-btn"
           type="button"
-          
-          class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-xs font-medium transition-all shadow-sm">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>
-          <span class="hidden sm:inline font-bold">랭킹</span>
+
+          title="우리 동네 안전 온도 랭킹"
+          class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/50 text-xs font-medium transition-all shadow-sm whitespace-nowrap shrink-0">
+          <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"/></svg>
+          <span class="hidden sm:inline">랭킹</span>
         </button>
 
         <!-- 다크/라이트 모드 토글 버튼 -->
@@ -927,11 +965,12 @@
           <!-- 내 위치 (GPS) 복귀 플로팅 버튼 -->
           <button type="button"
             id="gps-recenter-btn"
-            class="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-lg bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 active:scale-95 transition-all"
-            title="현재 위치로 이동">
-            <svg class="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+            class="map-control-btn absolute bottom-3 right-3 z-20 w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+            title="현재 위치로 이동" aria-label="현재 위치로 이동">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="7"/>
+              <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+              <path stroke-linecap="round" d="M12 2.5V5m0 14v2.5M2.5 12H5m14 0h2.5"/>
             </svg>
           </button>
         </div>
@@ -996,7 +1035,7 @@
             class="w-full py-2.5 px-3.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 active:scale-[0.99] text-primary flex items-center justify-between text-xs font-semibold transition-all shadow-sm group min-w-0"
             title="인스타그램 스토리 / 모바일 SNS 안전 카드 공유">
             <span class="flex items-center gap-2 min-w-0 flex-1 pr-2 overflow-hidden">
-              <span class="text-base shrink-0">🚨</span>
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5"/></svg>
               <span class="banner-title-text tracking-tight truncate text-left whitespace-nowrap">우리 동네 안전 주의보 카드 공유하기</span>
             </span>
             <span class="banner-badge inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-white text-[11px] font-semibold shadow-sm group-hover:scale-105 transition-transform shrink-0 whitespace-nowrap">
@@ -1016,7 +1055,7 @@
             <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap shrink-0 transition-colors" data-cat="facility">시설물</button>
             <button class="filter-chip px-3 py-1.5 rounded-full text-xs font-medium bg-surface text-muted-foreground hover:bg-surface-1 whitespace-nowrap shrink-0 transition-colors" data-cat="safety">치안/안전</button>
           </div>
-          
+
           <!-- 정렬 드롭다운 -->
           <div class="shrink-0">
             <select id="sort-filter" class="py-1.5 px-3 block bg-surface border border-border rounded-lg text-xs text-foreground focus:border-primary focus:outline-none cursor-pointer whitespace-nowrap">
@@ -1063,7 +1102,7 @@
                 <!-- AI 요약 카드 공유 버튼 -->
                 <button type="button" id="ai-alert-share-btn"
                   class="mt-3 w-full py-2 px-3 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary/90 active:scale-95 transition-all shadow-sm">
-                  <span>🚨</span>
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5"/></svg>
                   <span>AI 안전 주의보 카드 공유하기 (SNS)</span>
                 </button>
               </div>
@@ -1254,12 +1293,12 @@
 
     <!-- 모달 컨텐츠 래퍼 -->
     <div id="share-card-container" class="relative z-10 w-full max-w-[390px] flex flex-col items-center gap-3 transition-all duration-300 scale-95 opacity-0 my-auto">
-      
+
       <!-- 상단 헤더 바 -->
       <div class="w-full flex items-center justify-between px-1 text-white">
-        <span class="text-xs font-bold tracking-tight text-slate-200">안전 카드</span>
+        <span class="text-sm font-semibold tracking-tight text-white">안전 카드</span>
         <button id="close-share-card-modal" type="button"
-          class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+          class="w-8 h-8 rounded-lg bg-surface border border-border hover:bg-surface-1 active:scale-95 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           title="닫기 (ESC)">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -1269,7 +1308,7 @@
 
       <!-- ─── 캡처 대상: 세로형(9:16 / 4:5 비율 최적화) 안전 카드 ─── -->
       <div id="safety-share-card"
-        class="w-full mx-auto rounded-3xl p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden select-none">
+        class="w-full mx-auto rounded-2xl p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden select-none">
 
         <!-- 카드 상단: 브랜드 & LIVE 뱃지 -->
         <div class="card-header relative z-10 flex items-center justify-between pb-3.5 border-b">
@@ -1283,9 +1322,10 @@
         <div class="relative z-10 py-4 flex flex-col gap-3.5">
           <!-- 타이틀 -->
           <div>
-            <h2 id="card-area-title" class="text-xl font-extrabold leading-snug tracking-tight text-white drop-shadow-sm">
-              ⚠️ [우리 동네] 안전 주의보
-            </h2>
+            <div class="flex items-start gap-2">
+              <span id="card-title-icon" class="shrink-0 mt-[3px] leading-none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e0364a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/><path d="M12 15.75h.007v.008H12v-.008z"/></svg></span>
+              <h2 id="card-area-title" class="min-w-0 text-xl font-extrabold leading-snug tracking-tight text-white drop-shadow-sm">[우리 동네] 안전 주의보</h2>
+            </div>
             <p id="card-subtitle" class="text-[11px] text-slate-400 mt-0.5">
               실시간 주민 제보 및 AI 군집 안전 진단 리포트
             </p>
@@ -1312,7 +1352,7 @@
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-              <span id="card-high-count">🚨 고위험 제보 발생 구역</span>
+              <span id="card-high-count">고위험 제보 발생 구역</span>
               <span id="card-status-subtext" class="text-rose-300/80">통행 안전 주의</span>
             </div>
           </div>
@@ -1325,7 +1365,7 @@
           <!-- AI 요약 브리핑 박스 -->
           <div id="card-ai-box" class="rounded-2xl p-3.5 bg-gradient-to-br from-rose-950/25 to-transparent border border-rose-500/30 flex flex-col gap-1.5">
             <div class="flex items-center gap-1.5">
-              <span class="text-xs">✨</span>
+              <span class="shrink-0 leading-none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e0364a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/></svg></span>
               <span id="card-ai-badge" class="text-[11px] font-bold text-rose-300 tracking-wide uppercase">AI 실시간 종합 진단</span>
             </div>
             <p id="card-ai-summary" class="text-[12px] leading-relaxed text-slate-200 font-medium break-keep">
@@ -1355,8 +1395,8 @@
       <div class="w-full flex items-center gap-2 pt-1">
         <!-- 이미지 저장 버튼 -->
         <button type="button" id="download-share-card-btn"
-          class="flex-1 py-3 px-3 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition-all shadow-lg backdrop-blur-md whitespace-nowrap shrink-0">
-          <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          class="flex-1 py-3 px-3 rounded-xl bg-surface hover:bg-surface-1 active:scale-95 text-foreground font-semibold text-xs flex items-center justify-center gap-1.5 border border-border transition-all shadow-lg whitespace-nowrap shrink-0">
+          <svg class="w-4 h-4 text-muted-foreground shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
           </svg>
           <span class="whitespace-nowrap">이미지 저장</span>
@@ -1364,7 +1404,7 @@
 
         <!-- 공유하기 버튼 -->
         <button type="button" id="share-card-btn"
-          class="flex-1 py-3 px-3 rounded-2xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-primary/30 transition-all whitespace-nowrap shrink-0">
+          class="flex-1 py-3 px-3 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all whitespace-nowrap shrink-0">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
           </svg>
@@ -1380,39 +1420,40 @@
   <div id="ranking-modal" class="hidden w-full h-full fixed top-0 left-0 z-[99999] overflow-x-hidden overflow-y-auto bg-black/60 backdrop-blur-sm justify-center items-center flex" role="dialog" tabindex="-1" aria-labelledby="ranking-modal-label">
     <div class="transition-all sm:max-w-md sm:w-full m-3 sm:mx-auto flex items-center">
       <div class="w-full max-h-[80vh] flex flex-col bg-background border border-border shadow-2xl rounded-2xl overflow-hidden">
-        
+
         <!-- Header -->
-        <div class="flex justify-between items-center py-3 px-4 border-b border-border bg-surface">
-          <h3 id="ranking-modal-label" class="font-bold text-foreground text-lg flex items-center gap-2">
-            🔥 우리 동네 안전 온도
+        <div class="flex justify-between items-center py-3 px-4 border-b border-border">
+          <h3 id="ranking-modal-label" class="font-semibold text-foreground text-base flex items-center gap-2">
+            <svg class="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/></svg>
+            우리 동네 안전 온도
           </h3>
-          <button type="button" class="w-8 h-8 flex justify-center items-center rounded-full hover:bg-surface-1 text-muted-foreground transition-colors" id="close-ranking-modal">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          <button type="button" class="w-8 h-8 flex justify-center items-center rounded-lg bg-surface hover:bg-surface-1 text-muted-foreground hover:text-foreground transition-colors" id="close-ranking-modal" aria-label="닫기">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
 
         <!-- Body -->
         <div class="p-4 overflow-y-auto flex-1">
           <!-- 내 프로필 (내 온도) -->
-          <div class="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 flex flex-col gap-3">
+          <div class="mb-5 p-4 rounded-xl border border-border bg-card flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <div class="w-10 h-10 rounded-full bg-primary/20 flex justify-center items-center font-bold text-primary" id="my-profile-avatar">나</div>
+                <div class="w-10 h-10 rounded-full bg-primary/15 border border-primary/25 overflow-hidden flex justify-center items-center font-bold text-primary" id="my-profile-avatar">나</div>
                 <div>
                   <p class="font-bold text-foreground text-sm" id="my-profile-name">로그인 해주세요</p>
                   <p class="text-xs text-muted-foreground" id="my-profile-desc">나의 안전 활동 현황</p>
                 </div>
               </div>
               <div class="text-right">
-                <p class="text-2xl font-bold text-orange-500" id="my-temperature">36.5°C</p>
+                <p class="text-2xl font-bold text-primary tabular-nums" id="my-temperature">36.5°C</p>
               </div>
             </div>
-            
+
             <!-- 온도 바 -->
-            <div class="w-full bg-surface-2 rounded-full h-2.5 relative mt-1">
-              <div class="h-2.5 rounded-full bg-gradient-to-r from-blue-500 via-green-500 to-red-500 transition-all duration-1000" id="my-temperature-bar" style="width: 36.5%"></div>
+            <div class="w-full bg-surface-1 rounded-full h-2 relative mt-1 overflow-hidden">
+              <div class="h-2 rounded-full bg-primary transition-all duration-1000" id="my-temperature-bar" style="width: 36.5%"></div>
             </div>
-            
+
             <!-- 마일리지 전환 버튼 (PT용) -->
             <button class="mt-2 w-full py-2 rounded-lg bg-surface border border-border text-xs font-bold text-foreground flex items-center justify-center gap-1.5 hover:bg-surface-1 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -1422,9 +1463,10 @@
           </div>
 
           <!-- 랭킹 리스트 -->
-          <h4 class="font-bold text-sm mb-3 flex items-center gap-1.5">
-            🏆 시민 영웅 랭킹 TOP 10
-          </h4>
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold text-sm text-foreground">시민 영웅 랭킹</h4>
+            <span class="text-xs text-muted-foreground">TOP 10</span>
+          </div>
           <div class="flex flex-col gap-2" id="ranking-list">
             <!-- 동적 주입 -->
             <div class="text-center text-sm py-8 text-muted-foreground">데이터를 불러오는 중...</div>
