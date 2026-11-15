@@ -25,7 +25,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # npm ci 는 이 lockfile 로 Linux 러너에서 실패한다 (lockfile 을 Linux 에서 다시 만든 뒤 전환할 것)
+        run: npm install
 
       - name: Build
         run: npm run build
