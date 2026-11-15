@@ -4,4 +4,9 @@ skills-lock.json
 docs/
 node_modules/
 dist/
+data/staging/
+data/raw/
+data/csv/
+data/*.log
+data/*_status.json
 .DS_Store

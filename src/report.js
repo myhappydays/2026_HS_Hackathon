@@ -16,8 +16,8 @@ initTheme()
 document.getElementById('nav-home').href = `${import.meta.env.BASE_URL}index.html`
 
 import { generateId, compressImage } from './utils.js'
-import { assignCluster } from './clustering.js'
-import { addReport, updateReport, isStorageFull } from './storage.js'
+import { submitReport } from './clustering.js'
+import { isStorageFull, storageErrorMessage } from './storage.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 import { listenAuthState } from './auth.js'
 
@@ -95,9 +95,23 @@ window.addEventListener('offline', updateOfflineStatusUI)
 updateOfflineStatusUI()
 
 function saveReportToOfflineQueue(report) {
-  const queue = JSON.parse(localStorage.getItem('offline_reports') || '[]')
+  let queue = []
+  try {
+    queue = JSON.parse(localStorage.getItem('offline_reports') || '[]')
+    if (!Array.isArray(queue)) queue = []
+  } catch { /* 손상된 큐는 새로 시작 */ }
   queue.push(report)
+  // 용량 초과 시 예외가 나므로 호출부에서 사용자에게 알린다
   localStorage.setItem('offline_reports', JSON.stringify(queue))
+}
+
+/** 임베딩 모델이 로드 중이면 잠깐 기다린다 (없으면 중복 군집이 생기기 쉽다) */
+function waitForEmbedder(ms) {
+  if (isEmbedderReady()) return Promise.resolve()
+  return Promise.race([
+    initEmbedder().catch(() => {}),
+    new Promise(resolve => setTimeout(resolve, ms)),
+  ])
 }
 
 // ── 이미지 처리 ──────────────────────────────────────────
@@ -281,10 +295,16 @@ form.addEventListener('submit', async e => {
       category: choices.category || 'etc',
       createdAt: Date.now(),
     }
+    try {
+      saveReportToOfflineQueue(offlineReport)
+    } catch (err) {
+      console.error('오프라인 임시 저장 실패:', err)
+      alert('기기 저장 공간이 부족해 임시 저장하지 못했습니다. 인터넷 연결 후 다시 등록해 주세요.')
+      return
+    }
     submitting = true
     submitBtn.disabled = true
-    submitBtn.textContent = '임시 저장 중...'
-    saveReportToOfflineQueue(offlineReport)
+    submitBtn.textContent = '임시 저장 완료'
     showToast('success', '오프라인 임시 저장 완료! 연결 시 자동 전송됩니다.')
     setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1400)
     return
@@ -357,16 +377,15 @@ form.addEventListener('submit', async e => {
     }
 
     submitBtn.textContent = '제보 등록 중...'
-    await addReport(report)
+    await waitForEmbedder(8000)
+    // 제보 저장 + 군집 배정을 한 묶음으로 처리한다. 실패하면 저장된 것이 없다.
+    await submitReport(report)
     saved = true
-    const clusterId = await assignCluster(report)
-    report.clusterId = clusterId
-    await updateReport(report)
     showToast('success', '제보가 등록되었습니다!')
     setTimeout(() => { location.href = `${import.meta.env.BASE_URL}index.html` }, 1200)
   } catch (err) {
     console.error('제보 등록 실패:', err)
-    alert(saved ? '제보는 저장되었지만 군집 배정에 실패했습니다. 메인 화면에서 확인해 주세요.' : '제보 등록에 실패했습니다. 다시 시도해 주세요.')
+    alert(storageErrorMessage(err, '제보 등록에 실패했습니다. 다시 시도해 주세요.'))
   } finally {
     if (!saved) {
       submitting = false

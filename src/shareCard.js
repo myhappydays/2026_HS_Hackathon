@@ -9,6 +9,7 @@
  */
 
 import { isConfigured, callClaude } from './bedrock.js'
+import { escapeHtml } from './utils.js'
 
 let cardRevision = 0
 let currentShareUrl = ''
@@ -288,7 +289,7 @@ export function updateCardContent(targetOptions = null) {
   if (keywordsContainer) {
     keywordsContainer.innerHTML = keywords.map(kw => `
       <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white/95 border border-white/15 backdrop-blur-sm shadow-sm">
-        ${kw.startsWith('#') ? kw : '#' + kw}
+        ${escapeHtml(kw.startsWith('#') ? kw : '#' + kw)}
       </span>
     `).join('')
   }
@@ -568,7 +569,7 @@ export async function shareCard() {
     if (navigator.share) {
       try {
         const canvas = await captureCardCanvas()
-        
+
         // 캔버스를 File 객체로 변환하여 파일 공유 시도
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
         if (!blob) throw new Error('카드 이미지 생성에 실패했습니다.')

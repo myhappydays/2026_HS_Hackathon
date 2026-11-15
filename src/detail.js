@@ -3,9 +3,13 @@
  * 상세 페이지 - 군집 대표 정보 + 관련 제보 리스트 + 사진 캐러셀
  */
 
-import { getClusterById, getReportById, deleteReport, deleteCluster, updateCluster, updateReport, getClusters, getReports } from './storage.js'
-import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
-import { getCurrentUser } from './auth.js'
+import {
+  getClusterById, getReportById, getReportsByIds, getClusters, deleteReport,
+  patchReport, patchCluster, flagReport, likeCluster, addClusterComment,
+  transactCluster, storageErrorMessage,
+} from './storage.js'
+import { dangerStyle, categoryLabel, relativeTime, escapeHtml, safeImageSrc } from './utils.js'
+import { waitForAuth, loginWithGoogle, listenAuthState } from './auth.js'
 import { initShareCard, openShareModal } from './shareCard.js'
 import { initTheme } from './theme.js'
 
@@ -25,14 +29,49 @@ const errorState    = document.getElementById('error-state')
 // URL에서 클러스터 ID 읽기
 const clusterId = new URLSearchParams(location.search).get('id')
 
+// 로그인 사용자 (init 에서 인증 상태가 확정된 뒤 채워진다)
+let currentUser = null
+
+function readIdList(key) {
+  try {
+    const list = JSON.parse(localStorage.getItem(key) || '[]')
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+
+function pushIdList(key, id) {
+  try {
+    localStorage.setItem(key, JSON.stringify([...new Set([...readIdList(key), id])]))
+  } catch { /* 저장 실패는 무시 */ }
+}
+
 function showError() {
   if (loadingState) loadingState.classList.add('hidden')
   if (detailContent) detailContent.classList.add('hidden')
   if (errorState) errorState.classList.remove('hidden')
+
+  // 비로그인이라 읽지 못한 경우에는 "찾을 수 없음" 대신 로그인 안내를 보여 준다
+  if (errorState && !currentUser && !document.getElementById('detail-login-btn')) {
+    const msg = errorState.querySelector('p')
+    if (msg) msg.textContent = '제보 내용은 로그인 후 볼 수 있습니다.'
+    const btn = document.createElement('button')
+    btn.id = 'detail-login-btn'
+    btn.type = 'button'
+    btn.className = 'px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold'
+    btn.textContent = '구글 로그인'
+    btn.addEventListener('click', () => loginWithGoogle())
+    msg ? msg.insertAdjacentElement('afterend', btn) : errorState.appendChild(btn)
+    listenAuthState(user => { if (user) location.reload() })
+  }
 }
 
 async function init() {
   try {
+    // 수정/삭제 버튼 노출 여부가 로그인 상태에 달려 있으므로 먼저 확정한다
+    currentUser = await waitForAuth()
+
     let cluster = null
 
     if (clusterId) {
@@ -140,23 +179,19 @@ async function init() {
 }
 
 function setupLikes(cluster) {
-  const getLikedList = () => {
-    try {
-      return JSON.parse(localStorage.getItem('my_likes') || '[]')
-    } catch {
-      return []
-    }
-  }
+  const getLikedList = () => readIdList('my_likes')
   const btnLike = document.getElementById('btn-like')
   if (!btnLike) return
 
-  // 초기 렌더링 시 이미 공감했다면 UI 변경
-  if (getLikedList().includes(cluster.id)) {
+  const markLiked = () => {
     btnLike.classList.replace('bg-primary/10', 'bg-primary')
     btnLike.classList.replace('text-primary', 'text-white')
     btnLike.classList.add('opacity-80', 'cursor-not-allowed')
-    btnLike.innerHTML = `⚠️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes || 0}</span>`
+    btnLike.innerHTML = `⚠️ 공감 완료 <span id="like-count" class="ml-1 text-white">${Number(cluster.likes) || 0}</span>`
   }
+
+  // 초기 렌더링 시 이미 공감했다면 UI 변경
+  if (getLikedList().includes(cluster.id)) markLiked()
 
   // 공감 버튼 이벤트
   if (!btnLike._hasListener) {
@@ -168,16 +203,19 @@ function setupLikes(cluster) {
         return
       }
 
-      cluster.likes = (cluster.likes || 0) + 1
-      await updateCluster(cluster)
-
-      likedList.push(cluster.id)
-      localStorage.setItem('my_likes', JSON.stringify(likedList))
-
-      btnLike.classList.replace('bg-primary/10', 'bg-primary')
-      btnLike.classList.replace('text-primary', 'text-white')
-      btnLike.classList.add('opacity-80', 'cursor-not-allowed')
-      btnLike.innerHTML = `⚠️ 공감 완료 <span id="like-count" class="ml-1 text-white">${cluster.likes}</span>`
+      if (btnLike.disabled) return
+      btnLike.disabled = true
+      try {
+        const fresh = await likeCluster(cluster.id)
+        cluster.likes = fresh?.likes ?? (Number(cluster.likes) || 0) + 1
+        pushIdList('my_likes', cluster.id)
+        markLiked()
+      } catch (err) {
+        console.error('[detail] like failed:', err)
+        alert(storageErrorMessage(err, '공감을 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
+      } finally {
+        btnLike.disabled = false
+      }
     })
   }
 }
@@ -186,30 +224,42 @@ function setupComments(cluster, repReport) {
   const commentForm = document.getElementById('comment-form')
   const commentSubmitBtn = document.getElementById('btn-comment-submit')
 
+  let sendingComment = false
   const handleCommentSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault()
+    if (sendingComment) return
     const input = document.getElementById('comment-input')
-    const text = input ? input.value.trim() : ''
+    const text = input ? input.value.trim().slice(0, 500) : ''
     if (!text) {
       alert('공유할 상황을 입력해주세요.')
       return
     }
 
-    if (!cluster.comments) cluster.comments = []
-    
     const anonNames = ['익명의 주민', '동네 보안관', '지나가는 행인', '안전 요원', '목격자']
     const randomName = anonNames[Math.floor(Math.random() * anonNames.length)]
-
-    cluster.comments.push({
-      id: Date.now().toString(),
+    const comment = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       text,
       author: randomName,
-      createdAt: new Date().toISOString()
-    })
-    
-    await updateCluster(cluster)
-    if (input) input.value = ''
-    await renderDetail(cluster, repReport)
+      createdAt: Date.now(),
+    }
+
+    sendingComment = true
+    if (commentSubmitBtn) commentSubmitBtn.disabled = true
+    try {
+      // arrayUnion 으로 추가 — 다른 사람이 동시에 쓴 댓글을 덮어쓰지 않는다
+      const fresh = await addClusterComment(cluster.id, comment)
+      cluster.comments = fresh?.comments || [...(cluster.comments || []), comment]
+      if (fresh?.likes !== undefined) cluster.likes = fresh.likes
+      if (input) input.value = ''
+      await renderDetail(cluster, repReport)
+    } catch (err) {
+      console.error('[detail] comment failed:', err)
+      alert(storageErrorMessage(err, '댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
+    } finally {
+      sendingComment = false
+      if (commentSubmitBtn) commentSubmitBtn.disabled = false
+    }
   }
 
   if (commentForm && !commentForm._hasListener) {
@@ -226,8 +276,7 @@ async function renderDetail(cluster, repReport) {
   let allReports = []
   try {
     if (Array.isArray(cluster.reportIds) && cluster.reportIds.length > 0) {
-      const allReportsRaw = await Promise.all(cluster.reportIds.map(id => getReportById(id)))
-      allReports = allReportsRaw.filter(Boolean)
+      allReports = await getReportsByIds(cluster.reportIds)
     }
   } catch (e) {
     console.warn('[detail] Fetching cluster reports failed:', e)
@@ -320,37 +369,38 @@ async function renderDetail(cluster, repReport) {
         ${allReports.map((r, i) => {
           const rds  = dangerStyle(r.danger)
           const rcat = categoryLabel(r.category)
-          const isUserAuthor = !r.userId || r.userId === 'anonymous' || (currentUser && currentUser.uid === r.userId)
+          // 본인이 쓴 제보만 수정/삭제할 수 있다 (작성자 정보가 없는 제보는 누구도 수정 불가)
+          const isUserAuthor = !!currentUser && !!r.userId && r.userId !== 'anonymous' && currentUser.uid === r.userId
+          const rid = escapeHtml(r.id)
           return `
-          <div class="hs-accordion bg-surface border border-border rounded-xl overflow-hidden" id="acc-${r.id}">
+          <div class="hs-accordion bg-surface border border-border rounded-xl overflow-hidden" id="acc-${rid}">
             <button class="hs-accordion-toggle hs-accordion-active:text-primary w-full py-3 px-4 flex items-center justify-between text-left text-sm font-medium text-foreground hover:bg-surface-1 transition gap-3"
-              aria-controls="acc-body-${r.id}">
+              aria-controls="acc-body-${rid}">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 mb-1">
                   <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${rds.bg} ${rds.text}">${rds.label}</span>
                   <span class="text-[10px] text-muted-foreground">${rcat}</span>
                   <span class="text-[10px] text-muted-foreground ml-auto">${relativeTime(r.createdAt)}</span>
                 </div>
-                <p class="text-sm font-medium text-foreground truncate">${r.title}</p>
-                <p class="text-xs text-muted-foreground truncate mt-0.5">${r.description || ''}</p>
+                <p class="text-sm font-medium text-foreground truncate">${escapeHtml(r.title)}</p>
+                <p class="text-xs text-muted-foreground truncate mt-0.5">${escapeHtml(r.description || '')}</p>
               </div>
               <svg class="hs-accordion-active:rotate-180 w-4 h-4 flex-shrink-0 self-center text-muted-foreground transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
               </svg>
             </button>
 
-            <div id="acc-body-${r.id}" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="region" aria-labelledby="acc-${r.id}">
+            <div id="acc-body-${rid}" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="region" aria-labelledby="acc-${rid}">
               <div class="border-t border-border px-4 py-3 space-y-3">
                 <div class="flex items-center gap-2">
                   <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${rds.bg} ${rds.text}">${rds.label}</span>
                   <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-surface text-muted-foreground">${rcat}</span>
                 </div>
                 ${(() => {
-                  const rImg = r.imageBase64 || r.imageUrl || r.image || r.photo || r.photoURL || null
+                  const rImg = safeImageSrc(extractImageFromReport(r))
                   if (!rImg) return ''
                   return `
-                  <div class="relative group cursor-pointer overflow-hidden rounded-xl border border-border bg-black/10"
-                    onclick="window.__openDetailLightbox && window.__openDetailLightbox('${encodeURIComponent(rImg)}', '${encodeURIComponent(r.title || '현장 사진')}')">
+                  <div class="js-report-photo relative group cursor-pointer overflow-hidden rounded-xl border border-border bg-black/10" data-id="${rid}">
                     <img src="${rImg}" alt="제보 사진" class="w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-105" style="max-height:220px;" onerror="this.parentElement.style.display='none'">
                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                       <span class="px-3 py-1.5 rounded-full text-xs font-semibold bg-black/80 text-white backdrop-blur-sm border border-white/20 flex items-center gap-1.5 shadow-lg">
@@ -361,8 +411,8 @@ async function renderDetail(cluster, repReport) {
                   </div>`
                 })()}
                 <div>
-                  <p class="text-sm font-semibold text-foreground">${r.title}</p>
-                  ${r.description ? `<p class="text-xs text-muted-foreground mt-1 leading-relaxed">${r.description}</p>` : ''}
+                  <p class="text-sm font-semibold text-foreground">${escapeHtml(r.title)}</p>
+                  ${r.description ? `<p class="text-xs text-muted-foreground mt-1 leading-relaxed">${escapeHtml(r.description)}</p>` : ''}
                 </div>
                 <div class="flex flex-col gap-1 text-xs text-muted-foreground">
                   <div class="flex items-center gap-1.5">
@@ -370,7 +420,7 @@ async function renderDetail(cluster, repReport) {
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
                     </svg>
-                    <span>${r.location?.address || '위치 정보 없음'}</span>
+                    <span>${escapeHtml(r.location?.address || '위치 정보 없음')}</span>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -381,14 +431,14 @@ async function renderDetail(cluster, repReport) {
                 </div>
                 <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
                   ${isUserAuthor ? `
-                  <button type="button" class="btn-edit-report py-1.5 px-3 bg-surface border border-border text-foreground hover:bg-surface-1 rounded-lg text-xs font-semibold transition" data-id="${r.id}">
+                  <button type="button" class="btn-edit-report py-1.5 px-3 bg-surface border border-border text-foreground hover:bg-surface-1 rounded-lg text-xs font-semibold transition" data-id="${rid}">
                     수정
                   </button>
-                  <button type="button" class="btn-delete-report py-1.5 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-semibold transition" data-id="${r.id}">
+                  <button type="button" class="btn-delete-report py-1.5 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-semibold transition" data-id="${rid}">
                     삭제
                   </button>
                   ` : `
-                  <button type="button" class="btn-report-report py-1.5 px-3 bg-surface border border-border text-muted-foreground hover:text-red-500 rounded-lg text-xs font-medium transition" data-id="${r.id}">
+                  <button type="button" class="btn-report-report py-1.5 px-3 bg-surface border border-border text-muted-foreground hover:text-red-500 rounded-lg text-xs font-medium transition" data-id="${rid}">
                     🚨 신고
                   </button>
                   `}
@@ -405,17 +455,30 @@ async function renderDetail(cluster, repReport) {
       try { window.HSAccordion.autoInit() } catch (e) {}
     }
 
+    relatedList.querySelectorAll('.js-report-photo').forEach(el => {
+      el.addEventListener('click', () => {
+        const r = allReports.find(x => x.id === el.getAttribute('data-id'))
+        const src = extractImageFromReport(r)
+        if (src && safeImageSrc(src)) openLightbox(src, r.title || '현장 사진')
+      })
+    })
+
     document.querySelectorAll('.btn-report-report').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation()
         const rid = btn.getAttribute('data-id')
-        if (confirm('이 제보를 불량/허위 제보로 신고하시겠습니까?')) {
-          const r = allReports.find(x => x.id === rid)
-          if (r) {
-            r.reportCount = (r.reportCount || 0) + 1
-            await updateReport(r)
-            alert('신고가 접수되었습니다. (누적 신고: ' + r.reportCount + '회)')
-          }
+        if (readIdList('my_flags').includes(rid)) {
+          alert('이미 신고한 제보입니다.')
+          return
+        }
+        if (!confirm('이 제보를 불량/허위 제보로 신고하시겠습니까?')) return
+        try {
+          await flagReport(rid)
+          pushIdList('my_flags', rid)
+          alert('신고가 접수되었습니다.')
+        } catch (err) {
+          console.error('[detail] flag failed:', err)
+          alert(storageErrorMessage(err, '신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
         }
       })
     })
@@ -424,7 +487,7 @@ async function renderDetail(cluster, repReport) {
       btn.addEventListener('click', (e) => {
         e.stopPropagation()
         const rid = btn.getAttribute('data-id')
-        handleEditReport(rid)
+        handleEditReport(cluster, rid)
       })
     })
 
@@ -441,13 +504,13 @@ async function renderDetail(cluster, repReport) {
 
   // 공감 렌더링
   const likeEl = document.getElementById('like-count')
-  if (likeEl) likeEl.textContent = cluster.likes || 0
+  if (likeEl) likeEl.textContent = Number(cluster.likes) || 0
 
   // 댓글 렌더링
   const comments = cluster.comments || []
   const commentCountEl = document.getElementById('comment-count')
   if (commentCountEl) commentCountEl.textContent = `${comments.length}개`
-  
+
   const commentList = document.getElementById('comment-list')
   if (commentList) {
     if (comments.length === 0) {
@@ -456,14 +519,14 @@ async function renderDetail(cluster, repReport) {
       commentList.innerHTML = comments.map(c => `
         <div class="flex gap-2">
           <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 font-bold text-xs">
-            ${(c.author || '익').charAt(0)}
+            ${escapeHtml((c.author || '익').charAt(0))}
           </div>
           <div class="flex-1 bg-surface border border-border rounded-lg rounded-tl-none p-3">
             <div class="flex justify-between items-center mb-1">
-              <span class="text-xs font-semibold text-foreground">${c.author || '익명'}</span>
+              <span class="text-xs font-semibold text-foreground">${escapeHtml(c.author || '익명')}</span>
               <span class="text-[10px] text-muted-foreground">${relativeTime(c.createdAt)}</span>
             </div>
-            <p class="text-sm text-foreground">${c.text}</p>
+            <p class="text-sm text-foreground whitespace-pre-wrap break-words">${escapeHtml(c.text)}</p>
           </div>
         </div>
       `).join('')
@@ -503,7 +566,7 @@ function renderImageGallery(cluster, repReport, allReports) {
   const seenUrls = new Set()
 
   function addSlide(img, title, author, danger, createdAt) {
-    if (!img || typeof img !== 'string' || img.trim() === '' || seenUrls.has(img)) return
+    if (!img || typeof img !== 'string' || !safeImageSrc(img) || seenUrls.has(img)) return
     seenUrls.add(img)
     slides.push({
       src: img,
@@ -559,7 +622,7 @@ function renderImageGallery(cluster, repReport, allReports) {
   // 슬라이드 DOM 생성
   track.innerHTML = slides.map((s, idx) => `
     <div class="carousel-slide-item w-full h-full flex-shrink-0 relative overflow-hidden flex items-center justify-center bg-black/40 cursor-zoom-in" data-index="${idx}">
-      <img src="${s.src}" alt="${s.title}" class="w-full h-full object-cover select-none transition-transform duration-300" onerror="this.parentElement.style.opacity='0.4'">
+      <img src="${safeImageSrc(s.src)}" alt="${escapeHtml(s.title)}" class="w-full h-full object-cover select-none transition-transform duration-300" onerror="this.parentElement.style.opacity='0.4'">
     </div>
   `).join('')
 
@@ -725,17 +788,6 @@ export function closeLightbox() {
   document.body.style.overflow = ''
 }
 
-// 전역 바인딩 (아코디언 인라인 onclick 지원)
-window.__openDetailLightbox = (encodedSrc, encodedCaption) => {
-  try {
-    const src = decodeURIComponent(encodedSrc)
-    const cap = decodeURIComponent(encodedCaption)
-    openLightbox(src, cap)
-  } catch (e) {
-    openLightbox(encodedSrc, encodedCaption)
-  }
-}
-
 // 라이트박스 닫기 이벤트 초기 바인딩
 const btnCloseLightbox = document.getElementById('btn-close-lightbox')
 if (btnCloseLightbox && !btnCloseLightbox._hasListener) {
@@ -758,46 +810,57 @@ document.addEventListener('keydown', (e) => {
 init()
 
 async function handleDeleteReport(cluster, reportId) {
-  await deleteReport(reportId)
+  try {
+    // 군집을 먼저 정리한다. 순서가 반대면 중간에 실패했을 때
+    // 군집이 이미 지워진 제보를 가리키는 상태로 남는다.
+    const next = await transactCluster(cluster.id, current => {
+      const ids = (current.reportIds || []).filter(id => id !== reportId)
+      if (ids.length === 0) return null // 남은 제보가 없으면 군집도 삭제
+      return {
+        ...current,
+        reportIds: ids,
+        // 대표 제보가 삭제되었다면 다른 제보로 대표 변경
+        representId: current.representId === reportId ? ids[0] : current.representId,
+        updatedAt: Date.now(),
+      }
+    })
+    await deleteReport(reportId)
 
-  // 군집 업데이트
-  cluster.reportIds = (cluster.reportIds || []).filter(id => id !== reportId)
-
-  if (cluster.reportIds.length === 0) {
-    // 모든 제보가 지워지면 군집도 삭제
-    await deleteCluster(cluster.id)
-    alert('모든 제보가 삭제되어 군집이 사라졌습니다.')
-    location.href = `${BASE}index.html`
-  } else {
-    // 대표 제보가 삭제되었다면 다른 제보로 대표 변경
-    if (cluster.representId === reportId) {
-      cluster.representId = cluster.reportIds[0]
+    if (next) {
+      alert('제보가 삭제되었습니다.')
+      location.reload()
+    } else {
+      alert('모든 제보가 삭제되어 군집이 사라졌습니다.')
+      location.href = `${BASE}index.html`
     }
-    await updateCluster(cluster)
-    alert('제보가 삭제되었습니다.')
-    location.reload()
+  } catch (err) {
+    console.error('[detail] delete failed:', err)
+    alert(storageErrorMessage(err, '제보를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
   }
 }
 
-async function handleEditReport(reportId) {
+async function handleEditReport(cluster, reportId) {
   const report = await getReportById(reportId)
-  if (!report) return
+  if (!report) {
+    alert('제보를 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.')
+    return
+  }
 
   const newDesc = prompt('수정할 내용을 입력하세요 (상세 설명):', report.description || '')
-  
-  if (newDesc !== null && newDesc.trim() !== '') {
-    report.description = newDesc.trim()
-    report.updatedAt = new Date().toISOString()
-    await updateReport(report)
-    
-    // 군집 업데이트
-    const cluster = await getClusterById(clusterId)
-    if (cluster) {
-      cluster.updatedAt = new Date().toISOString()
-      await updateCluster(cluster)
+  if (newDesc === null || newDesc.trim() === '') return
+
+  try {
+    const now = Date.now()
+    await patchReport(reportId, { description: newDesc.trim(), updatedAt: now })
+    try {
+      await patchCluster(cluster.id, { updatedAt: now })
+    } catch (e) {
+      console.warn('[detail] cluster touch failed:', e)
     }
-    
     alert('제보 내용이 수정되었습니다.')
     location.reload()
+  } catch (err) {
+    console.error('[detail] edit failed:', err)
+    alert(storageErrorMessage(err, '제보를 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
   }
 }

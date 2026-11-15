@@ -57,7 +57,8 @@
 |---|---|
 | 1차 필터 | Haversine 거리 200m 이내 후보 추림 |
 | 2차 판단 | 다국어 문장 임베딩 코사인 유사도 ≥ 0.45 |
-| 벡터 갱신 | 배정 시 (기존 + 신규) / 2 평균 갱신 |
+| 벡터 갱신 | 배정 시 제보 수 기준 누적 평균 후 정규화 (Firestore 트랜잭션) |
+| 제외 대상 | 해결 완료된 군집은 후보에서 제외 — 같은 자리의 새 위험은 새 군집 |
 
 - 임베딩 모델: `Xenova/paraphrase-multilingual-MiniLM-L12-v2` (~117MB, WASM, 브라우저 캐시)
 - TF-IDF 대비 정확도 +8.5%p (130개 테스트케이스 기준, 63.8% → 72.3%)
@@ -91,7 +92,9 @@
 | 히트맵 | Leaflet 1.9.4 + Leaflet.heat 0.2.0 |
 | 임베딩 | `@huggingface/transformers` v4 (WASM) |
 | AI 요약 | AWS Bedrock Claude API (클라이언트 직접 호출) |
-| 저장소 | localStorage (서버 없음) |
+| 저장소 | Firebase Firestore (localStorage는 오프라인용 읽기 캐시) |
+| 인증 | Firebase Auth (구글 로그인) |
+| 분류 | Cloudflare Worker + Workers AI (`worker/`) |
 | 배포 | GitHub Pages |
 
 ---
@@ -160,7 +163,9 @@ npm run preview # 빌드 결과물 로컬 미리보기
 
 ### 데모 데이터 주입
 
-메인 페이지 리스트 헤더의 **DB 아이콘** 버튼 클릭 → 협성대학교 기준 7개 군집, 15개 제보 자동 생성
+메인 페이지 리스트 헤더의 **DB 아이콘** 버튼 클릭 → 데모 군집 17개, 제보 30건을 넣습니다.
+
+데모 문서는 고정 ID(`demo-report-01` …)를 쓰므로 여러 번 넣어도 중복되지 않고, 실제 제보는 건드리지 않습니다. 서버에 제보가 하나도 없을 때는 첫 접속 시 자동으로 들어갑니다.
 
 ---
 
@@ -168,15 +173,22 @@ npm run preview # 빌드 결과물 로컬 미리보기
 
 ```
 src/
-├── main.js           # 메인 페이지 — 지도, 리스트, AI 요약 연동
-├── report.js         # 제보 등록 — 폼, 이미지 압축, 위치, 군집 배정
-├── detail.js         # 상세 페이지 — 군집 정보, 관련 제보 리스트
-├── storage.js        # localStorage 읽기/쓰기
-├── clustering.js     # Haversine 거리, 코사인 유사도, 군집 배정
-├── report.js         # 제보 등록 및 Clef-flash 위험도/분야 제안
+├── main.js           # 메인 페이지 — 지도, 리스트, AI 요약, 오프라인 제보 동기화
+├── report.js         # 제보 등록 — 폼, 이미지 압축, 위치, Clef-flash 위험도/분야 제안
+├── detail.js         # 상세 페이지 — 군집 정보, 관련 제보, 공감·댓글, 수정·삭제
+├── mypage.js         # 마이페이지 — 내 제보 목록
+├── admin.js          # 관리자 대시보드 — 현황, 상태 전환, CSV 내보내기
+├── storage.js        # Firestore 읽기/쓰기 + localStorage 읽기 캐시
+├── clustering.js     # Haversine 거리, 코사인 유사도, 군집 배정, 제보 등록 흐름
 ├── embedder.js       # 문장 임베딩 모델 싱글톤
+├── firebase.js       # Firebase 초기화
+├── auth.js           # 구글 로그인, 인증 상태
+├── profile.js        # 안전 온도(랭킹) 계산
+├── shareCard.js      # 안전 카드 생성·공유
+├── pwa.js            # 서비스 워커 등록, 설치 배너
+├── theme.js          # 라이트/다크 테마
 ├── bedrock.js        # AWS Bedrock Claude 호출, 설정값 관리
-└── utils.js          # 시간 포맷, 거리 포맷, 이미지 압축
+└── utils.js          # HTML 이스케이프, 시간·거리 포맷, 이미지 압축
 ```
 
 ### 페이지 라우팅
@@ -186,13 +198,24 @@ src/
 | 메인 | `index.html` | 지도 뷰 + 군집 리스트 + AI 요약 |
 | 제보 등록 | `report.html` | 제보 작성 폼 |
 | 상세 | `detail.html?id=클러스터ID` | 군집 상세 + 소속 제보 리스트 |
+| 마이페이지 | `mypage.html` | 내 제보 목록 (로그인 필요) |
+| 관리자 | `admin.html` | 관할 현황 대시보드 |
+
+### 데이터 저장
+
+원본은 Firestore의 `reports`, `clusters` 컬렉션입니다. 쓰기는 Firestore가 성공해야 성공으로 처리하고, 실패하면 화면에 알립니다. 공감 수·댓글·군집 소속 제보처럼 여러 사람이 동시에 바꾸는 값은 `increment` / `arrayUnion` / 트랜잭션으로 갱신합니다 (`src/storage.js`).
+
+사용자 입력을 `innerHTML`에 넣을 때는 반드시 `utils.js`의 `escapeHtml` / `safeImageSrc`를 거칩니다.
 
 ### localStorage 키 구조
 
+기기별 설정과 오프라인용 캐시만 저장합니다.
+
 | 키 | 설명 |
 |---|---|
-| `reports` | 전체 제보 목록 (`Report[]`) |
-| `clusters` | 전체 군집 목록 (`Cluster[]`) |
+| `reports` / `clusters` | Firestore 조회 결과의 읽기 캐시 (오프라인 표시용) |
+| `offline_reports` | 오프라인에서 작성해 전송 대기 중인 제보 |
+| `my_likes` / `my_flags` | 이 기기에서 공감·신고한 항목 (중복 방지) |
 | `bedrock_token` | Bedrock Bearer 토큰 |
 | `bedrock_model` | 선택된 모델 ID |
 | `bedrock_sort` / `bedrock_max_dist` / `bedrock_max_count` / `bedrock_min_reports` | AI 취합 기준 설정값 |
@@ -207,8 +230,10 @@ src/
 | `file://` 직접 실행 불가 | ES 모듈 CORS 정책으로 JS 실행 안 됨. 반드시 HTTP 서버 필요 |
 | 카카오 지도 도메인 제한 | 등록되지 않은 도메인에서는 지도 로드 실패 |
 | 군집 위치 고정 | 신규 제보 추가 시 centroid 재계산 없이 최초 생성 위치 유지 |
-| 제보/군집 삭제 UI 없음 | localStorage 직접 조작 또는 브라우저 초기화 필요 |
-| 기기 간 동기화 없음 | 데이터는 각 기기의 localStorage에만 존재 |
+| 로그인 필요 | Firestore 보안 규칙상 로그인 사용자만 제보를 읽고 쓸 수 있음. 비로그인 방문자에게는 로그인 안내 표시 |
+| 권한 검사는 클라이언트 기준 | 본인 제보만 수정·삭제 버튼이 보이지만, 실제 차단은 Firestore 보안 규칙에서 해야 함 |
+| 관리자 페이지 인증 없음 | `admin.html`에 관리자 권한 구분이 없음. 로그인한 사용자라면 누구나 상태를 바꿀 수 있음 |
+| 사진을 문서에 Base64로 저장 | 목록 조회 시 사진까지 함께 내려받음. Storage 분리 필요 |
 | 임베딩 모델 첫 로드 | 최초 방문 시 ~117MB 다운로드 (이후 브라우저 캐시) |
 | Tailwind Play CDN | 프로덕션 비권장. 빌드 최적화 미적용 |
 
@@ -223,5 +248,5 @@ src/
 | 동일 사건 자동 군집화 | X | X | O |
 | 시민 간 커뮤니티 | X | O | O |
 | 위험도/분야 자동 분류 | X | X | O |
-| 서버 없이 동작 | X | X | O |
+| 별도 서버 운영 없이 동작 (BaaS) | X | X | O |
 | AI 지역 안전 요약 | X | X | O |

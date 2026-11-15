@@ -3,16 +3,16 @@
  * 메인 페이지 - 카카오 지도 뷰 + 제보 리스트
  */
 
-import { getClusters, getReports, getReportById, addReport, updateReport } from './storage.js'
-import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
-import { haversineDistance, assignCluster } from './clustering.js'
+import { getClusters, getReports, getReportById, storageErrorMessage, wasReadDenied } from './storage.js'
+import { dangerStyle, categoryLabel, relativeTime, escapeHtml, safeImageSrc } from './utils.js'
+import { haversineDistance, submitReport } from './clustering.js'
 import {
   isConfigured, getToken, saveToken, getModel, saveModel,
   getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
 } from './bedrock.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 import { initTheme } from './theme.js'
-import { loginWithGoogle, logout, listenAuthState } from './auth.js'
+import { loginWithGoogle, logout, listenAuthState, waitForAuth } from './auth.js'
 import { initShareCard, openShareModal, reverseGeocodeCoord } from './shareCard.js'
 import { computeUserTemperatures, getTemperatureColor } from './profile.js'
 
@@ -21,12 +21,20 @@ initTheme()
 
 // ── 인증(로그인) UI 렌더링 ───────────────────────────────
 const authContainer = document.getElementById('auth-container')
+// 제보 데이터는 로그인 사용자만 읽을 수 있으므로, 로그인/로그아웃하면 화면을 다시 불러온다
+let knownUid // undefined = 아직 인증 상태 미확정
+listenAuthState((user) => {
+  const uid = user ? user.uid : null
+  if (knownUid !== undefined && knownUid !== uid) location.reload()
+  knownUid = uid
+})
+
 if (authContainer) {
   listenAuthState((user) => {
     if (user) {
       authContainer.innerHTML = `
         <a href="${import.meta.env.BASE_URL}mypage.html" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-1 transition-colors text-xs font-semibold text-foreground border border-border/60 shrink-0 shadow-sm" title="마이페이지">
-          <img src="${user.photoURL || '/icon.svg'}" class="w-4 h-4 rounded-full object-cover shrink-0">
+          <img src="${safeImageSrc(user.photoURL) || `${import.meta.env.BASE_URL}icon.svg`}" alt="" class="w-4 h-4 rounded-full object-cover shrink-0">
           <span class="whitespace-nowrap">마이페이지</span>
         </a>
       `
@@ -99,7 +107,7 @@ document.querySelectorAll('.filter-chip').forEach(btn => {
     const target = e.currentTarget
     target.classList.remove('bg-surface', 'text-muted-foreground')
     target.classList.add('active', 'bg-foreground', 'text-background')
-    
+
     currentCategory = target.getAttribute('data-cat')
     renderMarkers()
     renderList(anchorLat, anchorLng)
@@ -158,12 +166,6 @@ async function updateCurrentRegion() {
   if (name) {
     currentRegionName = name
   }
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, m => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[m]))
 }
 
 function saveMapState(extra = {}) {
@@ -283,7 +285,7 @@ function initMap(lat, lng) {
 
 function renderMarkers() {
   if (!kakaoMap) return
-  
+
   // 기존 클러스터러 및 마커 초기화
   if (window._clusterer) {
     window._clusterer.clear()
@@ -634,12 +636,6 @@ function initPlaceSearch() {
     })
   }
 
-  function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, m => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[m]))
-  }
-
   function renderSearchResults(places) {
     const items = places.slice(0, 6)
     searchDropdown.innerHTML = items.map((place, idx) => {
@@ -862,8 +858,10 @@ function renderList(userLat, userLng) {
   reportCount.textContent = `총 ${clusters.length}건`
 
   if (clusters.length === 0) {
-    reportList.innerHTML = ''
+    // 빈 상태 안내는 목록 컨테이너의 자식이라 innerHTML 을 비우면 함께 사라진다.
+    // 참조를 유지한 채 다시 붙여 넣는다.
     emptyState.classList.remove('hidden')
+    reportList.replaceChildren(emptyState)
     return
   }
   emptyState.classList.add('hidden')
@@ -898,8 +896,9 @@ function renderList(userLat, userLng) {
     const ds     = dangerStyle(cluster.danger)
     const cat    = categoryLabel(cluster.category)
     const time   = relativeTime(cluster.createdAt)
-    const count  = cluster.reportIds.length
+    const count  = Array.isArray(cluster.reportIds) ? cluster.reportIds.length : 1
     const distM  = cluster.dist
+    const thumb  = safeImageSrc(rep.imageBase64)
     const distTxt = distM < 1000 ? `${Math.round(distM)}m` : `${(distM/1000).toFixed(1)}km`
 
     const statusBadge = isResolved
@@ -910,11 +909,11 @@ function renderList(userLat, userLng) {
       : `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${ds.bg} ${ds.text}">${ds.label}</span>`
 
     return `
-      <a href="${import.meta.env.BASE_URL}detail.html?id=${cluster.id}"
+      <a href="${import.meta.env.BASE_URL}detail.html?id=${encodeURIComponent(cluster.id)}"
         class="flex gap-3 p-3 rounded-xl bg-card border border-border active:bg-surface transition ${isResolved ? 'opacity-85' : ''}">
         <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
-          ${rep.imageBase64
-            ? `<img src="${rep.imageBase64}" class="w-full h-full object-cover" alt="썸네일">`
+          ${thumb
+            ? `<img src="${thumb}" class="w-full h-full object-cover" alt="썸네일" loading="lazy">`
             : `<div class="w-full h-full flex items-center justify-center">
                  <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                    <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909"/>
@@ -929,20 +928,20 @@ function renderList(userLat, userLng) {
             ${count > 1 ? `<span class="text-[10px] text-primary font-medium whitespace-nowrap shrink-0">+${count}건</span>` : ''}
             <button type="button"
               class="report-share-btn ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all active:scale-95 shrink-0 whitespace-nowrap"
-              data-cluster-id="${cluster.id}"
+              data-cluster-id="${escapeHtml(cluster.id)}"
               title="이 제보 SNS 안전 카드 공유">
               <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
               <span class="whitespace-nowrap">카드 공유</span>
             </button>
           </div>
-          <p class="text-sm font-semibold text-foreground truncate">${rep.title}</p>
-          <p class="text-xs text-muted-foreground truncate mt-0.5">${rep.description || '상세 설명 없음'}</p>
+          <p class="text-sm font-semibold text-foreground truncate">${escapeHtml(rep.title)}</p>
+          <p class="text-xs text-muted-foreground truncate mt-0.5">${escapeHtml(rep.description || '상세 설명 없음')}</p>
           <div class="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
             <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
             </svg>
-            <span class="truncate">${rep.location.address || '위치 정보 없음'}</span>
+            <span class="truncate">${escapeHtml(rep.location?.address || '위치 정보 없음')}</span>
             <span class="ml-auto flex-shrink-0 text-muted-foreground">${distTxt} · ${time}</span>
           </div>
         </div>
@@ -1081,7 +1080,7 @@ async function runAISummary({ force = false } = {}) {
     if (cached) {
       const lines = cached.split('\n')
       aiSummaryText.innerHTML = lines.map((l, i) =>
-        i === 0 ? `<strong>${l}</strong>` : `<span>${l}</span>`
+        i === 0 ? `<strong>${escapeHtml(l)}</strong>` : `<span>${escapeHtml(l)}</span>`
       ).join('<br>')
       aiAlertWrap.classList.remove('hidden')
       aiAlertLoading.classList.add('hidden')
@@ -1144,7 +1143,7 @@ async function runAISummary({ force = false } = {}) {
     const text = await summarizeArea(payload, { force })
     const lines = text.split('\n')
     aiSummaryText.innerHTML = lines.map((l, i) =>
-      i === 0 ? `<strong>${l}</strong>` : `<span>${l}</span>`
+      i === 0 ? `<strong>${escapeHtml(l)}</strong>` : `<span>${escapeHtml(l)}</span>`
     ).join('<br>')
     aiAlertLoading.classList.add('hidden')
     aiAlertResult.classList.remove('hidden')
@@ -1158,13 +1157,6 @@ async function runAISummary({ force = false } = {}) {
 // ── 목업 데이터 시드 ─────────────────────────────────────
 
 async function seedDemoData() {
-  function uuid() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = (Math.random() * 16) | 0
-      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-    })
-  }
   const hoursAgo = n => Date.now() - n * 3600000
   const daysAgo  = n => Date.now() - n * 86400000
 
@@ -1173,8 +1165,11 @@ async function seedDemoData() {
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
   }
 
-  const r = Array.from({ length: 30 }, uuid)
-  const c = Array.from({ length: 17 },  uuid)
+  // 데모 데이터는 고정 ID를 쓴다. 누가 몇 번을 다시 넣어도 같은 문서를 덮어쓸 뿐
+  // 공용 DB에 중복 제보가 쌓이지 않는다.
+  const demoId = (kind, i) => `demo-${kind}-${String(i + 1).padStart(2, '0')}`
+  const r = Array.from({ length: 30 }, (_, i) => demoId('report', i))
+  const c = Array.from({ length: 17 }, (_, i) => demoId('cluster', i))
 
   const reports = [
     // [1] 서울 시청역 - 싱크홀 / 지반 침하
@@ -1254,14 +1249,18 @@ async function seedDemoData() {
   const { saveReports, saveClusters } = await import('./storage.js')
   await saveReports(reports)
   await saveClusters(clusters)
-  await syncOfflineReports();
   await syncDataFromStorage()
 }
 
-document.getElementById('seed-btn').addEventListener('click', async () => {
-  if (!confirm('테스트 데이터를 주입하고 페이지를 새로고침합니다.\n기존 데이터는 덮어씌워집니다.')) return
-  await seedDemoData()
-  location.reload()
+document.getElementById('seed-btn')?.addEventListener('click', async () => {
+  if (!confirm('데모 제보 30건을 넣고 페이지를 새로고침합니다.\n이미 들어 있는 데모 제보는 처음 상태로 되돌아가고, 실제 제보는 그대로 유지됩니다.')) return
+  try {
+    await seedDemoData()
+    location.reload()
+  } catch (err) {
+    console.error('[main] seed failed:', err)
+    alert(storageErrorMessage(err, '데모 데이터를 넣지 못했습니다.'))
+  }
 })
 
 
@@ -1307,7 +1306,7 @@ async function renderRankingModal() {
       if (el) el.classList.remove('hidden');
     });
   }
-  
+
   const closeBtn = document.getElementById('close-ranking-modal');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -1316,16 +1315,16 @@ async function renderRankingModal() {
     });
   }
   const ranking = await computeUserTemperatures()
-  
+
   // 1. 내 프로필 렌더링 (로그인한 유저 기준, 없으면 시민A를 임시 내 프로필로 가정)
   let me = null
   listenAuthState((user) => {
     const myName = user ? user.displayName : '시민A' // 데모용
     me = ranking.find(u => u.name === myName) || { name: myName, temperature: 36.5 }
-    
+
     document.getElementById('my-profile-name').textContent = me.name
     if (user && user.photoURL) {
-      document.getElementById('my-profile-avatar').innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full object-cover">`
+      document.getElementById('my-profile-avatar').innerHTML = `<img src="${safeImageSrc(user.photoURL)}" alt="" class="w-full h-full rounded-full object-cover">`
     } else {
       document.getElementById('my-profile-avatar').textContent = me.name.charAt(0)
     }
@@ -1336,7 +1335,7 @@ async function renderRankingModal() {
   // 2. 랭킹 리스트 렌더링
   const listEl = document.getElementById('ranking-list')
   if (!listEl) return
-  
+
   if (ranking.length === 0) {
     listEl.innerHTML = '<div class="text-center text-sm py-8 text-muted-foreground">아직 랭킹 데이터가 없습니다.</div>'
     return
@@ -1356,7 +1355,7 @@ async function renderRankingModal() {
         <div class="flex items-center gap-3">
           <div class="font-bold text-lg w-6 text-center text-muted-foreground">${medal}</div>
           <div>
-            <div class="font-bold text-sm text-foreground">${u.name}</div>
+            <div class="font-bold text-sm text-foreground">${escapeHtml(u.name)}</div>
             <div class="text-[10px] text-muted-foreground">제보 ${u.reportsCount} · 해결 ${u.resolvedCount} · 공감 ${u.likesReceived}</div>
           </div>
         </div>
@@ -1371,41 +1370,73 @@ async function renderRankingModal() {
 
 // 오프라인 제보 동기화 로직
 let isSyncingOffline = false;
+function readOfflineQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('offline_reports') || '[]');
+    return Array.isArray(queue) ? queue : [];
+  } catch {
+    return [];
+  }
+}
+
 async function syncOfflineReports() {
   if (!navigator.onLine || isSyncingOffline) return;
-  const offlineReports = JSON.parse(localStorage.getItem('offline_reports') || '[]');
+  const offlineReports = readOfflineQueue();
   if (offlineReports.length === 0) return;
 
   isSyncingOffline = true;
+  let sent = 0;
   try {
     for (const report of offlineReports) {
-      await addReport(report);
-      const clusterId = await assignCluster(report);
-      report.clusterId = clusterId;
-      await updateReport(report);
+      await submitReport(report);
+      // 한 건 보낼 때마다 큐에서 지운다. 중간에 실패해도 이미 보낸 제보를 다시 보내지 않는다.
+      const rest = readOfflineQueue().filter(q => q.id !== report.id);
+      if (rest.length) localStorage.setItem('offline_reports', JSON.stringify(rest));
+      else localStorage.removeItem('offline_reports');
+      sent++;
     }
-    localStorage.removeItem('offline_reports');
-    alert(`연결이 복구되어 임시 저장된 오프라인 제보 ${offlineReports.length}건이 자동 전송되었습니다! 🚀`);
-    location.reload();
   } catch (err) {
-    console.error('오프라인 동기화 실패:', err);
+    console.error('오프라인 동기화 실패 (남은 제보는 다음 접속 때 다시 시도):', err);
   } finally {
     isSyncingOffline = false;
+  }
+  if (sent > 0) {
+    alert(`연결이 복구되어 임시 저장된 오프라인 제보 ${sent}건이 자동 전송되었습니다! 🚀`);
+    location.reload();
   }
 }
 
 window.addEventListener('online', syncOfflineReports);
 
+/** 비로그인 방문자가 제보를 볼 수 없을 때, 빈 목록 대신 로그인 안내를 보여 준다 */
+function showLoginRequiredState() {
+  if (!emptyState) return
+  const msg = emptyState.querySelector('p')
+  if (msg) msg.innerHTML = '주변 위험 제보는 <span class="text-primary font-medium">로그인 후</span> 볼 수 있어요.'
+  if (!document.getElementById('empty-login-btn')) {
+    const btn = document.createElement('button')
+    btn.id = 'empty-login-btn'
+    btn.type = 'button'
+    btn.className = 'px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm'
+    btn.textContent = '구글 로그인'
+    btn.addEventListener('click', () => loginWithGoogle())
+    emptyState.appendChild(btn)
+  }
+}
+
 async function startApp() {
+  // 인증 상태가 확정된 뒤에 조회해야 로그인 사용자의 첫 조회가 거부되지 않는다
+  const user = await waitForAuth()
   await syncDataFromStorage()
-  if (allClusters.length < 15 || !localStorage.getItem('v3_seeded')) {
-    const savedOffline = localStorage.getItem('offline_reports')
-    const savedTheme = localStorage.getItem('fermata_theme')
-    localStorage.clear()
-    if (savedOffline) localStorage.setItem('offline_reports', savedOffline)
-    if (savedTheme) localStorage.setItem('fermata_theme', savedTheme)
-    localStorage.setItem('v3_seeded', 'true')
-    await seedDemoData()
+  if (!user && wasReadDenied()) showLoginRequiredState()
+  // 서버에 제보가 하나도 없을 때만 데모 데이터를 자동으로 넣는다.
+  // (예전에는 새 방문자마다 localStorage를 지우고 데모 30건을 새 ID로 다시 써넣었다)
+  if (user && allClusters.length === 0 && !wasReadDenied() && navigator.onLine) {
+    try {
+      await seedDemoData()
+    } catch (err) {
+      console.warn('[main] 데모 데이터 자동 주입 실패:', err)
+    }
   }
   await syncOfflineReports()
 

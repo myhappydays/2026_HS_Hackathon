@@ -7,8 +7,8 @@
  */
 
 import { initTheme } from './theme.js'
-import { getClusters, getReports, updateCluster } from './storage.js'
-import { dangerStyle, categoryLabel, relativeTime } from './utils.js'
+import { getClusters, getReports, patchCluster, storageErrorMessage } from './storage.js'
+import { dangerStyle, categoryLabel, relativeTime, escapeHtml, safeImageSrc } from './utils.js'
 
 // 테마 초기화
 initTheme()
@@ -91,7 +91,7 @@ function updateClock() {
   const now = new Date()
   if (currentTimeEl) {
     currentTimeEl.textContent = now.toLocaleString('ko-KR', {
-      year: 'numeric', month: '2-digit', day: '2-digit', 
+      year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     })
   }
@@ -139,7 +139,7 @@ function updateDistrictDropdowns() {
   const buildOptions = (currentVal) => {
     return `
       <option value="all">전체 관할 구역</option>
-      ${districts.map(d => `<option value="${d}" ${currentVal === d ? 'selected' : ''}>${d}</option>`).join('')}
+      ${districts.map(d => `<option value="${escapeHtml(d)}" ${currentVal === d ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}
     `
   }
 
@@ -252,8 +252,8 @@ function renderMapMarkers() {
 
     // 클릭 시 인포윈도우 표시
     const rep = allReportsMap.get(cluster.representId)
-    const title = rep?.title || '위험 제보 구역'
-    const address = rep?.location?.address || cluster.location?.address || '위치 정보 없음'
+    const title = escapeHtml(rep?.title || '위험 제보 구역')
+    const address = escapeHtml(rep?.location?.address || cluster.location?.address || '위치 정보 없음')
 
     const infoContent = `
       <div style="padding:10px 12px; min-width:210px; font-family:sans-serif; font-size:12px; color:#1e293b; line-height:1.4;">
@@ -262,7 +262,7 @@ function renderMapMarkers() {
         </div>
         <div style="font-weight:600; margin-bottom:2px; word-break:break-all;">${title}</div>
         <div style="font-size:11px; color:#64748b; margin-bottom:8px;">${address}</div>
-        <a href="detail.html?id=${cluster.id}" target="_blank" style="display:inline-block; padding:4px 10px; border-radius:6px; background:#e11d48; color:#ffffff; text-decoration:none; font-weight:700; font-size:11px;">
+        <a href="detail.html?id=${encodeURIComponent(cluster.id)}" target="_blank" rel="noopener" style="display:inline-block; padding:4px 10px; border-radius:6px; background:#e11d48; color:#ffffff; text-decoration:none; font-weight:700; font-size:11px;">
           상세 조치 보고서 ↗
         </a>
       </div>
@@ -418,7 +418,7 @@ function renderCategoryStats() {
   sorted.forEach(([cat, count]) => {
     const percentage = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0
     const label = categoryLabel(cat)
-    
+
     const item = document.createElement('div')
     item.className = 'w-full flex flex-col gap-1'
     item.innerHTML = `
@@ -472,8 +472,8 @@ function renderRankingBoard() {
   const medals = ['🥇', '🥈', '🥉']
   ranking.forEach((r, i) => {
     const hours = r.avgMs / (1000 * 60 * 60)
-    const timeStr = hours >= 24 
-      ? `${(hours / 24).toFixed(1)}일` 
+    const timeStr = hours >= 24
+      ? `${(hours / 24).toFixed(1)}일`
       : `${Math.max(1, Math.round(hours))}시간`
 
     const row = document.createElement('div')
@@ -482,7 +482,7 @@ function renderRankingBoard() {
       <div class="flex items-center gap-2.5 min-w-0">
         <span class="text-lg flex-shrink-0">${i < 3 ? medals[i] : `<span class="text-xs font-bold text-muted-foreground w-5 text-center inline-block">${i+1}</span>`}</span>
         <div class="truncate">
-          <p class="font-bold text-foreground text-xs truncate">${r.name}</p>
+          <p class="font-bold text-foreground text-xs truncate">${escapeHtml(r.name)}</p>
           <p class="text-[10px] text-muted-foreground">누적 조치: ${r.count}건</p>
         </div>
       </div>
@@ -614,15 +614,17 @@ function renderFilteredTable() {
     const rep = allReportsMap.get(cluster.representId)
     const isResolved = cluster.status === 'resolved'
     const ds = dangerStyle(cluster.danger)
-    const address = rep?.location?.address || cluster.location?.address || '위치 정보 없음'
-    const district = getDistrictFromAddress(address)
-    const title = rep?.title || '대표 제보'
-    const desc = rep?.description || ''
+    // 아래 값들은 innerHTML/속성에 그대로 들어가므로 여기서 이스케이프한다
+    const rawAddress = rep?.location?.address || cluster.location?.address || '위치 정보 없음'
+    const address = escapeHtml(rawAddress)
+    const district = escapeHtml(getDistrictFromAddress(rawAddress))
+    const title = escapeHtml(rep?.title || '대표 제보')
+    const desc = escapeHtml(rep?.description || '')
     const time = relativeTime(cluster.createdAt || Date.now())
     const createdDateStr = cluster.createdAt ? new Date(cluster.createdAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
     const resolvedDateStr = cluster.resolvedAt ? new Date(cluster.resolvedAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
-    const imageBase64 = rep?.imageBase64 || null
-    const shortId = (cluster.id || '').slice(0, 8)
+    const imageBase64 = safeImageSrc(rep?.imageBase64) || null
+    const shortId = escapeHtml((cluster.id || '').slice(0, 8))
 
     const tr = document.createElement('tr')
     tr.className = `hover:bg-surface/40 transition-colors ${isResolved ? 'opacity-80' : ''}`
@@ -632,7 +634,7 @@ function renderFilteredTable() {
       tr.innerHTML = `
         <td class="px-3 py-3 font-mono text-muted-foreground text-[11px]">${shortId}</td>
         <td class="px-3 py-3">
-          ${isResolved 
+          ${isResolved
             ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-500 border border-blue-500/30">
                  완료
                </span>`
@@ -663,12 +665,12 @@ function renderFilteredTable() {
         <td class="px-3 py-3 text-center font-bold text-red-500">${cluster.likes || 0}</td>
         <td class="px-3 py-3 text-right sticky right-0 bg-background/95 backdrop-blur-sm shadow-sm z-10">
           <div class="inline-flex items-center gap-1 justify-end">
-            <button type="button" 
+            <button type="button"
               class="btn-toggle-action px-2 py-0.5 rounded text-[11px] font-bold transition-all ${isResolved ? 'bg-surface hover:bg-surface-1 border border-border text-muted-foreground' : 'bg-primary text-white hover:bg-primary/90'}"
-              data-id="${cluster.id}">
+              data-id="${escapeHtml(cluster.id)}">
               ${isResolved ? '재접수' : '조치완료'}
             </button>
-            <a href="detail.html?id=${cluster.id}" target="_blank" class="p-1 rounded border border-border bg-surface hover:bg-surface-1 text-foreground" title="보고서">
+            <a href="detail.html?id=${encodeURIComponent(cluster.id)}" target="_blank" rel="noopener" class="p-1 rounded border border-border bg-surface hover:bg-surface-1 text-foreground" title="보고서">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
             </a>
           </div>
@@ -678,7 +680,7 @@ function renderFilteredTable() {
       // 📊 표준 대시보드 뷰 행
       tr.innerHTML = `
         <td class="px-4 py-3">
-          ${isResolved 
+          ${isResolved
             ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                  해결 완료
@@ -729,12 +731,12 @@ function renderFilteredTable() {
 
         <td class="px-4 py-3 text-right">
           <div class="inline-flex items-center gap-1.5 justify-end">
-            <button type="button" 
+            <button type="button"
               class="btn-toggle-action px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm ${isResolved ? 'bg-surface hover:bg-surface-1 border border-border text-muted-foreground' : 'bg-primary text-white hover:bg-primary/90'}"
-              data-id="${cluster.id}">
+              data-id="${escapeHtml(cluster.id)}">
               ${isResolved ? '재접수 전환' : '조치 완료'}
             </button>
-            <a href="detail.html?id=${cluster.id}" target="_blank"
+            <a href="detail.html?id=${encodeURIComponent(cluster.id)}" target="_blank" rel="noopener"
               class="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-1 text-foreground transition"
               title="상세 보고서 보기">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -779,11 +781,18 @@ async function toggleClusterStatus(clusterId) {
   const isResolved = cluster.status === 'resolved'
   const newStatus = isResolved ? 'active' : 'resolved'
 
-  cluster.status = newStatus
-  cluster.resolvedAt = newStatus === 'resolved' ? Date.now() : null
-  cluster.updatedAt = Date.now()
-
-  await updateCluster(cluster)
+  // 상태 관련 필드만 갱신한다. 문서 전체를 덮어쓰면 그 사이 달린 댓글·공감·새 제보가 사라진다.
+  try {
+    await patchCluster(clusterId, {
+      status: newStatus,
+      resolvedAt: newStatus === 'resolved' ? Date.now() : null,
+      updatedAt: Date.now(),
+    })
+  } catch (err) {
+    console.error('[admin] status toggle failed:', err)
+    alert(storageErrorMessage(err, '상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
+    return
+  }
   await loadDashboard(true)
 }
 
@@ -850,9 +859,14 @@ function exportToCSV() {
     const catText    = categoryLabel(c.category)
     const addr       = (rep?.location?.address || c.location?.address || '')
     const district   = getDistrictFromAddress(addr)
-    const addrText   = `"${addr.replace(/"/g, '""')}"`
-    const titleText  = `"${(rep?.title || '').replace(/"/g, '""')}"`
-    const descText   = `"${(rep?.description || '').replace(/"/g, '""')}"`
+    // 사용자 입력이 =,+,-,@ 로 시작하면 엑셀이 수식으로 실행하므로 작은따옴표를 붙여 막는다
+    const csvCell    = v => {
+      const text = String(v ?? '')
+      return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`
+    }
+    const addrText   = csvCell(addr)
+    const titleText  = csvCell(rep?.title || '')
+    const descText   = csvCell(rep?.description || '')
     const createdStr = c.createdAt ? new Date(c.createdAt).toLocaleString('ko-KR') : ''
     const resolvedStr= c.resolvedAt ? new Date(c.resolvedAt).toLocaleString('ko-KR') : ''
     const likes      = c.likes || 0

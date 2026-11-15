@@ -19,11 +19,48 @@ export function generateId() {
 }
 
 /**
- * Unix timestamp (ms) → 한국어 상대 시간 표시
- * @param {number} ts
+ * HTML 특수문자 이스케이프. 사용자 입력을 innerHTML/속성에 넣을 때 반드시 거친다.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[m]))
+}
+
+/**
+ * <img src>에 넣어도 되는 주소만 통과시키고 이스케이프한다.
+ * (data:image, http(s), blob 만 허용 — javascript: 등은 빈 문자열)
+ * @param {unknown} src
+ * @returns {string}
+ */
+export function safeImageSrc(src) {
+  if (typeof src !== 'string') return ''
+  const v = src.trim()
+  return /^(data:image\/|https?:\/\/|blob:)/i.test(v) ? escapeHtml(v) : ''
+}
+
+/**
+ * 숫자(ms)·ISO 문자열·Date 가 섞여 저장된 시각을 ms 숫자로 통일
+ * @param {number|string|Date|null|undefined} value
+ * @returns {number} 변환 불가 시 0
+ */
+export function toMillis(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  if (!value) return 0
+  const t = new Date(value).getTime()
+  return Number.isFinite(t) ? t : 0
+}
+
+/**
+ * Unix timestamp (ms) 또는 ISO 문자열 → 한국어 상대 시간 표시
+ * @param {number|string} ts
  * @returns {string}
  */
 export function relativeTime(ts) {
+  ts = toMillis(ts)
+  if (!ts) return ''
   const diff = Date.now() - ts
   const sec  = Math.floor(diff / 1000)
   const min  = Math.floor(sec / 60)
