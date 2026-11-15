@@ -8,6 +8,7 @@
 
 import { initTheme } from './theme.js'
 import { getClusters, getReports, patchCluster, storageErrorMessage } from './storage.js'
+import { listenAuthState, loginWithGoogle, logout, isAdminUser, getCurrentUser } from './auth.js'
 import { dangerStyle, categoryLabel, relativeTime, escapeHtml, safeImageSrc } from './utils.js'
 
 // 테마 초기화
@@ -786,6 +787,7 @@ async function toggleClusterStatus(clusterId) {
     await patchCluster(clusterId, {
       status: newStatus,
       resolvedAt: newStatus === 'resolved' ? Date.now() : null,
+      resolvedBy: newStatus === 'resolved' ? (getCurrentUser()?.uid || null) : null,
       updatedAt: Date.now(),
     })
   } catch (err) {
@@ -1010,8 +1012,72 @@ function bindEventListeners() {
   })
 }
 
-// ── 초기화 실행 ─────────────────────────────────────────
-initAdminMap()
-bindEventListeners()
-loadDashboard()
-startAutoRefresh()
+// ── 관리자 인증 게이트 ───────────────────────────────────
+// 로그인한 계정의 admins/{uid} 문서가 확인된 뒤에만 대시보드를 초기화한다.
+const gateEl        = document.getElementById('admin-gate')
+const gateMessage   = document.getElementById('admin-gate-message')
+const gateUidWrap   = document.getElementById('admin-gate-uid-wrap')
+const gateAccount   = document.getElementById('admin-gate-account')
+const gateUid       = document.getElementById('admin-gate-uid')
+const gateLoginBtn  = document.getElementById('admin-gate-login')
+const gateLogoutBtn = document.getElementById('admin-gate-logout')
+
+let dashboardStarted = false
+let authCheckSeq = 0
+
+function showGate(state, user = null) {
+  gateEl?.classList.remove('hidden')
+  gateLoginBtn?.classList.toggle('hidden', state !== 'login')
+  gateLogoutBtn?.classList.toggle('hidden', state !== 'denied')
+  gateUidWrap?.classList.toggle('hidden', state !== 'denied')
+  if (!gateMessage) return
+  if (state === 'checking') {
+    gateMessage.textContent = '관리자 권한을 확인하고 있습니다...'
+  } else if (state === 'login') {
+    gateMessage.textContent = '관리자 전용 페이지입니다. 관리자 계정으로 로그인해 주세요.'
+  } else if (state === 'denied') {
+    gateMessage.textContent = '이 계정에는 관리자 권한이 없습니다. 권한이 필요하면 아래 UID를 담당자에게 전달해 주세요.'
+    if (gateAccount) gateAccount.textContent = user?.email || user?.displayName || ''
+    if (gateUid) gateUid.textContent = user?.uid || ''
+  }
+}
+
+function stopDashboard() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
+function startDashboard() {
+  gateEl?.classList.add('hidden')
+  if (!dashboardStarted) {
+    dashboardStarted = true
+    initAdminMap()
+    bindEventListeners()
+  }
+  loadDashboard()
+  startAutoRefresh()
+}
+
+gateLoginBtn?.addEventListener('click', () => loginWithGoogle())
+gateLogoutBtn?.addEventListener('click', () => logout())
+document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
+  if (confirm('관리자 계정에서 로그아웃 하시겠습니까?')) await logout()
+})
+const gateHome = document.getElementById('admin-gate-home')
+if (gateHome) gateHome.href = `${import.meta.env.BASE_URL}index.html`
+
+listenAuthState(async (user) => {
+  const seq = ++authCheckSeq
+  stopDashboard()
+  if (!user) {
+    showGate('login')
+    return
+  }
+  showGate('checking')
+  const ok = await isAdminUser(user)
+  if (seq !== authCheckSeq) return // 확인 중에 계정이 바뀌었으면 이전 결과는 버린다
+  if (ok) startDashboard()
+  else showGate('denied', user)
+})

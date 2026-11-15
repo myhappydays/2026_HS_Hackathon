@@ -201,6 +201,59 @@ src/
 | 마이페이지 | `mypage.html` | 내 제보 목록 (로그인 필요) |
 | 관리자 | `admin.html` | 관할 현황 대시보드 |
 
+### 관리자 페이지
+
+`admin.html`은 사용자 화면 어디에도 링크가 없으며 주소로 직접 접속합니다. 구글 로그인 후 Firestore에 `admins/{UID}` 문서가 있는 계정에만 대시보드가 열립니다.
+
+관리자 추가 방법:
+
+1. 관리자로 쓸 구글 계정으로 `admin.html`에 로그인 → "관리자 권한이 없습니다" 화면에 표시되는 **UID** 복사
+2. Firebase 콘솔 → Firestore Database → `admins` 컬렉션에 **문서 ID = 그 UID** 로 문서 추가 (필드는 자유, 예: `note: "운영 담당"`)
+3. `admin.html` 새로고침
+
+관리자 삭제는 해당 문서를 지우면 됩니다. 재배포는 필요 없습니다.
+
+화면 차단만으로는 데이터가 보호되지 않으므로 Firestore 보안 규칙도 함께 적용해야 합니다. 권장 규칙:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // 관리자 목록: 본인 문서 존재 여부만 확인 가능, 쓰기는 콘솔에서만
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    match /reports/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      // 작성자 본인 또는 관리자만 수정·삭제. 그 외에는 신고 횟수(reportCount)와 군집 배정(clusterId)만 변경 가능
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount', 'clusterId']));
+      allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /clusters/{id} {
+      allow read: if signedIn();
+      // 상태 전환(status, resolvedAt, resolvedBy)은 관리자만
+      allow create: if signedIn();
+      allow update: if isAdmin()
+        || (signedIn() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'resolvedAt', 'resolvedBy']));
+      allow delete: if signedIn();
+    }
+  }
+}
+```
+
+> 위 규칙은 현재 앱 동작에 맞춘 초안입니다. 적용 전 Firebase 콘솔의 규칙 플레이그라운드로 제보 등록·공감·댓글·삭제를 확인하세요. 군집 삭제와 군집 내용 수정은 군집화가 브라우저에서 돌기 때문에 로그인 사용자에게 열려 있습니다.
+
 ### 데이터 저장
 
 원본은 Firestore의 `reports`, `clusters` 컬렉션입니다. 쓰기는 Firestore가 성공해야 성공으로 처리하고, 실패하면 화면에 알립니다. 공감 수·댓글·군집 소속 제보처럼 여러 사람이 동시에 바꾸는 값은 `increment` / `arrayUnion` / 트랜잭션으로 갱신합니다 (`src/storage.js`).
@@ -232,7 +285,7 @@ src/
 | 군집 위치 고정 | 신규 제보 추가 시 centroid 재계산 없이 최초 생성 위치 유지 |
 | 로그인 필요 | Firestore 보안 규칙상 로그인 사용자만 제보를 읽고 쓸 수 있음. 비로그인 방문자에게는 로그인 안내 표시 |
 | 권한 검사는 클라이언트 기준 | 본인 제보만 수정·삭제 버튼이 보이지만, 실제 차단은 Firestore 보안 규칙에서 해야 함 |
-| 관리자 페이지 인증 없음 | `admin.html`에 관리자 권한 구분이 없음. 로그인한 사용자라면 누구나 상태를 바꿀 수 있음 |
+| 관리자 차단은 화면 기준 | `admin.html`은 관리자 계정에만 대시보드를 보여 주지만, 서버 차단은 아래 보안 규칙을 적용해야 완성됨 |
 | 사진을 문서에 Base64로 저장 | 목록 조회 시 사진까지 함께 내려받음. Storage 분리 필요 |
 | 임베딩 모델 첫 로드 | 최초 방문 시 ~117MB 다운로드 (이후 브라우저 캐시) |
 | Tailwind Play CDN | 프로덕션 비권장. 빌드 최적화 미적용 |

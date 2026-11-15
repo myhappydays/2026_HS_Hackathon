@@ -133,6 +133,15 @@ export function registerPWA() {
 
   if (!('serviceWorker' in navigator)) return;
 
+  // 개발 서버에서는 서비스 워커를 쓰지 않는다. 소스 모듈(/src/*.js)이 캐시되어
+  // 수정한 코드가 한 박자 늦게 반영되기 때문이다. 이미 등록된 것이 있으면 해제한다.
+  if (import.meta.env.DEV) {
+    navigator.serviceWorker.getRegistrations()
+      .then(regs => regs.forEach(reg => reg.unregister()))
+      .catch(() => {});
+    return;
+  }
+
   const register = async () => {
     try {
       const base = import.meta.env.BASE_URL || './';

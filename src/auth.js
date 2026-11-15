@@ -1,4 +1,5 @@
-import { auth, googleProvider } from './firebase.js';
+import { auth, db, googleProvider } from './firebase.js';
+import { doc, getDoc } from "firebase/firestore";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 
 /**
@@ -18,6 +19,28 @@ export async function loginWithGoogle() {
       ? "팝업이 차단되어 로그인 창을 열지 못했습니다. 팝업 차단을 해제한 뒤 다시 시도해 주세요."
       : "로그인 중 문제가 발생했습니다.");
     return null;
+  }
+}
+
+/**
+ * 관리자 여부를 확인합니다.
+ * Firestore 의 admins/{uid} 문서가 있으면 관리자입니다. (문서 내용은 보지 않음)
+ * 관리자 추가·삭제는 Firebase 콘솔에서 이 문서를 만들거나 지우면 됩니다.
+ *
+ * 주의: 이 검사는 화면을 가리는 용도입니다. 실제 데이터 보호는
+ * Firestore 보안 규칙에서 같은 admins 문서를 기준으로 걸어야 합니다.
+ *
+ * @param {import('firebase/auth').User|null} user
+ * @returns {Promise<boolean>}
+ */
+export async function isAdminUser(user) {
+  if (!user) return false;
+  try {
+    const snap = await getDoc(doc(db, 'admins', user.uid));
+    return snap.exists();
+  } catch (error) {
+    console.warn("관리자 권한 확인 실패:", error);
+    return false;
   }
 }
 
@@ -55,7 +78,7 @@ export async function waitForAuth() {
 }
 
 /**
- * 현재 로그인된 사용자 객체를 반환합니다. 
+ * 현재 로그인된 사용자 객체를 반환합니다.
  * (주의: 페이지 로드 직후에는 null일 수 있으므로 listenAuthState 사용 권장)
  */
 export function getCurrentUser() {
