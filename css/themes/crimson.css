@@ -718,3 +718,18 @@
   --map-colors-border: var(--border-line-3);
   --map-colors-border-inverse: var(--border-line-4);
 }
+
+/* ============================================ */
+/* PRIMARY AS TEXT                              */
+/* ============================================ */
+/* 버튼 배경으로 쓰는 --primary(크림슨 500)는 어두운 배경 위 글씨로는 대비가 약 4:1 로 부족하다.
+   다크 모드에서 글씨·아이콘으로 쓸 때만 한 단계 밝은 톤을 쓴다. (배경/테두리의 primary 는 그대로) */
+[data-theme="theme-crimson"] { --primary-text: var(--primary); }
+[data-theme="theme-crimson"].dark { --primary-text: oklch(73% 0.17 25); }
+
+.dark .text-primary,
+.dark .hover\:text-primary:hover,
+.dark .group:hover .group-hover\:text-primary,
+.dark .hs-accordion.active .hs-accordion-active\:text-primary {
+  color: var(--primary-text);
+}

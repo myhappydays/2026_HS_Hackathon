@@ -1342,24 +1342,23 @@ async function renderRankingModal() {
   }
 
   listEl.innerHTML = ranking.slice(0, 10).map((u, i) => {
-    let medal = ''
-    if (i === 0) medal = '🥇 '
-    else if (i === 1) medal = '🥈 '
-    else if (i === 2) medal = '🥉 '
-    else medal = `<span class="inline-block w-5 text-center">${i+1}</span>`
+    // 순위 배지: 상위 3명만 강조색, 나머지는 중립
+    const rankClass = i < 3
+      ? 'bg-primary/15 text-primary border border-primary/25'
+      : 'bg-surface text-muted-foreground border border-border'
 
     const colorClass = getTemperatureColor(u.temperature)
 
     return `
-      <div class="flex items-center justify-between p-3 rounded-lg border border-border bg-surface hover:bg-surface-1 transition-colors">
-        <div class="flex items-center gap-3">
-          <div class="font-bold text-lg w-6 text-center text-muted-foreground">${medal}</div>
+      <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-card">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold tabular-nums shrink-0 ${rankClass}">${i + 1}</div>
           <div>
-            <div class="font-bold text-sm text-foreground">${escapeHtml(u.name)}</div>
+            <div class="font-semibold text-sm text-foreground truncate">${escapeHtml(u.name)}</div>
             <div class="text-[10px] text-muted-foreground">제보 ${u.reportsCount} · 해결 ${u.resolvedCount} · 공감 ${u.likesReceived}</div>
           </div>
         </div>
-        <div class="px-2.5 py-1 rounded-full text-xs font-bold border ${colorClass}">
+        <div class="px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums shrink-0 ${colorClass}">
           ${u.temperature.toFixed(1)}°C
         </div>
       </div>

@@ -187,7 +187,7 @@ function setupLikes(cluster) {
     btnLike.classList.replace('bg-primary/10', 'bg-primary')
     btnLike.classList.replace('text-primary', 'text-white')
     btnLike.classList.add('opacity-80', 'cursor-not-allowed')
-    btnLike.innerHTML = `⚠️ 공감 완료 <span id="like-count" class="ml-1 text-white">${Number(cluster.likes) || 0}</span>`
+    btnLike.innerHTML = `공감 완료 <span id="like-count" class="ml-1 text-white">${Number(cluster.likes) || 0}</span>`
   }
 
   // 초기 렌더링 시 이미 공감했다면 UI 변경

@@ -11,6 +11,10 @@
 import { isConfigured, callClaude } from './bedrock.js'
 import { escapeHtml } from './utils.js'
 
+// 카드 제목 아이콘. PNG 로 내보낼 때 CSS 색(currentColor)이 빠지므로 색을 속성으로 직접 넣는다.
+const CARD_ICON_WARNING = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e0364a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/><path d="M12 15.75h.007v.008H12v-.008z"/></svg>'
+const CARD_ICON_PIN = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e0364a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>'
+
 let cardRevision = 0
 let currentShareUrl = ''
 
@@ -241,15 +245,17 @@ export function updateCardContent(targetOptions = null) {
 
   // DOM 반영
   const titleEl = document.getElementById('card-area-title')
+  const titleIconEl = document.getElementById('card-title-icon')
   if (titleEl) {
     if (isSpecificReport) {
-      titleEl.textContent = `⚠️ [${areaName}] ${cleanTitle(targetReport.title)}`
+      titleEl.textContent = `[${areaName}] ${cleanTitle(targetReport.title)}`
     } else if (isNoHazards) {
-      titleEl.textContent = `📍 [${areaName}] 주변 제보 현황`
+      titleEl.textContent = `[${areaName}] 주변 제보 현황`
     } else {
-      titleEl.textContent = `⚠️ [${areaName}] 안전 주의보`
+      titleEl.textContent = `[${areaName}] 안전 주의보`
     }
   }
+  if (titleIconEl) titleIconEl.innerHTML = isNoHazards && !isSpecificReport ? CARD_ICON_PIN : CARD_ICON_WARNING
 
   const subtitleEl = document.getElementById('card-subtitle')
   if (subtitleEl) {
@@ -494,6 +500,13 @@ async function captureCardCanvas() {
     backgroundColor: null,
     logging: false,
     imageTimeout: 15000,
+    // html2canvas 는 color-mix()/oklch() 로 계산된 색을 해석하지 못한다.
+    // 페이지 배경(테마 변수)을 읽다가 실패하지 않도록 복제본에서는 배경을 비운다.
+    // 같은 이유로 카드 내부에는 테마 변수 색을 쓰지 않는다 (css/share-card.css 참고).
+    onclone: (clonedDoc) => {
+      clonedDoc.documentElement.style.backgroundColor = 'transparent'
+      clonedDoc.body.style.backgroundColor = 'transparent'
+    },
   })
 }
 

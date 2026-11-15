@@ -40,3 +40,41 @@
   border: 1px solid #f4dadd;
   box-shadow: none;
 }
+
+/* Dark theme: same structure on the app's dark surfaces.
+   Plain hex only: html2canvas cannot parse color-mix()/oklch(), so theme variables are not used here. */
+.dark #safety-share-card {
+  background: #181b26;
+  color: #f8fafc;
+  border: 1px solid #2b3040;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .6);
+}
+.dark #safety-share-card .card-header,
+.dark #safety-share-card .card-footer { border-color: #2b3040; }
+.dark #safety-share-card .card-brand,
+.dark #safety-share-card #card-area-title,
+.dark #safety-share-card #card-risk-score { color: #f8fafc; }
+.dark #safety-share-card #card-subtitle,
+.dark #safety-share-card #card-risk-label,
+.dark #safety-share-card #card-high-count,
+.dark #safety-share-card #card-status-subtext,
+.dark #safety-share-card #card-date-text,
+.dark #safety-share-card .card-section-label { color: #94a3b8; }
+.dark #safety-share-card #card-risk-level-badge,
+.dark #safety-share-card #card-keywords-container span {
+  background: #3a1a22;
+  border: 1px solid #6b2532;
+  color: #ff8a98;
+}
+.dark #safety-share-card #card-dashboard-box,
+.dark #safety-share-card .card-evidence-box {
+  background: #1e2230;
+  border: 1px solid #2b3040;
+}
+.dark #safety-share-card #card-evidence,
+.dark #safety-share-card #card-ai-summary { color: #e2e8f0; }
+.dark #safety-share-card #card-ai-box {
+  background: #2a1820;
+  border: 1px solid #5a2430;
+}
+.dark #safety-share-card #card-ai-badge { color: #ff8a98; }

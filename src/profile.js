@@ -4,7 +4,7 @@ import { getCurrentUser } from './auth.js'
 export async function computeUserTemperatures() {
   const reports = await getReports()
   const clusters = await getClusters()
-  
+
   // Base temperature 36.5
   const userStats = {}
 
@@ -34,8 +34,8 @@ export async function computeUserTemperatures() {
     if (r.isFake) {
       stat.penalties++
       stat.temperature -= 5.0
-    } 
-    
+    }
+
     if (r.reportCount && r.reportCount > 0) {
       stat.penalties += r.reportCount
       stat.temperature -= (r.reportCount * 0.5)
@@ -70,19 +70,20 @@ export async function computeUserTemperatures() {
       return s
     })
     .sort((a, b) => b.temperature - a.temperature)
-    
+
   return ranking
 }
 
 export function getTemperatureColor(temp) {
-  if (temp >= 50) return 'text-red-500 bg-red-50 border-red-500' // Boiling
-  if (temp >= 40) return 'text-orange-500 bg-orange-50 border-orange-500' // Hot
-  if (temp >= 36.5) return 'text-green-500 bg-green-50 border-green-500' // Normal/Warm
-  return 'text-blue-500 bg-blue-50 border-blue-500' // Cold (Penalized)
+  // 위험도 배지(utils.dangerStyle)와 같은 틴트 방식. 라이트/다크 모두에서 읽힌다
+  if (temp >= 50) return 'bg-red-500/15 border border-red-500/25 text-red-600 dark:text-red-400' // Boiling
+  if (temp >= 40) return 'bg-amber-500/15 border border-amber-500/25 text-amber-700 dark:text-amber-400' // Hot
+  if (temp >= 36.5) return 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400' // Normal/Warm
+  return 'bg-blue-500/15 border border-blue-500/25 text-blue-600 dark:text-blue-400' // Cold (Penalized)
 }
 
 export function getTemperatureHex(temp) {
-  if (temp >= 50) return '#ef4444' 
+  if (temp >= 50) return '#ef4444'
   if (temp >= 40) return '#f97316'
   if (temp >= 36.5) return '#22c55e'
   return '#3b82f6'
