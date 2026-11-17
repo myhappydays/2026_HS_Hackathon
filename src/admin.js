@@ -11,6 +11,9 @@ import { getClusters, getReports, patchCluster, storageErrorMessage } from './st
 import { listenAuthState, loginWithGoogle, logout, isAdminUser, getCurrentUser } from './auth.js'
 import { dangerStyle, categoryLabel, relativeTime, escapeHtml, safeImageSrc } from './utils.js'
 
+// 데모용 임시 스위치: true 면 구글 로그인만 하면 관리자 화면이 열린다.
+const DEMO_SKIP_ADMIN_CHECK = true
+
 // 테마 초기화
 initTheme()
 
@@ -1076,7 +1079,9 @@ listenAuthState(async (user) => {
     return
   }
   showGate('checking')
-  const ok = await isAdminUser(user)
+  // TODO(데모 임시): 보안 규칙에 admins 읽기 권한을 추가하기 전까지 로그인만 하면 통과시킨다.
+  // 규칙을 게시한 뒤 DEMO_SKIP_ADMIN_CHECK 를 false 로 되돌릴 것.
+  const ok = DEMO_SKIP_ADMIN_CHECK ? true : await isAdminUser(user)
   if (seq !== authCheckSeq) return // 확인 중에 계정이 바뀌었으면 이전 결과는 버린다
   if (ok) startDashboard()
   else showGate('denied', user)
