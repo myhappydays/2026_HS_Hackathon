@@ -6,7 +6,7 @@
  */
 
 // 캐시 정책이나 프리캐시 목록을 바꾸면 이 값을 올린다 (이전 캐시는 activate 때 삭제됨)
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const APP_SHELL_CACHE = `fermata-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `fermata-runtime-${CACHE_VERSION}`;
 
@@ -141,7 +141,9 @@ self.addEventListener('fetch', (event) => {
   if (isSameOrigin || isStaticCdn) {
     event.respondWith(
       (async () => {
-        const cached = await caches.match(request);
+        let cached = await caches.match(request);
+        // opaque(no-cors) 응답은 no-cors 요청에만 돌려줄 수 있다. cors 요청에 주면 브라우저가 거부한다.
+        if (cached && cached.type === 'opaque' && request.mode !== 'no-cors') cached = undefined;
         const fetchPromise = fetch(request)
           .then(async (networkResponse) => {
             if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
