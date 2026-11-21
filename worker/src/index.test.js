@@ -128,3 +128,25 @@ test('returns service error when AI is unavailable', async () => {
   assert.equal(response.status, 503)
   assert.deepEqual(await response.json(), { error: 'classification_unavailable' })
 })
+
+test('summarize returns 503 when GEMINI_API_KEY is missing', async () => {
+  const req = new Request('https://example.workers.dev/summarize', {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userPrompt: '위험 요약해줘' }),
+  })
+  const response = await worker.fetch(req, {})
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'gemini_api_key_not_configured' })
+})
+
+test('summarize rejects invalid origin', async () => {
+  const req = new Request('https://example.workers.dev/summarize', {
+    method: 'POST',
+    headers: { Origin: 'https://evil.com', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userPrompt: 'test' }),
+  })
+  const response = await worker.fetch(req, { GEMINI_API_KEY: 'test-key' })
+  assert.equal(response.status, 403)
+})
+

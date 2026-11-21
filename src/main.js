@@ -9,7 +9,7 @@ import { haversineDistance, submitReport } from './clustering.js'
 import {
   isConfigured, getToken, saveToken, getModel, saveModel,
   getSettings, saveSettings, MODELS, summarizeArea, getCachedSummary,
-} from './bedrock.js'
+} from './gemini.js'
 import { initEmbedder, isEmbedderReady } from './embedder.js'
 import { initTheme } from './theme.js'
 import { loginWithGoogle, logout, listenAuthState, waitForAuth } from './auth.js'
@@ -51,8 +51,8 @@ if (authContainer) {
 
 document.getElementById('nav-report').href = `${import.meta.env.BASE_URL}report.html`
 
-const reportList  = document.getElementById('report-list')
-const emptyState  = document.getElementById('empty-state')
+const reportList = document.getElementById('report-list')
+const emptyState = document.getElementById('empty-state')
 const reportCount = document.getElementById('report-count')
 const mapPlaceholder = document.getElementById('map-placeholder')
 
@@ -185,7 +185,7 @@ function saveMapState(extra = {}) {
   }
   try {
     sessionStorage.setItem(MAP_STATE_KEY, JSON.stringify(state))
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function showSearchTargetOverlay(lat, lng, label) {
@@ -301,8 +301,8 @@ function renderMarkers() {
 
   const markers = clusters.map(cluster => {
     const isResolved = cluster.status === 'resolved'
-    const color  = isResolved ? DANGER_COLOR.resolved : (DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium)
-    const pos    = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
+    const color = isResolved ? DANGER_COLOR.resolved : (DANGER_COLOR[cluster.danger] || DANGER_COLOR.medium)
+    const pos = new kakao.maps.LatLng(cluster.location.lat, cluster.location.lng)
     const marker = new kakao.maps.Marker({
       position: pos,
       image: makeMarkerImage(color, isResolved),
@@ -360,7 +360,7 @@ function renderMarkers() {
       const el = cluster.getClusterMarker().getContent()
       if (el) {
         el.style.background = color
-        el.style.boxShadow  = `0 2px 6px ${color}99`
+        el.style.boxShadow = `0 2px 6px ${color}99`
       }
     })
   })
@@ -369,11 +369,11 @@ function renderMarkers() {
 // ── 히트맵 (Leaflet.heat) ───────────────────────────────
 
 let isHeatmapMode = false
-let leafletMap    = null   // Leaflet 지도 인스턴스 (히트맵 뷰)
-let heatLayer     = null   // L.heatLayer 인스턴스
+let leafletMap = null   // Leaflet 지도 인스턴스 (히트맵 뷰)
+let heatLayer = null   // L.heatLayer 인스턴스
 
 function setToggleActive(mode) {
-  const pinBtn  = document.getElementById('view-pin-btn')
+  const pinBtn = document.getElementById('view-pin-btn')
   const heatBtn = document.getElementById('view-heat-btn')
   if (mode === 'pin') {
     pinBtn.classList.add('bg-primary', 'text-white')
@@ -398,16 +398,16 @@ function smoothNoise(x, y, seed = 0) {
   const ix = Math.floor(x), iy = Math.floor(y)
   const fx = x - ix, fy = y - iy
   const fade = t => t * t * t * (t * (t * 6 - 15) + 10)
-  const lerp  = (a, b, t) => a + t * (b - a)
-  const grad  = (h, dx, dy) => {
+  const lerp = (a, b, t) => a + t * (b - a)
+  const grad = (h, dx, dy) => {
     const v = (h ^ seed) & 3
     return v === 0 ? dx + dy : v === 1 ? -dx + dy : v === 2 ? dx - dy : -dx - dy
   }
   const h = (a, b) => ((a * 1619 + b * 31337 + seed * 6971) ^ (a * 31337)) & 0xffff
-  const n00 = grad(h(ix,   iy),   fx,     fy)
-  const n10 = grad(h(ix+1, iy),   fx-1,   fy)
-  const n01 = grad(h(ix,   iy+1), fx,     fy-1)
-  const n11 = grad(h(ix+1, iy+1), fx-1,   fy-1)
+  const n00 = grad(h(ix, iy), fx, fy)
+  const n10 = grad(h(ix + 1, iy), fx - 1, fy)
+  const n01 = grad(h(ix, iy + 1), fx, fy - 1)
+  const n11 = grad(h(ix + 1, iy + 1), fx - 1, fy - 1)
   return lerp(lerp(n00, n10, fade(fx)), lerp(n01, n11, fade(fx)), fade(fy))
 }
 
@@ -424,9 +424,9 @@ function buildHeatPoints() {
       if (dist > 1) continue
 
       // 중주파(블록 단위) 위주 + 고주파 디테일 혼합
-      const n = smoothNoise(nx * 4.5, ny * 4.5, SEED)      * 0.55
-             + smoothNoise(nx * 9.0, ny * 9.0, SEED + 37)  * 0.30
-             + smoothNoise(nx * 18,  ny * 18,  SEED + 99)  * 0.15
+      const n = smoothNoise(nx * 4.5, ny * 4.5, SEED) * 0.55
+        + smoothNoise(nx * 9.0, ny * 9.0, SEED + 37) * 0.30
+        + smoothNoise(nx * 18, ny * 18, SEED + 99) * 0.15
       const normalized = n * 0.5 + 0.5
 
       // power 높여서 낮은 곳 거의 투명, 핫스팟만 진하게
@@ -508,7 +508,7 @@ function initViewMode() {
   const toggleBtn = document.getElementById('view-mode-toggle-btn')
   const expandIcon = toggleBtn?.querySelector('.view-icon-expand')
   const mobileIcon = toggleBtn?.querySelector('.view-icon-mobile')
-  const modeLabel  = document.getElementById('view-mode-label')
+  const modeLabel = document.getElementById('view-mode-label')
 
   let savedMode = localStorage.getItem('fermata_view_mode')
   if (!savedMode) {
@@ -521,15 +521,15 @@ function initViewMode() {
       document.body.classList.add('view-mobile')
       if (expandIcon) expandIcon.classList.remove('hidden')
       if (mobileIcon) mobileIcon.classList.add('hidden')
-      if (modeLabel)  modeLabel.textContent = '와이드 뷰'
-      if (toggleBtn)  toggleBtn.title = '데스크톱 와이드 대시보드로 확장'
+      if (modeLabel) modeLabel.textContent = '와이드 뷰'
+      if (toggleBtn) toggleBtn.title = '데스크톱 와이드 대시보드로 확장'
     } else {
       document.body.classList.remove('view-mobile')
       document.body.classList.add('view-wide')
       if (expandIcon) expandIcon.classList.add('hidden')
       if (mobileIcon) mobileIcon.classList.remove('hidden')
-      if (modeLabel)  modeLabel.textContent = '모바일 뷰'
-      if (toggleBtn)  toggleBtn.title = '모바일 스마트폰 프레임으로 축소'
+      if (modeLabel) modeLabel.textContent = '모바일 뷰'
+      if (toggleBtn) toggleBtn.title = '모바일 스마트폰 프레임으로 축소'
     }
     localStorage.setItem('fermata_view_mode', mode)
 
@@ -890,16 +890,16 @@ function renderList(userLat, userLng) {
   const withDist = processed
 
   reportList.innerHTML = withDist.map(cluster => {
-    const rep    = allReportsMap.get(cluster.representId)
+    const rep = allReportsMap.get(cluster.representId)
     if (!rep) return ''
     const isResolved = cluster.status === 'resolved'
-    const ds     = dangerStyle(cluster.danger)
-    const cat    = categoryLabel(cluster.category)
-    const time   = relativeTime(cluster.createdAt)
-    const count  = Array.isArray(cluster.reportIds) ? cluster.reportIds.length : 1
-    const distM  = cluster.dist
-    const thumb  = safeImageSrc(rep.imageBase64)
-    const distTxt = distM < 1000 ? `${Math.round(distM)}m` : `${(distM/1000).toFixed(1)}km`
+    const ds = dangerStyle(cluster.danger)
+    const cat = categoryLabel(cluster.category)
+    const time = relativeTime(cluster.createdAt)
+    const count = Array.isArray(cluster.reportIds) ? cluster.reportIds.length : 1
+    const distM = cluster.dist
+    const thumb = safeImageSrc(rep.imageBase64)
+    const distTxt = distM < 1000 ? `${Math.round(distM)}m` : `${(distM / 1000).toFixed(1)}km`
 
     const statusBadge = isResolved
       ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400">
@@ -913,13 +913,13 @@ function renderList(userLat, userLng) {
         class="flex gap-3 p-3 rounded-xl bg-card border border-border active:bg-surface transition ${isResolved ? 'opacity-85' : ''}">
         <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface">
           ${thumb
-            ? `<img src="${thumb}" class="w-full h-full object-cover" alt="썸네일" loading="lazy">`
-            : `<div class="w-full h-full flex items-center justify-center">
+        ? `<img src="${thumb}" class="w-full h-full object-cover" alt="썸네일" loading="lazy">`
+        : `<div class="w-full h-full flex items-center justify-center">
                  <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                    <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909"/>
                  </svg>
                </div>`
-          }
+      }
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1.5 mb-1 flex-wrap">
@@ -969,22 +969,22 @@ function renderList(userLat, userLng) {
 
 // ── AI 요약 ──────────────────────────────────────────────
 
-const aiActiveDot    = document.getElementById('ai-active-dot')
-const aiAlertWrap    = document.getElementById('ai-alert-wrap')
+const aiActiveDot = document.getElementById('ai-active-dot')
+const aiAlertWrap = document.getElementById('ai-alert-wrap')
 const aiAlertLoading = document.getElementById('ai-alert-loading')
-const aiAlertResult  = document.getElementById('ai-alert-result')
-const aiAlertError   = document.getElementById('ai-alert-error')
-const aiSummaryText  = document.getElementById('ai-summary-text')
-const aiErrorText    = document.getElementById('ai-error-text')
-const aiRefreshBtn   = document.getElementById('ai-refresh-btn')
-const aiTokenInput   = document.getElementById('ai-token-input')
-const aiModelSelect  = document.getElementById('ai-model-select')
-const aiSortSelect   = document.getElementById('ai-sort-select')
-const aiMaxDist      = document.getElementById('ai-max-dist')
-const aiMaxCount     = document.getElementById('ai-max-count')
-const aiMinReports   = document.getElementById('ai-min-reports')
-const aiSaveBtn      = document.getElementById('ai-save-btn')
-const aiClearBtn     = document.getElementById('ai-clear-btn')
+const aiAlertResult = document.getElementById('ai-alert-result')
+const aiAlertError = document.getElementById('ai-alert-error')
+const aiSummaryText = document.getElementById('ai-summary-text')
+const aiErrorText = document.getElementById('ai-error-text')
+const aiRefreshBtn = document.getElementById('ai-refresh-btn')
+const aiTokenInput = document.getElementById('ai-token-input')
+const aiModelSelect = document.getElementById('ai-model-select')
+const aiSortSelect = document.getElementById('ai-sort-select')
+const aiMaxDist = document.getElementById('ai-max-dist')
+const aiMaxCount = document.getElementById('ai-max-count')
+const aiMinReports = document.getElementById('ai-min-reports')
+const aiSaveBtn = document.getElementById('ai-save-btn')
+const aiClearBtn = document.getElementById('ai-clear-btn')
 
 // 설정 버튼 dot 상태 업데이트
 function updateActiveDot() {
@@ -999,8 +999,8 @@ function updateActiveDot() {
 function populateOffcanvas() {
   const s = getSettings()
   aiTokenInput.value = getToken()
-  aiMaxDist.value    = s.maxDist
-  aiMaxCount.value   = s.maxCount
+  aiMaxDist.value = s.maxDist
+  aiMaxCount.value = s.maxCount
   aiMinReports.value = s.minReports
 
   // 정렬 select
@@ -1024,10 +1024,6 @@ document.getElementById('ai-modal')?.addEventListener('open.hs.overlay', () => {
 // 저장
 aiSaveBtn.addEventListener('click', () => {
   const token = aiTokenInput.value.trim()
-  if (!token) {
-    aiTokenInput.focus()
-    return
-  }
   saveToken(token)
 
   // 모델
@@ -1040,9 +1036,9 @@ aiSaveBtn.addEventListener('click', () => {
   const sortVal = hsSort ? hsSort.value : aiSortSelect.value
 
   saveSettings({
-    sortBy:     sortVal     || 'dist',
-    maxDist:    parseInt(aiMaxDist.value)    || 2000,
-    maxCount:   parseInt(aiMaxCount.value)   || 10,
+    sortBy: sortVal || 'dist',
+    maxDist: parseInt(aiMaxDist.value) || 2000,
+    maxCount: parseInt(aiMaxCount.value) || 10,
     minReports: parseInt(aiMinReports.value) || 1,
   })
 
@@ -1052,14 +1048,16 @@ aiSaveBtn.addEventListener('click', () => {
   else document.getElementById('ai-modal')?.classList.add('hidden')
 
   updateActiveDot()
-  runAISummary()
+  runAISummary({ force: true })
 })
 
 // 초기화
 aiClearBtn.addEventListener('click', () => {
   saveToken('')
+  localStorage.removeItem('gemini_model')
   localStorage.removeItem('bedrock_model')
   saveSettings({ sortBy: 'dist', maxDist: 2000, maxCount: 10, minReports: 1 })
+  localStorage.removeItem('fermata_ai_summary_cache')
   localStorage.removeItem('bedrock_summary_cache')
   updateActiveDot()
   aiAlertWrap.classList.add('hidden')
@@ -1097,13 +1095,38 @@ async function runAISummary({ force = false } = {}) {
   const { sortBy, maxDist, maxCount, minReports } = getSettings()
   const dangerPriority = { high: 3, medium: 2, low: 1 }
 
-  // 거리 계산 + 필터
+  // 거리 계산 + 필터 (현재 위치 우선, 반경 내 제보가 없을 시 현재 지도 중심/가장 가까운 군집으로 자동 Fallback)
+  let centerLat = userLat
+  let centerLng = userLng
   let filtered = clusterList
     .map(c => ({
       ...c,
-      distM: haversineDistance(userLat, userLng, c.location.lat, c.location.lng),
+      distM: haversineDistance(centerLat, centerLng, c.location.lat, c.location.lng),
     }))
     .filter(c => c.distM <= maxDist && c.reportIds.length >= minReports)
+
+  // 사용자 GPS 주변에 제보가 없으면, 현재 화면의 지도 중심(anchorLat, anchorLng) 기준 탐색
+  if (filtered.length === 0 && (anchorLat !== userLat || anchorLng !== userLng)) {
+    centerLat = anchorLat
+    centerLng = anchorLng
+    filtered = clusterList
+      .map(c => ({
+        ...c,
+        distM: haversineDistance(centerLat, centerLng, c.location.lat, c.location.lng),
+      }))
+      .filter(c => c.distM <= maxDist && c.reportIds.length >= minReports)
+  }
+
+  // 여전히 0개라면(원격/타지역 접속 시), 전체 군집 중 가장 가깝고 중요한 상위 5개 군집으로 스마트 Fallback
+  if (filtered.length === 0) {
+    filtered = clusterList
+      .map(c => ({
+        ...c,
+        distM: haversineDistance(anchorLat, anchorLng, c.location.lat, c.location.lng),
+      }))
+      .sort((a, b) => a.distM - b.distM)
+      .slice(0, 5)
+  }
 
   // 정렬
   if (sortBy === 'danger') {
@@ -1123,14 +1146,14 @@ async function runAISummary({ force = false } = {}) {
   const payload = filtered.map(c => {
     const rep = allReportsMap.get(c.representId)
     return {
-      title:       rep?.title || '제목 없음',
+      title: rep?.title || '제목 없음',
       description: rep?.description || '',
-      danger:      c.danger,
-      category:    c.category,
-      distM:       c.distM,
-      count:       c.reportIds.length,
-      address:     rep?.location?.address || '',
-      updatedAt:   c.updatedAt,
+      danger: c.danger,
+      category: c.category,
+      distM: c.distM,
+      count: c.reportIds.length,
+      address: rep?.location?.address || '',
+      updatedAt: c.updatedAt,
     }
   })
 
@@ -1158,7 +1181,7 @@ async function runAISummary({ force = false } = {}) {
 
 async function seedDemoData() {
   const hoursAgo = n => Date.now() - n * 3600000
-  const daysAgo  = n => Date.now() - n * 86400000
+  const daysAgo = n => Date.now() - n * 86400000
 
   function img(bg, icon, label) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="${bg}"/><rect width="400" height="300" fill="black" opacity="0.35"/><text x="200" y="130" font-family="sans-serif" font-size="52" text-anchor="middle" fill="white">${icon}</text><text x="200" y="185" font-family="sans-serif" font-size="22" text-anchor="middle" fill="rgba(255,255,255,0.85)">${label}</text></svg>`
@@ -1173,50 +1196,50 @@ async function seedDemoData() {
 
   const reports = [
     // [1] 서울 시청역 - 싱크홀 / 지반 침하
-    { id: r[0], clusterId: c[0], author: '김민준', title: '시청역 4번 출구 앞 보행로 지반 침하', description: '보도블록이 꺼지며 직경 약 40cm 지반 침하가 발생했습니다. 보행자 통행량이 많아 신속한 안전 조치가 필요합니다.', imageBase64: img('#7f1d1d','🕳️','지반 침하'), location: { lat: 37.56620, lng: 126.97780, address: '서울 중구 세종대로 110 시청역 4번 출구 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
-    { id: r[1], clusterId: c[0], author: '이서연', title: '시청역 보행로 지반 균열 심화', description: '어제보다 지반 침하 반경이 넓어졌습니다. 발빠짐 및 낙상 사고에 각별히 유의하세요.', imageBase64: img('#991b1b','🕳️','균열 심화'), location: { lat: 37.56622, lng: 126.97782, address: '서울 중구 세종대로 110 시청역 4번 출구 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(5) },
+    { id: r[0], clusterId: c[0], author: '김민준', title: '시청역 4번 출구 앞 보행로 지반 침하', description: '보도블록이 꺼지며 직경 약 40cm 지반 침하가 발생했습니다. 보행자 통행량이 많아 신속한 안전 조치가 필요합니다.', imageBase64: img('#7f1d1d', '🕳️', '지반 침하'), location: { lat: 37.56620, lng: 126.97780, address: '서울 중구 세종대로 110 시청역 4번 출구 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
+    { id: r[1], clusterId: c[0], author: '이서연', title: '시청역 보행로 지반 균열 심화', description: '어제보다 지반 침하 반경이 넓어졌습니다. 발빠짐 및 낙상 사고에 각별히 유의하세요.', imageBase64: img('#991b1b', '🕳️', '균열 심화'), location: { lat: 37.56622, lng: 126.97782, address: '서울 중구 세종대로 110 시청역 4번 출구 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(5) },
 
     // [2] 서울 을지로입구역 - 계단 결로 미끄럼
-    { id: r[2], clusterId: c[1], author: '박도현', title: '을지로입구역 지하보도 결로 및 미끄럼 위험', description: '지하보도 진입 계단에 결로로 물기가 고여 있어 보행 시 넘어짐 위험이 매우 큽니다.', imageBase64: img('#44403c','⚠️','미끄럼 위험'), location: { lat: 37.56600, lng: 126.98250, address: '서울 중구 을지로 55 을지로입구역 출구 앞' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(3) },
+    { id: r[2], clusterId: c[1], author: '박도현', title: '을지로입구역 지하보도 결로 및 미끄럼 위험', description: '지하보도 진입 계단에 결로로 물기가 고여 있어 보행 시 넘어짐 위험이 매우 큽니다.', imageBase64: img('#44403c', '⚠️', '미끄럼 위험'), location: { lat: 37.56600, lng: 126.98250, address: '서울 중구 을지로 55 을지로입구역 출구 앞' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(3) },
 
     // [3] 서울 청계광장 - 산책로 침수 위험
-    { id: r[3], clusterId: c[2], author: '정지우', title: '청계광장 산책로 집중호우 시 하천 범람 주의', description: '강우 시 급격한 수위 상승으로 산책로 통제가 예상되는 취약 구간입니다. 우천 시 우회하세요.', imageBase64: img('#1e3a5f','🌊','범람 주의'), location: { lat: 37.56900, lng: 126.97750, address: '서울 종로구 서린동 14 청계광장 입구' }, danger: 'medium', category: 'weather', status: 'active', createdAt: hoursAgo(8) },
+    { id: r[3], clusterId: c[2], author: '정지우', title: '청계광장 산책로 집중호우 시 하천 범람 주의', description: '강우 시 급격한 수위 상승으로 산책로 통제가 예상되는 취약 구간입니다. 우천 시 우회하세요.', imageBase64: img('#1e3a5f', '🌊', '범람 주의'), location: { lat: 37.56900, lng: 126.97750, address: '서울 종로구 서린동 14 청계광장 입구' }, danger: 'medium', category: 'weather', status: 'active', createdAt: hoursAgo(8) },
 
     // [4] 서울 강남역 - 저지대 침수
-    { id: r[4], clusterId: c[3], author: '최우진', title: '강남역 11번 출구 저지대 폭우 침수 취약 구간', description: '하수관 역류 취약 구간으로 집중호우 시 도로 및 보도 침수가 상습 발생하는 지역입니다.', imageBase64: img('#1e40af','🌊','침수 취약'), location: { lat: 37.49850, lng: 127.02800, address: '서울 강남구 테헤란로 101 강남역 11번 출구' }, danger: 'high', category: 'weather', status: 'active', createdAt: daysAgo(1) },
-    { id: r[5], clusterId: c[3], author: '강하은', title: '강남역 이면도로 우수관 배수 불량 제보', description: '비가 올 때 배수가 지연되어 차량 물튐 및 보행 장애가 심각합니다.', imageBase64: img('#1e3a5f','🌊','배수 불량'), location: { lat: 37.49855, lng: 127.02805, address: '서울 강남구 테헤란로 101 강남역 11번 출구' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(4) },
+    { id: r[4], clusterId: c[3], author: '최우진', title: '강남역 11번 출구 저지대 폭우 침수 취약 구간', description: '하수관 역류 취약 구간으로 집중호우 시 도로 및 보도 침수가 상습 발생하는 지역입니다.', imageBase64: img('#1e40af', '🌊', '침수 취약'), location: { lat: 37.49850, lng: 127.02800, address: '서울 강남구 테헤란로 101 강남역 11번 출구' }, danger: 'high', category: 'weather', status: 'active', createdAt: daysAgo(1) },
+    { id: r[5], clusterId: c[3], author: '강하은', title: '강남역 이면도로 우수관 배수 불량 제보', description: '비가 올 때 배수가 지연되어 차량 물튐 및 보행 장애가 심각합니다.', imageBase64: img('#1e3a5f', '🌊', '배수 불량'), location: { lat: 37.49855, lng: 127.02805, address: '서울 강남구 테헤란로 101 강남역 11번 출구' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(4) },
 
     // [5] 서울 강남 테헤란로 이면도로 - 배달 오토바이 과속
-    { id: r[6], clusterId: c[4], author: '조예준', title: '테헤란로 먹자골목 배달 이륜차 과속 위험', description: '야간 시간대 보행자 사이로 배달 오토바이가 과속 질주하여 충돌 위험이 큽니다.', imageBase64: img('#78350f','🛵','오토바이 과속'), location: { lat: 37.49950, lng: 127.03100, address: '서울 강남구 강남대로94길 이면도로' }, danger: 'medium', category: 'safety', status: 'active', createdAt: daysAgo(2) },
+    { id: r[6], clusterId: c[4], author: '조예준', title: '테헤란로 먹자골목 배달 이륜차 과속 위험', description: '야간 시간대 보행자 사이로 배달 오토바이가 과속 질주하여 충돌 위험이 큽니다.', imageBase64: img('#78350f', '🛵', '오토바이 과속'), location: { lat: 37.49950, lng: 127.03100, address: '서울 강남구 강남대로94길 이면도로' }, danger: 'medium', category: 'safety', status: 'active', createdAt: daysAgo(2) },
 
     // [6] 서울 강남 역삼동 - 가로등 조명 파손
-    { id: r[7], clusterId: c[5], author: '윤서진', title: '역삼동 원룸촌 골목 보안등 고장 암전 구간', description: '골목 안쪽 가로등 2개가 꺼져 있어 심야 귀갓길 시야 확보가 어렵습니다.', imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.50100, lng: 127.03400, address: '서울 강남구 테헤란로1길 이면도로' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(4) },
+    { id: r[7], clusterId: c[5], author: '윤서진', title: '역삼동 원룸촌 골목 보안등 고장 암전 구간', description: '골목 안쪽 가로등 2개가 꺼져 있어 심야 귀갓길 시야 확보가 어렵습니다.', imageBase64: img('#1c1917', '🔦', '가로등 고장'), location: { lat: 37.50100, lng: 127.03400, address: '서울 강남구 테헤란로1길 이면도로' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(4) },
 
     // [7] 서울 홍대 걷고싶은거리 - 보도블록 파손
-    { id: r[8], clusterId: c[6], author: '장현우', title: '홍대 걷고싶은거리 보도블록 대규모 파손', description: '유동인구가 많은 구간인데 보도블록이 깨지고 튀어나와 발걸림 사고가 자주 일어납니다.', imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.55680, lng: 126.92380, address: '서울 마포구 어울마당로 걷고싶은거리' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(3) },
+    { id: r[8], clusterId: c[6], author: '장현우', title: '홍대 걷고싶은거리 보도블록 대규모 파손', description: '유동인구가 많은 구간인데 보도블록이 깨지고 튀어나와 발걸림 사고가 자주 일어납니다.', imageBase64: img('#365314', '🧱', '보도블록 파손'), location: { lat: 37.55680, lng: 126.92380, address: '서울 마포구 어울마당로 걷고싶은거리' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(3) },
 
     // [8] 서울 홍대 연남동 - 심야 사각지대
-    { id: r[9], clusterId: c[7], author: '임수아', title: '연남동 미로골목길 심야 보행 시야 사각지대', description: '야간 조명이 부족하고 골목이 좁아 늦은 밤 귀가 시 주의가 요구됩니다.', imageBase64: img('#0f172a','🌑','시야 사각'), location: { lat: 37.56150, lng: 126.92480, address: '서울 마포구 동교로 262 연남동 골목길' }, danger: 'low', category: 'safety', status: 'active', createdAt: daysAgo(5) },
+    { id: r[9], clusterId: c[7], author: '임수아', title: '연남동 미로골목길 심야 보행 시야 사각지대', description: '야간 조명이 부족하고 골목이 좁아 늦은 밤 귀가 시 주의가 요구됩니다.', imageBase64: img('#0f172a', '🌑', '시야 사각'), location: { lat: 37.56150, lng: 126.92480, address: '서울 마포구 동교로 262 연남동 골목길' }, danger: 'low', category: 'safety', status: 'active', createdAt: daysAgo(5) },
 
     // [9] 경기 화성시 협성대 (기존 데이터)
-    { id: r[10], clusterId: c[8], author: '김민준', title: '협성대 정문 앞 보도 싱크홀 발견', description: '정문 앞 보도 중앙에 직경 약 30cm 크기의 구멍이 생겼습니다. 등하교 학생들이 많아 즉각 조치가 필요합니다.', imageBase64: img('#7f1d1d','🕳️','싱크홀 발견'), location: { lat: 37.21320, lng: 126.95190, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(3) },
-    { id: r[11], clusterId: c[8], author: '이서연', title: '협성대 정문 보도 싱크홀 균열 확대', description: '어제보다 구멍이 직경 50cm 이상으로 커졌고 주변 아스팔트에도 균열이 생겼습니다. 함몰 위험이 높습니다.', imageBase64: img('#991b1b','🕳️','균열 확대'), location: { lat: 37.21322, lng: 126.95192, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
-    { id: r[12], clusterId: c[8], author: '박도현', title: '협성대 정문 인근 추가 균열 발생', description: '기존 싱크홀 북쪽 2m 지점에 새로운 균열이 발생했습니다. 지반 침하가 넓은 범위에 걸쳐 진행 중인 것 같습니다.', imageBase64: img('#b91c1c','🕳️','추가 균열'), location: { lat: 37.21325, lng: 126.95188, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(8) },
-    { id: r[13], clusterId: c[9], author: '정지우', title: '협성대 진입로 저지대 침수 시작', description: '강우로 진입로 가장 낮은 구간에 물이 차기 시작했습니다. 차량 통행에 주의가 필요합니다.', imageBase64: img('#1e3a5f','🌊','침수 시작'), location: { lat: 37.21180, lng: 126.95350, address: '경기 화성시 봉담읍 협성대 진입로' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(5) },
-    { id: r[14], clusterId: c[9], author: '최우진', title: '협성대 진입로 완전 침수 — 통행 불가', description: '진입로 전 구간이 침수되어 차량과 사람 모두 통행이 불가합니다. 우수관 역류로 홍수 범람 상태입니다.', imageBase64: img('#1e40af','🌊','완전 침수'), location: { lat: 37.21182, lng: 126.95353, address: '경기 화성시 봉담읍 협성대 진입로' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(3) },
-    { id: r[15], clusterId: c[10], author: '강하은', title: '협성대 후문 골목 가로등 고장', description: '후문 골목 가로등 3개가 모두 꺼져 있습니다. 야간에 매우 어둡고 CCTV 사각지대입니다.', imageBase64: img('#1c1917','🔦','가로등 고장'), location: { lat: 37.21150, lng: 126.95130, address: '경기 화성시 봉담읍 협성로 후문길' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(5) },
-    { id: r[16], clusterId: c[10], author: '조예준', title: '협성대 후문 가로등 이틀째 미수리', description: '이틀 전 신고한 가로등이 아직도 수리되지 않았습니다. 늦은 밤 귀갓길 학생들이 많아 위험합니다.', imageBase64: img('#1c1917','🔦','미수리'), location: { lat: 37.21152, lng: 126.95132, address: '경기 화성시 봉담읍 협성로 후문길' }, danger: 'medium', category: 'safety', status: 'active', createdAt: daysAgo(3) },
-    { id: r[17], clusterId: c[11], author: '윤서진', title: '협성대 캠퍼스 순환도로 포트홀 발생', description: '순환도로 1차선에 작은 포트홀이 생겼습니다. 배달 오토바이 사고 위험이 있습니다.', imageBase64: img('#44403c','🚧','포트홀 발견'), location: { lat: 37.21290, lng: 126.95420, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로' }, danger: 'medium', category: 'road', status: 'active', createdAt: daysAgo(4) },
-    { id: r[18], clusterId: c[11], author: '장현우', title: '협성대 순환도로 포트홀 파손 심화', description: '이전에 신고된 포트홀이 차량 통행으로 더 크게 파손됐습니다. 직경 약 40cm, 깊이 10cm 이상입니다.', imageBase64: img('#292524','🚧','포트홀 확대'), location: { lat: 37.21292, lng: 126.95422, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로' }, danger: 'medium', category: 'road', status: 'active', createdAt: daysAgo(1) },
-    { id: r[19], clusterId: c[12], author: '임수아', title: '기숙사 뒷길 야간 조명 없음', description: '기숙사 후면 골목에 가로등과 조명이 전혀 없어 야간에 매우 어둡습니다. 수상한 인물이 자주 출몰한다는 제보가 있습니다.', imageBase64: img('#0f172a','🌑','어두운 골목'), location: { lat: 37.21380, lng: 126.95310, address: '경기 화성시 봉담읍 협성대학교 기숙사 후면' }, danger: 'low', category: 'safety', status: 'active', createdAt: daysAgo(7) },
-    { id: r[20], clusterId: c[13], author: '김민준', title: '협성대 정문~버스정류장 보도블록 파손', description: '정문에서 버스정류장으로 이어지는 보행로에서 보도블록 여러 장이 깨지거나 뒤틀려 있습니다. 걸려 넘어질 위험이 있습니다.', imageBase64: img('#365314','🧱','보도블록 파손'), location: { lat: 37.21240, lng: 126.95060, address: '경기 화성시 봉담읍 협성로 버스정류장 앞' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(10) },
-    { id: r[21], clusterId: c[13], author: '이서연', title: '협성대 정류장 앞 보도블록 추가 파손', description: '앞서 신고된 지점에서 10m 더 들어간 곳에도 보도블록 파손이 있습니다. 전체 구간 보수가 필요합니다.', imageBase64: img('#3f6212','🧱','추가 파손'), location: { lat: 37.21242, lng: 126.95062, address: '경기 화성시 봉담읍 협성로 버스정류장 앞' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(6) },
-    { id: r[22], clusterId: c[14], author: '박도현', title: '협성대 북측 언덕길 낙석 위험', description: '북측 언덕 비탈면에서 작은 돌이 굴러 내려오고 있습니다. 낙석 위험 구역이지만 표지판이 없습니다.', imageBase64: img('#78350f','🪨','낙석 위험'), location: { lat: 37.21450, lng: 126.95220, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
-    { id: r[23], clusterId: c[14], author: '정지우', title: '협성대 북측 언덕 낙석 추가 발생', description: '오늘 오전에도 주먹만한 돌이 굴러 내려왔습니다. 통학하는 학생들이 많은 시간대라 매우 위험합니다.', imageBase64: img('#92400e','🪨','낙석 추가'), location: { lat: 37.21452, lng: 126.95222, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(12) },
-    { id: r[24], clusterId: c[14], author: '최우진', title: '협성대 북측 대형 낙석 — 통행 차단 필요', description: '농구공 크기의 대형 낙석이 굴러와 언덕길을 막고 있습니다. 추락 및 낙하 위험이 극심합니다. 즉각 출입 통제가 필요합니다.', imageBase64: img('#a16207','🪨','대형 낙석'), location: { lat: 37.21455, lng: 126.95218, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(4) },
-    { id: r[25], clusterId: c[15], author: '강하은', title: '협성대 서문 보도 불법적치물 철거 완료', description: '서문 보행로를 가로막던 폐자재 및 불법 적치물이 구청 정비 작업을 통해 모두 철거되었습니다.', imageBase64: img('#1e40af','✅','철거 완료'), location: { lat: 37.21090, lng: 126.95250, address: '경기 화성시 봉담읍 협성로 서문 보행로' }, danger: 'low', category: 'road', status: 'resolved', createdAt: daysAgo(5) },
-    { id: r[26], clusterId: c[15], author: '조예준', title: '서문 보행로 잔여 폐기물 수거 조치', description: '남아있던 잔여 쓰레기와 위험 자재까지 구청 환경과에서 수거 완료하여 통행이 원활합니다.', imageBase64: img('#1d4ed8','✅','수거 완료'), location: { lat: 37.21092, lng: 126.95252, address: '경기 화성시 봉담읍 협성로 서문 보행로' }, danger: 'low', category: 'road', status: 'resolved', createdAt: daysAgo(3) },
-    { id: r[27], clusterId: c[16], author: '윤서진', title: '협성대 체육관 앞 파손 볼라드 보수 완료', description: '충돌로 휘어져 보행에 위험하던 스테인리스 볼라드 및 안전 펜스가 새 제품으로 교체 보수되었습니다.', imageBase64: img('#0369a1','✅','보수 완료'), location: { lat: 37.21410, lng: 126.95480, address: '경기 화성시 봉담읍 협성대학교 체육관 앞' }, danger: 'low', category: 'facility', status: 'resolved', createdAt: daysAgo(8) },
+    { id: r[10], clusterId: c[8], author: '김민준', title: '협성대 정문 앞 보도 싱크홀 발견', description: '정문 앞 보도 중앙에 직경 약 30cm 크기의 구멍이 생겼습니다. 등하교 학생들이 많아 즉각 조치가 필요합니다.', imageBase64: img('#7f1d1d', '🕳️', '싱크홀 발견'), location: { lat: 37.21320, lng: 126.95190, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(3) },
+    { id: r[11], clusterId: c[8], author: '이서연', title: '협성대 정문 보도 싱크홀 균열 확대', description: '어제보다 구멍이 직경 50cm 이상으로 커졌고 주변 아스팔트에도 균열이 생겼습니다. 함몰 위험이 높습니다.', imageBase64: img('#991b1b', '🕳️', '균열 확대'), location: { lat: 37.21322, lng: 126.95192, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
+    { id: r[12], clusterId: c[8], author: '박도현', title: '협성대 정문 인근 추가 균열 발생', description: '기존 싱크홀 북쪽 2m 지점에 새로운 균열이 발생했습니다. 지반 침하가 넓은 범위에 걸쳐 진행 중인 것 같습니다.', imageBase64: img('#b91c1c', '🕳️', '추가 균열'), location: { lat: 37.21325, lng: 126.95188, address: '경기 화성시 봉담읍 협성로 남문 앞' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(8) },
+    { id: r[13], clusterId: c[9], author: '정지우', title: '협성대 진입로 저지대 침수 시작', description: '강우로 진입로 가장 낮은 구간에 물이 차기 시작했습니다. 차량 통행에 주의가 필요합니다.', imageBase64: img('#1e3a5f', '🌊', '침수 시작'), location: { lat: 37.21180, lng: 126.95350, address: '경기 화성시 봉담읍 협성대 진입로' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(5) },
+    { id: r[14], clusterId: c[9], author: '최우진', title: '협성대 진입로 완전 침수 — 통행 불가', description: '진입로 전 구간이 침수되어 차량과 사람 모두 통행이 불가합니다. 우수관 역류로 홍수 범람 상태입니다.', imageBase64: img('#1e40af', '🌊', '완전 침수'), location: { lat: 37.21182, lng: 126.95353, address: '경기 화성시 봉담읍 협성대 진입로' }, danger: 'high', category: 'weather', status: 'active', createdAt: hoursAgo(3) },
+    { id: r[15], clusterId: c[10], author: '강하은', title: '협성대 후문 골목 가로등 고장', description: '후문 골목 가로등 3개가 모두 꺼져 있습니다. 야간에 매우 어둡고 CCTV 사각지대입니다.', imageBase64: img('#1c1917', '🔦', '가로등 고장'), location: { lat: 37.21150, lng: 126.95130, address: '경기 화성시 봉담읍 협성로 후문길' }, danger: 'medium', category: 'facility', status: 'active', createdAt: daysAgo(5) },
+    { id: r[16], clusterId: c[10], author: '조예준', title: '협성대 후문 가로등 이틀째 미수리', description: '이틀 전 신고한 가로등이 아직도 수리되지 않았습니다. 늦은 밤 귀갓길 학생들이 많아 위험합니다.', imageBase64: img('#1c1917', '🔦', '미수리'), location: { lat: 37.21152, lng: 126.95132, address: '경기 화성시 봉담읍 협성로 후문길' }, danger: 'medium', category: 'safety', status: 'active', createdAt: daysAgo(3) },
+    { id: r[17], clusterId: c[11], author: '윤서진', title: '협성대 캠퍼스 순환도로 포트홀 발생', description: '순환도로 1차선에 작은 포트홀이 생겼습니다. 배달 오토바이 사고 위험이 있습니다.', imageBase64: img('#44403c', '🚧', '포트홀 발견'), location: { lat: 37.21290, lng: 126.95420, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로' }, danger: 'medium', category: 'road', status: 'active', createdAt: daysAgo(4) },
+    { id: r[18], clusterId: c[11], author: '장현우', title: '협성대 순환도로 포트홀 파손 심화', description: '이전에 신고된 포트홀이 차량 통행으로 더 크게 파손됐습니다. 직경 약 40cm, 깊이 10cm 이상입니다.', imageBase64: img('#292524', '🚧', '포트홀 확대'), location: { lat: 37.21292, lng: 126.95422, address: '경기 화성시 봉담읍 협성대학교 캠퍼스 내 순환도로' }, danger: 'medium', category: 'road', status: 'active', createdAt: daysAgo(1) },
+    { id: r[19], clusterId: c[12], author: '임수아', title: '기숙사 뒷길 야간 조명 없음', description: '기숙사 후면 골목에 가로등과 조명이 전혀 없어 야간에 매우 어둡습니다. 수상한 인물이 자주 출몰한다는 제보가 있습니다.', imageBase64: img('#0f172a', '🌑', '어두운 골목'), location: { lat: 37.21380, lng: 126.95310, address: '경기 화성시 봉담읍 협성대학교 기숙사 후면' }, danger: 'low', category: 'safety', status: 'active', createdAt: daysAgo(7) },
+    { id: r[20], clusterId: c[13], author: '김민준', title: '협성대 정문~버스정류장 보도블록 파손', description: '정문에서 버스정류장으로 이어지는 보행로에서 보도블록 여러 장이 깨지거나 뒤틀려 있습니다. 걸려 넘어질 위험이 있습니다.', imageBase64: img('#365314', '🧱', '보도블록 파손'), location: { lat: 37.21240, lng: 126.95060, address: '경기 화성시 봉담읍 협성로 버스정류장 앞' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(10) },
+    { id: r[21], clusterId: c[13], author: '이서연', title: '협성대 정류장 앞 보도블록 추가 파손', description: '앞서 신고된 지점에서 10m 더 들어간 곳에도 보도블록 파손이 있습니다. 전체 구간 보수가 필요합니다.', imageBase64: img('#3f6212', '🧱', '추가 파손'), location: { lat: 37.21242, lng: 126.95062, address: '경기 화성시 봉담읍 협성로 버스정류장 앞' }, danger: 'low', category: 'facility', status: 'active', createdAt: daysAgo(6) },
+    { id: r[22], clusterId: c[14], author: '박도현', title: '협성대 북측 언덕길 낙석 위험', description: '북측 언덕 비탈면에서 작은 돌이 굴러 내려오고 있습니다. 낙석 위험 구역이지만 표지판이 없습니다.', imageBase64: img('#78350f', '🪨', '낙석 위험'), location: { lat: 37.21450, lng: 126.95220, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: daysAgo(2) },
+    { id: r[23], clusterId: c[14], author: '정지우', title: '협성대 북측 언덕 낙석 추가 발생', description: '오늘 오전에도 주먹만한 돌이 굴러 내려왔습니다. 통학하는 학생들이 많은 시간대라 매우 위험합니다.', imageBase64: img('#92400e', '🪨', '낙석 추가'), location: { lat: 37.21452, lng: 126.95222, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(12) },
+    { id: r[24], clusterId: c[14], author: '최우진', title: '협성대 북측 대형 낙석 — 통행 차단 필요', description: '농구공 크기의 대형 낙석이 굴러와 언덕길을 막고 있습니다. 추락 및 낙하 위험이 극심합니다. 즉각 출입 통제가 필요합니다.', imageBase64: img('#a16207', '🪨', '대형 낙석'), location: { lat: 37.21455, lng: 126.95218, address: '경기 화성시 봉담읍 협성대학교 북측 언덕로' }, danger: 'high', category: 'road', status: 'active', createdAt: hoursAgo(4) },
+    { id: r[25], clusterId: c[15], author: '강하은', title: '협성대 서문 보도 불법적치물 철거 완료', description: '서문 보행로를 가로막던 폐자재 및 불법 적치물이 구청 정비 작업을 통해 모두 철거되었습니다.', imageBase64: img('#1e40af', '✅', '철거 완료'), location: { lat: 37.21090, lng: 126.95250, address: '경기 화성시 봉담읍 협성로 서문 보행로' }, danger: 'low', category: 'road', status: 'resolved', createdAt: daysAgo(5) },
+    { id: r[26], clusterId: c[15], author: '조예준', title: '서문 보행로 잔여 폐기물 수거 조치', description: '남아있던 잔여 쓰레기와 위험 자재까지 구청 환경과에서 수거 완료하여 통행이 원활합니다.', imageBase64: img('#1d4ed8', '✅', '수거 완료'), location: { lat: 37.21092, lng: 126.95252, address: '경기 화성시 봉담읍 협성로 서문 보행로' }, danger: 'low', category: 'road', status: 'resolved', createdAt: daysAgo(3) },
+    { id: r[27], clusterId: c[16], author: '윤서진', title: '협성대 체육관 앞 파손 볼라드 보수 완료', description: '충돌로 휘어져 보행에 위험하던 스테인리스 볼라드 및 안전 펜스가 새 제품으로 교체 보수되었습니다.', imageBase64: img('#0369a1', '✅', '보수 완료'), location: { lat: 37.21410, lng: 126.95480, address: '경기 화성시 봉담읍 협성대학교 체육관 앞' }, danger: 'low', category: 'facility', status: 'resolved', createdAt: daysAgo(8) },
   ]
 
   const clusters = [
@@ -1246,9 +1269,22 @@ async function seedDemoData() {
     { id: c[16], representId: r[27], reportIds: [r[27]], location: { lat: 37.21410, lng: 126.95480 }, danger: 'low', category: 'facility', status: 'resolved', embeddingVector: null, createdAt: daysAgo(8), updatedAt: daysAgo(8), resolvedAt: daysAgo(6) },
   ]
 
-  const { saveReports, saveClusters } = await import('./storage.js')
-  await saveReports(reports)
-  await saveClusters(clusters)
+  // 1. 로컬 캐시에 즉시 저장 (비로그인 및 로컬 개발 환경에서도 즉시 100% 동작)
+  localStorage.setItem('reports', JSON.stringify(reports))
+  localStorage.setItem('clusters', JSON.stringify(clusters))
+
+  // 2. 로그인 상태이고 온라인인 경우 Firestore 원본에도 동기화
+  try {
+    const { auth } = await import('./firebase.js')
+    if (auth?.currentUser && navigator.onLine) {
+      const { saveReports, saveClusters } = await import('./storage.js')
+      await saveReports(reports)
+      await saveClusters(clusters)
+    }
+  } catch (err) {
+    console.warn('[main] Firestore 데모 동기화 생략:', err)
+  }
+
   await syncDataFromStorage()
 }
 
@@ -1268,8 +1304,8 @@ document.getElementById('seed-btn')?.addEventListener('click', async () => {
 // ── 모델 다운로드 배너 ────────────────────────────────────
 
 const embedderBanner = document.getElementById('embedder-banner')
-const embedderBar    = document.getElementById('embedder-bar')
-const embedderPct    = document.getElementById('embedder-pct')
+const embedderBar = document.getElementById('embedder-bar')
+const embedderPct = document.getElementById('embedder-pct')
 
 if (!isEmbedderReady()) {
   embedderBanner.classList.remove('hidden')
@@ -1427,15 +1463,18 @@ async function startApp() {
   // 인증 상태가 확정된 뒤에 조회해야 로그인 사용자의 첫 조회가 거부되지 않는다
   const user = await waitForAuth()
   await syncDataFromStorage()
-  if (!user && wasReadDenied()) showLoginRequiredState()
-  // 서버에 제보가 하나도 없을 때만 데모 데이터를 자동으로 넣는다.
-  // (예전에는 새 방문자마다 localStorage를 지우고 데모 30건을 새 ID로 다시 써넣었다)
-  if (user && allClusters.length === 0 && !wasReadDenied() && navigator.onLine) {
+
+  // 데이터가 하나도 없으면 데모 데이터를 즉시 자동 주입
+  if (allClusters.length === 0) {
     try {
       await seedDemoData()
     } catch (err) {
       console.warn('[main] 데모 데이터 자동 주입 실패:', err)
     }
+  }
+
+  if (!user && wasReadDenied() && allClusters.length === 0) {
+    showLoginRequiredState()
   }
   await syncOfflineReports()
 

@@ -10,3 +10,6 @@ data/csv/
 data/*.log
 data/*_status.json
 .DS_Store
+.env
+.env.local
+.env.*.local

@@ -44,10 +44,68 @@ export default {
     if (url.pathname === '/health' && request.method === 'GET') {
       return json({ ok: true, model: MODEL }, 200, origin)
     }
+
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: headers(origin) })
+
+    // Gemini 기반 안전 요약 브리핑 API
+    if (url.pathname === '/summarize') {
+      if (!ALLOWED_ORIGINS.has(origin)) return json({ error: 'origin_not_allowed' }, 403, origin)
+      if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, origin)
+
+      const apiKey = env.GEMINI_API_KEY
+      if (!apiKey) return json({ error: 'gemini_api_key_not_configured' }, 503, origin)
+
+      let body
+      try {
+        body = await request.json()
+      } catch {
+        return json({ error: 'invalid_json' }, 400, origin)
+      }
+
+      const systemText = body.systemPrompt || ''
+      const userText = body.userPrompt || (typeof body.prompt === 'string' ? body.prompt : '')
+      if (!userText && !body.contents) {
+        return json({ error: 'empty_prompt' }, 400, origin)
+      }
+
+      const geminiPayload = body.contents ? body : {
+        ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
+        contents: [{ parts: [{ text: userText }] }],
+        generationConfig: {
+          temperature: typeof body.temperature === 'number' ? body.temperature : 0.3,
+          maxOutputTokens: typeof body.maxOutputTokens === 'number' ? body.maxOutputTokens : 1024,
+        }
+      }
+
+      try {
+        const geminiRes = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-goog-api-key': apiKey,
+            },
+            body: JSON.stringify(geminiPayload),
+          }
+        )
+
+        if (!geminiRes.ok) {
+          const errText = await geminiRes.text()
+          return json({ error: 'gemini_api_error', details: errText }, geminiRes.status, origin)
+        }
+
+        const data = await geminiRes.json()
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        return json({ ok: true, text, model: 'gemini-flash-latest' }, 200, origin)
+      } catch (err) {
+        return json({ error: 'gemini_request_failed', message: err?.message || String(err) }, 500, origin)
+      }
+    }
+
     const relief = url.pathname === '/classify-relief'
     if (url.pathname !== '/classify' && !relief) return json({ error: 'not_found' }, 404, origin)
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: 'origin_not_allowed' }, 403, origin)
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: headers(origin) })
     if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, origin)
 
     const length = Number(request.headers.get('Content-Length') || 0)
