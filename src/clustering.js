@@ -173,7 +173,7 @@ export async function assignCluster(report) {
       danger:          (DANGER_PRIORITY[report.danger] || 0) > (DANGER_PRIORITY[current.danger] || 0)
         ? report.danger
         : current.danger,
-      status:          current.status || 'active',
+      // status는 관리자 전용 보호 필드이므로 기존 군집 병합 시 건드리지 않는다
       updatedAt:       report.createdAt,
     }
   })

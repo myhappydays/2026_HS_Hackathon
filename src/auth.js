@@ -1,13 +1,18 @@
 import { auth, db, googleProvider } from './firebase.js';
-import { doc, getDoc } from "firebase/firestore";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, getDocFromServer } from "firebase/firestore";
+import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 
 /**
  * 구글 소셜 로그인 팝업을 엽니다.
+ * @param {{ selectAccount?: boolean }} [options]
  */
-export async function loginWithGoogle() {
+export async function loginWithGoogle({ selectAccount = false } = {}) {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const provider = selectAccount ? new GoogleAuthProvider() : googleProvider;
+    if (selectAccount) {
+      provider.setCustomParameters({ prompt: 'select_account' });
+    }
+    const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (error) {
     // 사용자가 팝업을 직접 닫은 경우는 오류가 아니다
@@ -23,6 +28,39 @@ export async function loginWithGoogle() {
 }
 
 /**
+ * 관리자 권한을 서버 기준으로 확인하고 실패 원인까지 함께 반환합니다.
+ * Firestore 의 admins/{uid} 문서가 존재하면 관리자입니다.
+ *
+ * - reason: 'ok' | 'signed-out' | 'not-admin' | 'permission-denied' | 'offline' | 'error'
+ *
+ * @param {import('firebase/auth').User|null} user
+ * @returns {Promise<{ isAdmin: boolean, reason: string, errorCode: string|null }>}
+ */
+export async function checkAdminAccess(user) {
+  if (!user) return { isAdmin: false, reason: 'signed-out', errorCode: null };
+  const adminRef = doc(db, 'admins', user.uid);
+  try {
+    // 콘솔에서 UID를 방금 등록한 직후 캐시된 미존재 응답을 받지 않도록 서버를 우선 조회
+    const snap = navigator.onLine
+      ? await getDocFromServer(adminRef)
+      : await getDoc(adminRef);
+    return snap.exists()
+      ? { isAdmin: true, reason: 'ok', errorCode: null }
+      : { isAdmin: false, reason: 'not-admin', errorCode: null };
+  } catch (error) {
+    const code = error?.code || null;
+    console.warn("관리자 권한 확인 실패:", code, error);
+    if (code === 'permission-denied') {
+      return { isAdmin: false, reason: 'permission-denied', errorCode: code };
+    }
+    if (code === 'unavailable' || code === 'failed-precondition' || !navigator.onLine) {
+      return { isAdmin: false, reason: 'offline', errorCode: code };
+    }
+    return { isAdmin: false, reason: 'error', errorCode: code };
+  }
+}
+
+/**
  * 관리자 여부를 확인합니다.
  * Firestore 의 admins/{uid} 문서가 있으면 관리자입니다. (문서 내용은 보지 않음)
  * 관리자 추가·삭제는 Firebase 콘솔에서 이 문서를 만들거나 지우면 됩니다.
@@ -34,14 +72,8 @@ export async function loginWithGoogle() {
  * @returns {Promise<boolean>}
  */
 export async function isAdminUser(user) {
-  if (!user) return false;
-  try {
-    const snap = await getDoc(doc(db, 'admins', user.uid));
-    return snap.exists();
-  } catch (error) {
-    console.warn("관리자 권한 확인 실패:", error);
-    return false;
-  }
+  const { isAdmin } = await checkAdminAccess(user);
+  return isAdmin;
 }
 
 /**
