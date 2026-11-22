@@ -90,9 +90,9 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/admin-DYaunYO9.js"></script>
+  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/admin-D6aLiW-4.js"></script>
   <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-CLDoQ0Y-.js">
+  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-BiI1f3a0.js">
   <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-EF1mbSxF.css">
 </head>
 <body class="bg-background-1 text-foreground min-h-screen flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
@@ -105,11 +105,18 @@
         <h1 class="text-lg font-bold text-foreground">Fermata 안전 관제 센터</h1>
         <p id="admin-gate-message" class="text-sm text-muted-foreground mt-1.5 leading-relaxed">관리자 권한을 확인하고 있습니다...</p>
       </div>
-      <p id="admin-gate-uid-wrap" class="hidden w-full text-[11px] text-muted-foreground bg-surface border border-border rounded-lg px-3 py-2 break-all text-left">
-        <span id="admin-gate-account" class="block font-semibold text-foreground"></span>
-        UID: <span id="admin-gate-uid" class="font-mono select-all"></span>
-      </p>
+      <div id="admin-gate-uid-wrap" class="hidden w-full text-[11px] text-muted-foreground bg-surface border border-border rounded-lg px-3 py-2.5 text-left space-y-1.5">
+        <span id="admin-gate-account" class="block font-semibold text-foreground truncate"></span>
+        <div class="flex items-center justify-between gap-2">
+          <div class="break-all min-w-0">
+            UID: <span id="admin-gate-uid" class="font-mono text-foreground select-all"></span>
+          </div>
+          <button id="admin-gate-copy-uid" type="button" class="shrink-0 px-2 py-1 rounded-md bg-background border border-border text-[11px] font-semibold text-foreground hover:bg-surface-1 transition-colors">복사</button>
+        </div>
+      </div>
+      <p id="admin-gate-hint" class="hidden w-full text-[11px] text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 text-left leading-relaxed"></p>
       <button id="admin-gate-login" type="button" class="hidden w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm">구글 계정으로 로그인</button>
+      <button id="admin-gate-recheck" type="button" class="hidden w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm">권한 다시 확인</button>
       <button id="admin-gate-logout" type="button" class="hidden w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-foreground text-sm font-semibold hover:bg-surface-1 transition-colors">다른 계정으로 로그인</button>
       <a id="admin-gate-home" href="index.html" class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">시민 서비스로 돌아가기</a>
     </div>
@@ -147,7 +154,8 @@
 
     <!-- 우측: 관제 액션 & 시트뷰 전환 & 도구 & 시민 서비스 링크 -->
     <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-      <!-- 관리자 로그아웃 -->
+      <!-- 관리자 계정 & 로그아웃 -->
+      <span id="admin-account-badge" class="hidden sm:inline-flex items-center px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[11px] font-medium text-muted-foreground max-w-[180px] truncate order-last" title="로그인된 관리자 계정"></span>
       <button id="admin-logout-btn" type="button" class="order-last px-2.5 py-1.5 rounded-lg bg-surface border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-1 transition-colors whitespace-nowrap" title="관리자 로그아웃">로그아웃</button>
       <!-- 실시간 시계 & 자동 갱신 -->
       <div class="hidden md:flex flex-col items-end text-right mr-1">
