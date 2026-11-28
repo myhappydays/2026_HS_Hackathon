@@ -8,11 +8,8 @@
 
 import { initTheme } from './theme.js'
 import { getClusters, getReports, patchCluster, storageErrorMessage } from './storage.js'
-import { listenAuthState, loginWithGoogle, logout, isAdminUser, getCurrentUser } from './auth.js'
+import { listenAuthState, loginWithGoogle, logout, checkAdminAccess, getCurrentUser } from './auth.js'
 import { dangerStyle, categoryLabel, relativeTime, escapeHtml, safeImageSrc } from './utils.js'
-
-// 데모용 임시 스위치: true 면 구글 로그인만 하면 관리자 화면이 열린다.
-const DEMO_SKIP_ADMIN_CHECK = true
 
 // 테마 초기화
 initTheme()
@@ -1017,31 +1014,47 @@ function bindEventListeners() {
 
 // ── 관리자 인증 게이트 ───────────────────────────────────
 // 로그인한 계정의 admins/{uid} 문서가 확인된 뒤에만 대시보드를 초기화한다.
-const gateEl        = document.getElementById('admin-gate')
-const gateMessage   = document.getElementById('admin-gate-message')
-const gateUidWrap   = document.getElementById('admin-gate-uid-wrap')
-const gateAccount   = document.getElementById('admin-gate-account')
-const gateUid       = document.getElementById('admin-gate-uid')
-const gateLoginBtn  = document.getElementById('admin-gate-login')
-const gateLogoutBtn = document.getElementById('admin-gate-logout')
+const gateEl         = document.getElementById('admin-gate')
+const gateMessage    = document.getElementById('admin-gate-message')
+const gateUidWrap    = document.getElementById('admin-gate-uid-wrap')
+const gateAccount    = document.getElementById('admin-gate-account')
+const gateUid        = document.getElementById('admin-gate-uid')
+const gateCopyUidBtn = document.getElementById('admin-gate-copy-uid')
+const gateHint       = document.getElementById('admin-gate-hint')
+const gateLoginBtn   = document.getElementById('admin-gate-login')
+const gateRecheckBtn = document.getElementById('admin-gate-recheck')
+const gateLogoutBtn  = document.getElementById('admin-gate-logout')
+const adminBadgeEl   = document.getElementById('admin-account-badge')
 
 let dashboardStarted = false
 let authCheckSeq = 0
 
-function showGate(state, user = null) {
+function showGate(state, user = null, hintText = '') {
+  const showUserInfo = state === 'denied' || state === 'rule-error' || state === 'offline'
   gateEl?.classList.remove('hidden')
   gateLoginBtn?.classList.toggle('hidden', state !== 'login')
-  gateLogoutBtn?.classList.toggle('hidden', state !== 'denied')
-  gateUidWrap?.classList.toggle('hidden', state !== 'denied')
+  gateRecheckBtn?.classList.toggle('hidden', !showUserInfo)
+  gateLogoutBtn?.classList.toggle('hidden', !showUserInfo)
+  gateUidWrap?.classList.toggle('hidden', !showUserInfo)
+  if (gateHint) {
+    gateHint.textContent = hintText
+    gateHint.classList.toggle('hidden', !hintText)
+  }
+  if (showUserInfo) {
+    if (gateAccount) gateAccount.textContent = user?.email || user?.displayName || ''
+    if (gateUid) gateUid.textContent = user?.uid || ''
+  }
   if (!gateMessage) return
   if (state === 'checking') {
     gateMessage.textContent = '관리자 권한을 확인하고 있습니다...'
   } else if (state === 'login') {
     gateMessage.textContent = '관리자 전용 페이지입니다. 관리자 계정으로 로그인해 주세요.'
   } else if (state === 'denied') {
-    gateMessage.textContent = '이 계정에는 관리자 권한이 없습니다. 권한이 필요하면 아래 UID를 담당자에게 전달해 주세요.'
-    if (gateAccount) gateAccount.textContent = user?.email || user?.displayName || ''
-    if (gateUid) gateUid.textContent = user?.uid || ''
+    gateMessage.textContent = '이 계정에는 관리자 권한이 없습니다. Firebase 콘솔의 admins 컬렉션에 아래 UID를 문서 ID로 등록해 주세요.'
+  } else if (state === 'rule-error') {
+    gateMessage.textContent = 'Firestore 보안 규칙에서 관리자 권한 조회가 차단되었습니다.'
+  } else if (state === 'offline') {
+    gateMessage.textContent = '네트워크 연결을 확인할 수 없어 관리자 권한을 검증하지 못했습니다.'
   }
 }
 
@@ -1052,8 +1065,11 @@ function stopDashboard() {
   }
 }
 
-function startDashboard() {
+function startDashboard(user) {
   gateEl?.classList.add('hidden')
+  if (adminBadgeEl) {
+    adminBadgeEl.textContent = user?.email || user?.displayName || '관리자'
+  }
   if (!dashboardStarted) {
     dashboardStarted = true
     initAdminMap()
@@ -1063,15 +1079,7 @@ function startDashboard() {
   startAutoRefresh()
 }
 
-gateLoginBtn?.addEventListener('click', () => loginWithGoogle())
-gateLogoutBtn?.addEventListener('click', () => logout())
-document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
-  if (confirm('관리자 계정에서 로그아웃 하시겠습니까?')) await logout()
-})
-const gateHome = document.getElementById('admin-gate-home')
-if (gateHome) gateHome.href = `${import.meta.env.BASE_URL}index.html`
-
-listenAuthState(async (user) => {
+async function verifyAdminAccess(user) {
   const seq = ++authCheckSeq
   stopDashboard()
   if (!user) {
@@ -1079,10 +1087,50 @@ listenAuthState(async (user) => {
     return
   }
   showGate('checking')
-  // TODO(데모 임시): 보안 규칙에 admins 읽기 권한을 추가하기 전까지 로그인만 하면 통과시킨다.
-  // 규칙을 게시한 뒤 DEMO_SKIP_ADMIN_CHECK 를 false 로 되돌릴 것.
-  const ok = DEMO_SKIP_ADMIN_CHECK ? true : await isAdminUser(user)
+  const result = await checkAdminAccess(user)
   if (seq !== authCheckSeq) return // 확인 중에 계정이 바뀌었으면 이전 결과는 버린다
-  if (ok) startDashboard()
-  else showGate('denied', user)
+  if (result.isAdmin) {
+    startDashboard(user)
+  } else if (result.reason === 'permission-denied') {
+    showGate(
+      'rule-error',
+      user,
+      'Firebase 콘솔 → Firestore Database → 규칙(Rules)에 firestore.rules의 admins/{uid} 읽기 허용 규칙이 게시되어 있는지 확인해 주세요.'
+    )
+  } else if (result.reason === 'offline') {
+    showGate('offline', user, '인터넷 연결을 확인한 뒤 [권한 다시 확인]을 눌러 주세요.')
+  } else {
+    showGate(
+      'denied',
+      user,
+      '주의: admins 컬렉션의 "문서 ID" 자체가 위 UID와 정확히 일치해야 합니다(내부 필드가 아닌 문서 ID). 등록 후 [권한 다시 확인]을 눌러 주세요.'
+    )
+  }
+}
+
+gateLoginBtn?.addEventListener('click', () => loginWithGoogle())
+gateRecheckBtn?.addEventListener('click', () => verifyAdminAccess(getCurrentUser()))
+gateLogoutBtn?.addEventListener('click', async () => {
+  await logout()
+  await loginWithGoogle({ selectAccount: true })
+})
+gateCopyUidBtn?.addEventListener('click', async () => {
+  const uid = gateUid?.textContent?.trim()
+  if (!uid) return
+  try {
+    await navigator.clipboard.writeText(uid)
+    gateCopyUidBtn.textContent = '복사됨!'
+    setTimeout(() => { gateCopyUidBtn.textContent = '복사' }, 1500)
+  } catch {
+    prompt('아래 UID를 복사해 주세요.', uid)
+  }
+})
+document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
+  if (confirm('관리자 계정에서 로그아웃 하시겠습니까?')) await logout()
+})
+const gateHome = document.getElementById('admin-gate-home')
+if (gateHome) gateHome.href = `${import.meta.env.BASE_URL}index.html`
+
+listenAuthState((user) => {
+  verifyAdminAccess(user)
 })
