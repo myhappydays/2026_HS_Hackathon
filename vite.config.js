@@ -13,11 +13,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main:   resolve(__dirname, 'index.html'),
-        report: resolve(__dirname, 'report.html'),
-        detail: resolve(__dirname, 'detail.html'),
-        mypage: resolve(__dirname, 'mypage.html'),
-        admin:  resolve(__dirname, 'admin.html'),
+        main:    resolve(__dirname, 'index.html'),
+        report:  resolve(__dirname, 'report.html'),
+        detail:  resolve(__dirname, 'detail.html'),
+        mypage:  resolve(__dirname, 'mypage.html'),
+        admin:   resolve(__dirname, 'admin.html'),
+        privacy: resolve(__dirname, 'privacy.html'),
+        terms:   resolve(__dirname, 'terms.html'),
       }
     }
   }
