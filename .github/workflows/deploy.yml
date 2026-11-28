@@ -53,7 +53,7 @@ jobs:
           body: |
             자동 빌드 릴리즈입니다.
 
-            **배포 URL**: https://myhappydays.github.io/2026_HS_Hackathon/
+            **배포 URL**: https://hejolive.live/
 
             ### 변경사항
             ${{ github.event.head_commit.message }}

@@ -2,6 +2,8 @@ import prompt from './v4-rough-safety.json' with { type: 'json' }
 
 const MODEL = '@cf/cloudflare/clef-flash'
 const ALLOWED_ORIGINS = new Set([
+  'https://hejolive.live',
+  'https://www.hejolive.live',
   'https://myhappydays.github.io',
   'http://localhost:5173',
   'http://127.0.0.1:5173',

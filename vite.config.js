@@ -2,7 +2,7 @@ import { resolve } from 'path'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/2026_HS_Hackathon/',
+  base: '/',
   server: {
     host: '0.0.0.0',
     allowedHosts: ['fedora-1.tailda0655.ts.net']

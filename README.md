@@ -2,7 +2,7 @@
 
 > 시민이 직접 잠재 위험요인을 제보하고, AI가 자동으로 분류·군집화하는 커뮤니티형 안전 신고 플랫폼
 
-**배포 주소**: https://myhappydays.github.io/2026_HS_Hackathon/
+**배포 주소**: https://hejolive.live/
 
 ![Vanilla JS](https://img.shields.io/badge/Vanilla_JS-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)
@@ -103,7 +103,7 @@
 
 ### 권장 환경
 
-배포된 사이트(`https://myhappydays.github.io/2026_HS_Hackathon/`)를 **Chrome 또는 Edge**에서 바로 사용하는 것을 권장합니다.
+배포된 사이트(`https://hejolive.live/`)를 **Chrome 또는 Edge**에서 바로 사용하는 것을 권장합니다.
 
 > **로컬 실행 시 주의**: `dist/`를 `file://`로 직접 열면 ES 모듈 CORS 정책으로 JS가 전혀 실행되지 않습니다. 반드시 개발 서버(`npm run dev`) 또는 HTTP 서버를 통해 열어야 합니다.
 
@@ -114,7 +114,7 @@ npm install
 npm run dev
 ```
 
-기본 주소: `http://localhost:5173/2026_HS_Hackathon/`
+기본 주소: `http://localhost:5173/`
 
 ### Clef-flash 분류 Worker 설정 및 배포
 
@@ -151,7 +151,7 @@ npm run build   # dist/ 생성
 npm run preview # 빌드 결과물 로컬 미리보기
 ```
 
-`vite.config.js`의 `base: '/2026_HS_Hackathon/'`이 GitHub Pages 경로에 맞게 설정되어 있습니다.
+`vite.config.js`의 `base: '/'`는 커스텀 도메인(hejolive.live) 루트 배포 기준입니다. 도메인은 저장소 Settings → Pages → Custom domain 에서 관리합니다.
 
 ### AI 요약 기능 사용
 
