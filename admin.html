@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-title" content="Fermata">
   <meta name="robots" content="noindex, nofollow">
   <title>Fermata 지자체 안전 관제 센터 - 스마트 B2G 대시보드</title>
-  <link rel="manifest" href="/2026_HS_Hackathon/manifest.webmanifest">
-  <link rel="icon" href="/2026_HS_Hackathon/favicon.ico" sizes="any">
-  <link rel="icon" href="/2026_HS_Hackathon/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/2026_HS_Hackathon/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin
@@ -90,17 +90,17 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
   </style>
-  <script type="module" crossorigin src="/2026_HS_Hackathon/assets/admin-D6aLiW-4.js"></script>
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/preload-helper-8wpncrBd.js">
-  <link rel="modulepreload" crossorigin href="/2026_HS_Hackathon/assets/auth-BiI1f3a0.js">
-  <link rel="stylesheet" crossorigin href="/2026_HS_Hackathon/assets/auth-EF1mbSxF.css">
+  <script type="module" crossorigin src="/assets/admin-Cz3CpypB.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-oFk6QUoh.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-Ced2N3Kp.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-EF1mbSxF.css">
 </head>
 <body class="bg-background-1 text-foreground min-h-screen flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
 
   <!-- ─── 관리자 인증 게이트 (관리자 확인 전에는 대시보드를 가린다) ─── -->
   <div id="admin-gate" class="fixed inset-0 z-[100001] bg-background-1 flex items-center justify-center p-6">
     <div class="w-full max-w-sm rounded-2xl border border-border bg-background p-6 shadow-xl flex flex-col items-center text-center gap-4">
-      <img src="/2026_HS_Hackathon/icon.svg" class="w-12 h-12 rounded-xl shadow-sm" alt="Fermata">
+      <img src="/icon.svg" class="w-12 h-12 rounded-xl shadow-sm" alt="Fermata">
       <div>
         <h1 class="text-lg font-bold text-foreground">Fermata 안전 관제 센터</h1>
         <p id="admin-gate-message" class="text-sm text-muted-foreground mt-1.5 leading-relaxed">관리자 권한을 확인하고 있습니다...</p>
@@ -128,7 +128,7 @@
     <!-- 좌측: 관제 센터 브랜딩 & 상태 -->
     <div class="flex items-center gap-3 min-w-0">
       <div class="flex items-center gap-2.5">
-        <img src="/2026_HS_Hackathon/icon.svg" class="w-8 h-8 rounded-lg shadow-sm shrink-0" alt="Fermata">
+        <img src="/icon.svg" class="w-8 h-8 rounded-lg shadow-sm shrink-0" alt="Fermata">
         <div class="flex flex-col">
           <div class="flex items-center gap-2">
             <span class="text-xl font-bold tracking-tight text-foreground whitespace-nowrap" style="font-family: 'Playfair Display', serif;">Fermata</span>
