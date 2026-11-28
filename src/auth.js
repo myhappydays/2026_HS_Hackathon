@@ -1,6 +1,6 @@
 import { auth, db, googleProvider } from './firebase.js';
 import { doc, getDoc, getDocFromServer } from "firebase/firestore";
-import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser, reauthenticateWithPopup } from "firebase/auth";
 
 /**
  * 구글 소셜 로그인 팝업을 엽니다.
@@ -115,4 +115,35 @@ export async function waitForAuth() {
  */
 export function getCurrentUser() {
   return auth.currentUser;
+}
+
+/**
+ * 현재 로그인된 사용자의 계정을 영구 삭제합니다.
+ * 최근 로그인 시간이 오래된 경우(auth/requires-recent-login) Google 재인증 팝업을 자동으로 띄워 재시도합니다.
+ * @returns {Promise<{ deleted: boolean, cancelled?: boolean }>}
+ */
+export async function deleteCurrentAccount() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('로그인된 계정이 없습니다.');
+
+  try {
+    await deleteUser(user);
+    return { deleted: true };
+  } catch (error) {
+    if (error?.code === 'auth/requires-recent-login') {
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await reauthenticateWithPopup(user, provider);
+        await deleteUser(user);
+        return { deleted: true };
+      } catch (reauthError) {
+        if (reauthError?.code === 'auth/popup-closed-by-user' || reauthError?.code === 'auth/cancelled-popup-request') {
+          return { deleted: false, cancelled: true };
+        }
+        throw reauthError;
+      }
+    }
+    throw error;
+  }
 }

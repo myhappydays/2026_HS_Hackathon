@@ -67,7 +67,7 @@ Fermata(페르마타)는 시민이 직접 생활 주변의 잠재 위험요인�
 | :--- | :--- | :--- | :--- |
 | **앱 아이콘** | `store-assets/app-icon-512x512.png` | 512×512 PNG | 기존 `public/icon-512.png` 동일 |
 | **그래픽 이미지** | `store-assets/feature-graphic-1024x500.png` | 1024×500 PNG | 알파 채널 제거(RGB), 브랜딩 완료 |
-| **휴대폰 스크린샷 (5장)** | `store-assets/screenshots/01_main.png` ~ `05_detail_2.png` | 1080×1920 PNG | Play Console 종횡비 2:1 제한 통과 (9:16) |
+| **휴대폰 스크린샷 (4장)** | `store-assets/screenshots/01_main.png`, `02_ai_summary_list.png`, `03_safety_card.png`, `04_detail.png` | 1080×1920 PNG | 최신 앱 화면 직접 캡처, 여백 없음 (9:16) |
 
 ---
 
@@ -90,6 +90,7 @@ Play Console > 앱 콘텐츠 > **데이터 보안** 단계에서 아래 항목 �
 - **앱에서 수집한 모든 사용자 데이터가 전송 중에 암호화되나요?** → **예** *(Firebase/Kakao/Cloudflare/Gemini 모두 HTTPS TLS 통신)*
 - **사용자가 데이터 삭제를 요청할 수 있는 방법을 제공하나요?** → **예**
   - **계정 생성 지원 여부**: 예 (Google OAuth 소셜 로그인)
+  - **앱 내 계정 삭제 지원**: 예 (`마이페이지 → 계정 삭제(회원 탈퇴)`에서 즉시 영구 삭제 가능)
   - **계정 삭제 URL**: `https://myhappydays.github.io/2026_HS_Hackathon/privacy.html`
 
 ### 2단계: 수집하는 데이터 유형 체크표
